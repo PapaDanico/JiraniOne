@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CreditCard, CheckCircle, Clock, XCircle } from "lucide-react";
+import { CreditCard, CheckCircle, Clock, XCircle, Heart, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,16 +14,18 @@ import { api } from "@/lib/api";
 import { formatDateTime, formatDate } from "@/lib/utils";
 import type { Payment, FundraisingCampaign } from "@shared/types";
 
-const statusIcon = {
-  completed: <CheckCircle className="h-4 w-4 text-green-500" />,
-  pending: <Clock className="h-4 w-4 text-amber-500" />,
-  failed: <XCircle className="h-4 w-4 text-red-400" />,
+const STATUS_ICON = {
+  completed: <CheckCircle className="h-4 w-4 text-[#1B5E20]" />,
+  pending:   <Clock className="h-4 w-4 text-amber-500" />,
+  failed:    <XCircle className="h-4 w-4 text-[#B71C1C]" />,
 };
 
-const statusVariant: Record<string, "success" | "warning" | "destructive" | "default"> = {
-  completed: "success",
-  pending: "warning",
-  failed: "destructive",
+const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "default"> = {
+  completed: "success", pending: "warning", failed: "destructive",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  completed: "Imelipwa", pending: "Inasubiri", failed: "Imeshindwa",
 };
 
 function PayDialog({ onClose }: { onClose: () => void }) {
@@ -37,11 +39,14 @@ function PayDialog({ onClose }: { onClose: () => void }) {
       api.post<{ message?: string; stub?: boolean }>("/api/payments/stk-push", {
         amount: Number(amount),
         type: "levy",
-        description: "Monthly levy",
+        description: "Ada ya kila mwezi",
       }),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["payments"] });
-      setMsg(res.data.message ?? (res.data.stub ? "Dev mode: payment recorded." : "Check your phone for M-PESA prompt."));
+      setMsg(
+        res.data.message ??
+        (res.data.stub ? "Hali ya majaribio: malipo yamehifadhiwa." : "Angalia simu yako kwa ombi la M-PESA."),
+      );
     },
   });
 
@@ -49,37 +54,46 @@ function PayDialog({ onClose }: { onClose: () => void }) {
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Pay Service Charge / Levy</DialogTitle>
+          <div className="flex items-center gap-3 mt-2">
+            <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center">
+              <CreditCard className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <DialogTitle>Lipa Ada ya Kila Mwezi</DialogTitle>
+              <p className="text-xs text-[#6B5D45] mt-0.5">Malipo kupitia M-PESA</p>
+            </div>
+          </div>
         </DialogHeader>
         <div className="px-6 pb-2 space-y-4">
-          <p className="text-sm text-gray-500">
-            Payment will be sent to <strong>{user?.phone}</strong> via M-PESA.
-          </p>
+          <div className="tribal-card p-3">
+            <p className="text-xs text-[#6B5D45]">Simu ya M-PESA</p>
+            <p className="font-bold text-[#212121]">{user?.phone}</p>
+          </div>
           <div>
-            <Label>Amount (KES)</Label>
+            <Label className="text-[#212121] font-semibold">Kiasi (KES)</Label>
             <Input
               type="number"
               min={1}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="e.g. 5000"
+              placeholder="mfano: 5000"
             />
           </div>
           {msg && (
-            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800">
-              {msg}
+            <div className="bg-[#1B5E20]/8 border border-[#1B5E20]/20 rounded-xl px-4 py-3 text-sm text-[#1B5E20] font-medium">
+              ✓ {msg}
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Close</Button>
+          <Button variant="secondary" onClick={onClose}>Funga</Button>
           {!msg && (
             <Button
               onClick={() => mutation.mutate()}
               loading={mutation.isPending}
               disabled={!amount || Number(amount) < 1}
             >
-              Pay KES {amount || "—"}
+              Lipa KES {amount || "—"}
             </Button>
           )}
         </DialogFooter>
@@ -105,35 +119,49 @@ export default function PaymentsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <TopBar title="Payments" />
-      <main className="max-w-lg mx-auto px-4 pt-4 space-y-6">
+    <div className="page-wrap">
+      <TopBar title="Malipo" />
+      <main className="max-w-lg mx-auto px-4 pt-4 space-y-6 page-content">
 
-        {/* Fundraising campaigns */}
+        {/* Harambee / Fundraising campaigns */}
         {(campaigns?.length ?? 0) > 0 && (
           <section>
-            <h2 className="font-semibold text-gray-700 text-sm uppercase tracking-wide mb-3">Active Campaigns</h2>
+            <div className="flex items-center gap-2 mb-3">
+              <Heart className="h-4 w-4 text-[#D4A017]" />
+              <p className="section-label">Harambee za Nyumba</p>
+            </div>
             <div className="space-y-3">
               {campaigns!.map((c) => {
-                const pct = Math.min(100, Math.round((Number(c.currentAmount) / Number(c.goalAmount)) * 100));
+                const current = Number(c.currentAmount);
+                const goal = Number(c.goalAmount);
+                const pct = Math.min(100, Math.round((current / goal) * 100));
                 return (
-                  <Card key={c.id}>
+                  <Card key={c.id} className="overflow-hidden">
+                    <div className="h-1.5 w-full bg-[#D4C9A8]">
+                      <div
+                        className="h-full bg-[#D4A017] transition-all duration-700"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
                     <CardContent className="py-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-semibold text-sm text-gray-900">{c.title}</p>
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-[#212121] truncate">{c.title}</p>
                           {c.deadline && (
-                            <p className="text-xs text-gray-400">Closes {formatDate(c.deadline)}</p>
+                            <p className="text-xs text-[#6B5D45] mt-0.5">Mwisho: {formatDate(c.deadline)}</p>
                           )}
                         </div>
-                        <Badge variant={c.status === "active" ? "success" : "default"}>{c.status}</Badge>
+                        <Badge variant={c.status === "active" ? "success" : "default"}>
+                          {c.status === "active" ? "Hai" : c.status}
+                        </Badge>
                       </div>
-                      <div className="w-full bg-gray-100 rounded-full h-1.5 mb-1">
-                        <div className="bg-[#1A5C38] h-1.5 rounded-full" style={{ width: `${pct}%` }} />
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-[#6B5D45]">
+                          <span className="font-bold text-[#212121]">KES {current.toLocaleString()}</span>
+                          {" "}/ {goal.toLocaleString()}
+                        </span>
+                        <span className="font-bold text-[#D4A017]">{pct}%</span>
                       </div>
-                      <p className="text-xs text-gray-500">
-                        KES {Number(c.currentAmount).toLocaleString()} of KES {Number(c.goalAmount).toLocaleString()} ({pct}%)
-                      </p>
                     </CardContent>
                   </Card>
                 );
@@ -142,46 +170,61 @@ export default function PaymentsPage() {
           </section>
         )}
 
-        {/* Pay button (residents) */}
+        {/* Pay button (residents only) */}
         {!isAdmin && (
-          <Button className="w-full" onClick={() => setPayOpen(true)}>
-            <CreditCard className="h-4 w-4" /> Pay Service Charge
-          </Button>
+          <button
+            onClick={() => setPayOpen(true)}
+            className="w-full bg-[#1B5E20] hover:bg-[#0D3B11] text-white rounded-2xl py-4 flex items-center justify-center gap-3 shadow-md transition-colors"
+          >
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+              <CreditCard className="h-5 w-5" />
+            </div>
+            <div className="text-left">
+              <p className="font-bold text-base">Lipa Ada ya Kila Mwezi</p>
+              <p className="text-xs text-white/70">Kupitia M-PESA</p>
+            </div>
+          </button>
         )}
 
         {/* Payment history */}
         <section>
-          <h2 className="font-semibold text-gray-700 text-sm uppercase tracking-wide mb-3">
-            {isAdmin ? "Estate Payments" : "My Payments"}
-          </h2>
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="h-4 w-4 text-[#6B5D45]" />
+            <p className="section-label">{isAdmin ? "Malipo ya Nyumba" : "Historia ya Malipo"}</p>
+          </div>
           {isLoading ? (
             <SectionLoader />
           ) : !myPayments?.length ? (
-            <div className="text-center py-12">
-              <CreditCard className="h-12 w-12 text-gray-200 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm">No payments yet.</p>
+            <div className="tribal-card p-12 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-[#1B5E20]/10 flex items-center justify-center mx-auto mb-3">
+                <CreditCard className="h-7 w-7 text-[#1B5E20]" />
+              </div>
+              <p className="font-semibold text-[#212121] mb-1">Hakuna malipo</p>
+              <p className="text-[#6B5D45] text-sm">Historia ya malipo yako itaonekana hapa</p>
             </div>
           ) : (
             <div className="space-y-2">
               {myPayments.map((p) => (
                 <Card key={p.id}>
                   <CardContent className="py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {statusIcon[p.status as keyof typeof statusIcon] ?? <Clock className="h-4 w-4 text-gray-400" />}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-[#EDE7D8] flex items-center justify-center shrink-0">
+                        {STATUS_ICON[p.status as keyof typeof STATUS_ICON] ?? <Clock className="h-4 w-4 text-[#6B5D45]" />}
+                      </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate capitalize">
+                        <p className="text-sm font-semibold text-[#212121] truncate capitalize">
                           {p.description ?? p.type}
                         </p>
-                        <p className="text-xs text-gray-400">{formatDateTime(p.createdAt)}</p>
-                        {p.mpesaRef && <p className="text-xs text-gray-400">Ref: {p.mpesaRef}</p>}
+                        <p className="text-xs text-[#6B5D45]">{formatDateTime(p.createdAt)}</p>
+                        {p.mpesaRef && <p className="text-xs text-[#D4C9A8]">Ref: {p.mpesaRef}</p>}
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="font-semibold text-sm text-gray-900">
+                      <p className="font-bold text-sm text-[#212121]">
                         KES {Number(p.amount).toLocaleString()}
                       </p>
-                      <Badge variant={statusVariant[p.status] ?? "default"} className="text-xs">
-                        {p.status}
+                      <Badge variant={STATUS_VARIANT[p.status] ?? "default"} className="text-xs">
+                        {STATUS_LABEL[p.status] ?? p.status}
                       </Badge>
                     </div>
                   </CardContent>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Megaphone } from "lucide-react";
+import { Plus, Megaphone, Volume2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,10 +21,10 @@ import { api } from "@/lib/api";
 import { formatRelative } from "@/lib/utils";
 import type { Announcement } from "@shared/types";
 
-const priorityVariant: Record<string, "default" | "warning" | "urgent"> = {
-  info: "default",
-  warning: "warning",
-  urgent: "urgent",
+const PRIORITY_CONFIG = {
+  info:    { label: "Habari",   variant: "default"     as const, left: "border-l-4 border-l-[#1B5E20]",  icon: "📢" },
+  warning: { label: "Tahadhari", variant: "warning"    as const, left: "border-l-4 border-l-amber-500",  icon: "⚠️" },
+  urgent:  { label: "Haraka",   variant: "destructive" as const, left: "border-l-4 border-l-[#B71C1C]",  icon: "🚨" },
 };
 
 function ComposeModal({ onClose }: { onClose: () => void }) {
@@ -46,37 +46,54 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Post Announcement</DialogTitle>
+          <div className="flex items-center gap-3 mt-2">
+            <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center">
+              <Volume2 className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <DialogTitle>Tuma Tangazo</DialogTitle>
+              <p className="text-xs text-[#6B5D45] mt-0.5">Wakazi wote watapokea tangazo hili</p>
+            </div>
+          </div>
         </DialogHeader>
         <div className="px-6 pb-2 space-y-4">
           <div>
-            <Label>Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Announcement title" />
+            <Label className="text-[#212121] font-semibold">Kichwa</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Mada ya tangazo"
+            />
           </div>
           <div>
-            <Label>Message</Label>
-            <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write your message..." />
+            <Label className="text-[#212121] font-semibold">Ujumbe</Label>
+            <Textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Andika tangazo hapa..."
+              rows={4}
+            />
           </div>
           <div>
-            <Label>Priority</Label>
+            <Label className="text-[#212121] font-semibold">Kiwango</Label>
             <Select value={priority} onValueChange={setPriority}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="info">Info</SelectItem>
-                <SelectItem value="warning">Warning</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
+                <SelectItem value="info">📢 Habari</SelectItem>
+                <SelectItem value="warning">⚠️ Tahadhari</SelectItem>
+                <SelectItem value="urgent">🚨 Haraka</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" onClick={onClose}>Ghairi</Button>
           <Button
             onClick={() => mutation.mutate()}
             loading={mutation.isPending}
             disabled={!title || !body}
           >
-            Post
+            Tuma
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -95,43 +112,50 @@ export default function AnnouncementsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <TopBar title="Notices" />
-      <main className="max-w-lg mx-auto px-4 pt-4">
+    <div className="page-wrap">
+      <TopBar title="Matangazo" />
+      <main className="max-w-lg mx-auto px-4 pt-4 page-content">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="font-semibold text-gray-900">Announcements</h1>
+          <p className="section-label">Matangazo ya Nyumba</p>
           {user?.role === "admin" && (
-            <Button size="sm" onClick={() => setComposeOpen(true)}>
-              <Plus className="h-4 w-4" /> Post
+            <Button size="sm" onClick={() => setComposeOpen(true)} className="gap-1.5">
+              <Plus className="h-4 w-4" /> Tuma
             </Button>
           )}
         </div>
 
         {isLoading ? (
           <SectionLoader />
-        ) : announcements?.length === 0 ? (
-          <div className="text-center py-12">
-            <Megaphone className="h-12 w-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">No announcements yet.</p>
+        ) : !announcements?.length ? (
+          <div className="tribal-card p-12 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#1B5E20]/10 flex items-center justify-center mx-auto mb-3">
+              <Megaphone className="h-7 w-7 text-[#1B5E20]" />
+            </div>
+            <p className="font-semibold text-[#212121] mb-1">Hakuna matangazo</p>
+            <p className="text-[#6B5D45] text-sm">Matangazo ya nyumba yataonekana hapa</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {announcements?.map((a) => (
-              <Card key={a.id} className={a.priority === "urgent" ? "border-red-200 bg-red-50/30" : ""}>
-                <CardContent className="py-4">
-                  <div className="flex items-start gap-3">
-                    <Badge variant={priorityVariant[a.priority] ?? "default"}>
-                      {a.priority}
-                    </Badge>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-gray-900">{a.title}</p>
-                      <p className="text-sm text-gray-600 mt-1 leading-relaxed">{a.body}</p>
-                      <p className="text-xs text-gray-300 mt-2">{formatRelative(a.createdAt)}</p>
+            {announcements.map((a) => {
+              const cfg = PRIORITY_CONFIG[a.priority as keyof typeof PRIORITY_CONFIG] ?? PRIORITY_CONFIG.info;
+              return (
+                <Card key={a.id} className={cfg.left}>
+                  <CardContent className="py-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl shrink-0 mt-0.5">{cfg.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-bold text-sm text-[#212121]">{a.title}</p>
+                          <Badge variant={cfg.variant} className="text-xs">{cfg.label}</Badge>
+                        </div>
+                        <p className="text-sm text-[#6B5D45] leading-relaxed">{a.body}</p>
+                        <p className="text-xs text-[#D4C9A8] mt-2">{formatRelative(a.createdAt)}</p>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>

@@ -37,35 +37,53 @@ function CreatePollDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Create Poll</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <div className="flex items-center gap-3 mt-2">
+            <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center">
+              <Vote className="h-5 w-5 text-white" />
+            </div>
+            <DialogTitle>Tengeneza Kura</DialogTitle>
+          </div>
+        </DialogHeader>
         <div className="px-6 pb-2 space-y-4">
-          <div><Label>Question</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What do you want to ask?" /></div>
-          <div><Label>Description (optional)</Label><Input value={description} onChange={(e) => setDescription(e.target.value)} /></div>
           <div>
-            <Label>Options</Label>
+            <Label className="text-[#212121] font-semibold">Swali</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Unataka kuuliza nini?" />
+          </div>
+          <div>
+            <Label className="text-[#212121] font-semibold">Maelezo (si lazima)</Label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-[#212121] font-semibold">Majibu</Label>
             <div className="space-y-2 mt-1">
               {options.map((o, i) => (
                 <div key={i} className="flex gap-2">
-                  <Input value={o} onChange={(e) => setOption(i, e.target.value)} placeholder={`Option ${i + 1}`} />
+                  <Input value={o} onChange={(e) => setOption(i, e.target.value)} placeholder={`Jibu ${i + 1}`} />
                   {options.length > 2 && (
                     <Button size="sm" variant="ghost" onClick={() => removeOption(i)}>✕</Button>
                   )}
                 </div>
               ))}
               {options.length < 10 && (
-                <Button size="sm" variant="secondary" onClick={addOption}>+ Add option</Button>
+                <Button size="sm" variant="secondary" onClick={addOption}>+ Ongeza jibu</Button>
               )}
             </div>
           </div>
-          <div><Label>Closes at (optional)</Label><Input type="datetime-local" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} /></div>
+          <div>
+            <Label className="text-[#212121] font-semibold">Iisha tarehe (si lazima)</Label>
+            <Input type="datetime-local" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} />
+          </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" onClick={onClose}>Ghairi</Button>
           <Button
             onClick={() => mutation.mutate()}
             loading={mutation.isPending}
             disabled={!title || options.filter(Boolean).length < 2}
-          >Post Poll</Button>
+          >
+            Tuma Kura
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -88,15 +106,17 @@ function PollCard({ poll }: { poll: Poll }) {
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-sm font-semibold text-gray-900">{poll.title}</CardTitle>
+          <CardTitle className="text-sm font-bold text-[#212121]">{poll.title}</CardTitle>
           <div className="flex items-center gap-1 shrink-0">
-            {isClosed && <Lock className="h-3.5 w-3.5 text-gray-400" />}
-            <Badge variant={isClosed ? "default" : "success"}>{isClosed ? "Closed" : "Open"}</Badge>
+            {isClosed && <Lock className="h-3.5 w-3.5 text-[#6B5D45]" />}
+            <Badge variant={isClosed ? "secondary" : "success"}>
+              {isClosed ? "Imefungwa" : "Wazi"}
+            </Badge>
           </div>
         </div>
-        {poll.description && <p className="text-xs text-gray-500">{poll.description}</p>}
+        {poll.description && <p className="text-xs text-[#6B5D45]">{poll.description}</p>}
         {poll.closesAt && !isClosed && (
-          <p className="text-xs text-amber-600">Closes {formatDate(poll.closesAt)}</p>
+          <p className="text-xs text-amber-700 font-medium">Inaisha: {formatDate(poll.closesAt)}</p>
         )}
       </CardHeader>
       <CardContent className="space-y-2">
@@ -106,28 +126,32 @@ function PollCard({ poll }: { poll: Poll }) {
           return (
             <button
               key={opt.id}
-              className={`w-full text-left rounded-lg border px-3 py-2 transition-colors relative overflow-hidden ${
-                isMyVote ? "border-[#1A5C38] bg-[#1A5C38]/5" : "border-[#E8E6E3] hover:border-[#1A5C38]/40"
+              className={`w-full text-left rounded-xl border px-3 py-2.5 transition-colors relative overflow-hidden ${
+                isMyVote
+                  ? "border-[#1B5E20] bg-[#1B5E20]/6"
+                  : "border-[#D4C9A8] hover:border-[#1B5E20]/40"
               } ${hasVoted || isClosed ? "cursor-default" : "cursor-pointer"}`}
               onClick={() => !hasVoted && !isClosed && vote.mutate(opt.id)}
               disabled={hasVoted || isClosed || vote.isPending}
             >
               {(hasVoted || isClosed) && (
                 <div
-                  className="absolute inset-y-0 left-0 bg-[#1A5C38]/8 rounded-lg"
+                  className="absolute inset-y-0 left-0 bg-[#1B5E20]/8 rounded-xl"
                   style={{ width: `${pct}%` }}
                 />
               )}
               <div className="relative flex items-center justify-between">
-                <span className="text-sm text-gray-800">{opt.label}</span>
+                <span className="text-sm text-[#212121] font-medium">{opt.label}</span>
                 {(hasVoted || isClosed) && (
-                  <span className="text-xs text-gray-500 font-medium">{pct}% ({opt.voteCount})</span>
+                  <span className="text-xs text-[#6B5D45] font-semibold">{pct}% ({opt.voteCount})</span>
                 )}
               </div>
             </button>
           );
         })}
-        <p className="text-xs text-gray-400 text-right">{total} vote{total !== 1 ? "s" : ""} total</p>
+        <p className="text-xs text-[#D4C9A8] text-right">
+          Kura {total} jumla
+        </p>
       </CardContent>
     </Card>
   );
@@ -143,14 +167,14 @@ export default function GovernancePage() {
   });
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <TopBar title="Governance" />
-      <main className="max-w-lg mx-auto px-4 pt-4">
+    <div className="page-wrap">
+      <TopBar title="Uongozi" />
+      <main className="max-w-lg mx-auto px-4 pt-4 page-content">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="font-semibold text-gray-900">Polls & Voting</h1>
+          <p className="section-label">Kura za Nyumba</p>
           {user?.role === "admin" && (
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" /> Poll
+            <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
+              <Plus className="h-4 w-4" /> Kura
             </Button>
           )}
         </div>
@@ -158,9 +182,12 @@ export default function GovernancePage() {
         {isLoading ? (
           <SectionLoader />
         ) : !polls?.length ? (
-          <div className="text-center py-16">
-            <Vote className="h-12 w-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">No polls yet.</p>
+          <div className="tribal-card p-12 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#1B5E20]/10 flex items-center justify-center mx-auto mb-3">
+              <Vote className="h-7 w-7 text-[#1B5E20]" />
+            </div>
+            <p className="font-semibold text-[#212121] mb-1">Hakuna kura</p>
+            <p className="text-[#6B5D45] text-sm">Kura za nyumba zitaonekana hapa</p>
           </div>
         ) : (
           <div className="space-y-4">

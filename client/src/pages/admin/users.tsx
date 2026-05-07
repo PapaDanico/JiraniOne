@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { UserPlus, Pencil, Trash2, Users } from "lucide-react";
+import { UserPlus, Pencil, Trash2, Users, Search } from "lucide-react";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,11 +19,11 @@ interface EstateUser {
   role: string; unitNumber: string | null; createdAt: string;
 }
 
-const roleVariant: Record<string, "default" | "warning" | "info" | "success"> = {
-  admin: "warning",
-  security: "info",
-  vendor: "success",
-  resident: "default",
+const ROLE_CONFIG: Record<string, { label: string; variant: string; emoji: string }> = {
+  admin:    { label: "Msimamizi", variant: "warning", emoji: "👑" },
+  security: { label: "Ulinzi",    variant: "info",    emoji: "🛡️" },
+  vendor:   { label: "Fundi",     variant: "success", emoji: "🔧" },
+  resident: { label: "Mkazi",     variant: "default", emoji: "🏠" },
 };
 
 function AddUserDialog({ onClose }: { onClose: () => void }) {
@@ -49,50 +49,66 @@ function AddUserDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Add Estate Resident</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <div className="flex items-center gap-3 mt-2">
+            <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center">
+              <UserPlus className="h-5 w-5 text-white" />
+            </div>
+            <DialogTitle>Ongeza Mkazi</DialogTitle>
+          </div>
+        </DialogHeader>
         {result ? (
           <div className="px-6 pb-6 space-y-3">
-            <p className="text-sm text-gray-700">Account created successfully.</p>
-            <div className="bg-[#1A5C38]/5 border border-[#1A5C38]/20 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Temporary password — share securely:</p>
-              <p className="font-mono font-bold text-lg text-[#1A5C38]">{result.tempPassword}</p>
-              <p className="text-xs text-gray-400 mt-2">The resident should change this after first login.</p>
+            <p className="text-sm text-[#212121] font-semibold">✓ Akaunti imetengenezwa!</p>
+            <div className="bg-[#1B5E20]/8 border border-[#1B5E20]/20 rounded-xl p-4">
+              <p className="text-xs text-[#6B5D45] mb-1">Nywila ya muda — shiriki kwa usalama:</p>
+              <p className="font-mono font-black text-lg text-[#1B5E20]">{result.tempPassword}</p>
+              <p className="text-xs text-[#D4C9A8] mt-2">Mkazi abadilishe nywila baada ya kuingia mara ya kwanza.</p>
             </div>
-            <Button className="w-full" onClick={onClose}>Done</Button>
+            <Button className="w-full" onClick={onClose}>Imekamilika</Button>
           </div>
         ) : (
           <>
             <div className="px-6 pb-2 space-y-3">
-              <div><Label>Full name</Label><Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Jane Mwangi" /></div>
-              <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="07XXXXXXXX" /></div>
               <div>
-                <Label>Role</Label>
+                <Label className="text-[#212121] font-semibold">Jina kamili</Label>
+                <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Jane Mwangi" />
+              </div>
+              <div>
+                <Label className="text-[#212121] font-semibold">Simu</Label>
+                <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="07XXXXXXXX" />
+              </div>
+              <div>
+                <Label className="text-[#212121] font-semibold">Jukumu</Label>
                 <Select value={form.role} onValueChange={(v) => set("role", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="resident">Resident</SelectItem>
-                    <SelectItem value="security">Security</SelectItem>
-                    <SelectItem value="vendor">Vendor</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="resident">🏠 Mkazi</SelectItem>
+                    <SelectItem value="security">🛡️ Ulinzi</SelectItem>
+                    <SelectItem value="vendor">🔧 Fundi</SelectItem>
+                    <SelectItem value="admin">👑 Msimamizi</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               {form.role === "resident" && (
-                <div><Label>Unit / House no.</Label><Input value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)} placeholder="A14" /></div>
+                <div>
+                  <Label className="text-[#212121] font-semibold">Nambari ya nyumba</Label>
+                  <Input value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)} placeholder="A14" />
+                </div>
               )}
               <div>
-                <Label>Password (leave blank to auto-generate)</Label>
-                <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="Auto-generated if empty" />
+                <Label className="text-[#212121] font-semibold">Nywila (acha wazi kwa kuzalisha kiotomatiki)</Label>
+                <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="Itazalishwa kama haikujazwa" />
               </div>
               {mutation.isError && (
-                <p className="text-sm text-red-600">{(mutation.error as Error).message}</p>
+                <p className="text-sm text-[#B71C1C]">{(mutation.error as Error).message}</p>
               )}
             </div>
             <DialogFooter>
-              <Button variant="secondary" onClick={onClose}>Cancel</Button>
+              <Button variant="secondary" onClick={onClose}>Ghairi</Button>
               <Button onClick={() => mutation.mutate()} loading={mutation.isPending}
                 disabled={!form.name || !form.phone}>
-                Create account
+                Tengeneza Akaunti
               </Button>
             </DialogFooter>
           </>
@@ -118,26 +134,39 @@ function EditUserDialog({ user, onClose }: { user: EstateUser; onClose: () => vo
   return (
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Edit {user.name}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <div className="flex items-center gap-3 mt-2">
+            <div className="w-10 h-10 rounded-xl bg-[#D47A00]/10 flex items-center justify-center">
+              <Pencil className="h-5 w-5 text-[#D47A00]" />
+            </div>
+            <DialogTitle>Hariri {user.name}</DialogTitle>
+          </div>
+        </DialogHeader>
         <div className="px-6 pb-2 space-y-3">
-          <div><Label>Full name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div>
-            <Label>Role</Label>
+            <Label className="text-[#212121] font-semibold">Jina kamili</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-[#212121] font-semibold">Jukumu</Label>
             <Select value={role} onValueChange={setRole}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="resident">Resident</SelectItem>
-                <SelectItem value="security">Security</SelectItem>
-                <SelectItem value="vendor">Vendor</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="resident">🏠 Mkazi</SelectItem>
+                <SelectItem value="security">🛡️ Ulinzi</SelectItem>
+                <SelectItem value="vendor">🔧 Fundi</SelectItem>
+                <SelectItem value="admin">👑 Msimamizi</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div><Label>Unit / House no.</Label><Input value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} placeholder="A14" /></div>
+          <div>
+            <Label className="text-[#212121] font-semibold">Nambari ya nyumba</Label>
+            <Input value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} placeholder="A14" />
+          </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} loading={mutation.isPending}>Save</Button>
+          <Button variant="secondary" onClick={onClose}>Ghairi</Button>
+          <Button onClick={() => mutation.mutate()} loading={mutation.isPending}>Hifadhi</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -173,13 +202,20 @@ export default function AdminUsersPage() {
   }, {});
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <TopBar title="Users" />
-      <main className="max-w-lg mx-auto px-4 pt-4 space-y-4">
+    <div className="page-wrap">
+      <TopBar title="Watumiaji" />
+      <main className="max-w-lg mx-auto px-4 pt-4 space-y-4 page-content">
         <div className="flex gap-2">
-          <Input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, phone, or unit…" className="flex-1" />
-          <Button onClick={() => setAddOpen(true)}>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B5D45]" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tafuta jina, simu au nambari ya nyumba..."
+              className="pl-9"
+            />
+          </div>
+          <Button onClick={() => setAddOpen(true)} className="gap-1.5">
             <UserPlus className="h-4 w-4" />
           </Button>
         </div>
@@ -187,44 +223,59 @@ export default function AdminUsersPage() {
         {isLoading ? (
           <SectionLoader />
         ) : !filtered.length ? (
-          <div className="text-center py-12">
-            <Users className="h-12 w-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">{search ? "No matches." : "No users yet."}</p>
+          <div className="tribal-card p-12 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#1B5E20]/10 flex items-center justify-center mx-auto mb-3">
+              <Users className="h-7 w-7 text-[#1B5E20]" />
+            </div>
+            <p className="font-semibold text-[#212121] mb-1">
+              {search ? "Hakuna matokeo" : "Hakuna watumiaji"}
+            </p>
           </div>
         ) : (
           ["admin", "security", "vendor", "resident"].map((role) => {
             const group = byRole[role];
             if (!group?.length) return null;
+            const cfg = ROLE_CONFIG[role];
             return (
               <section key={role}>
-                <h2 className="font-semibold text-xs text-gray-400 uppercase tracking-wide mb-2 capitalize">
-                  {role}s ({group.length})
-                </h2>
+                <p className="section-label mb-2">
+                  {cfg.emoji} {cfg.label}s ({group.length})
+                </p>
                 <div className="space-y-2">
                   {group.map((u) => (
                     <Card key={u.id}>
                       <CardContent className="py-3 flex items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-sm text-gray-900">{u.name}</p>
-                            {u.unitNumber && (
-                              <Badge variant="default" className="text-xs">{u.unitNumber}</Badge>
-                            )}
-                            <Badge variant={roleVariant[u.role] ?? "default"} className="text-xs capitalize">
-                              {u.role}
-                            </Badge>
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="w-9 h-9 rounded-full bg-[#1B5E20] flex items-center justify-center shrink-0">
+                            <span className="text-white font-bold text-sm">{u.name.charAt(0)}</span>
                           </div>
-                          <p className="text-xs text-gray-400 mt-0.5">{u.phone}</p>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-semibold text-sm text-[#212121]">{u.name}</p>
+                              {u.unitNumber && (
+                                <Badge variant="default" className="text-xs">{u.unitNumber}</Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-[#6B5D45]">{u.phone}</p>
+                          </div>
                         </div>
                         <div className="flex gap-1 shrink-0">
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0"
-                            onClick={() => setEditUser(u)}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-[#6B5D45]"
+                            onClick={() => setEditUser(u)}
+                          >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-500"
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-[#B71C1C]"
                             onClick={() => {
-                              if (confirm(`Deactivate ${u.name}?`)) deactivate.mutate(u.id);
-                            }}>
+                              if (confirm(`Futa ${u.name}?`)) deactivate.mutate(u.id);
+                            }}
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>

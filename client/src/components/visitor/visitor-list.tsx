@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, QrCode, Clock, CheckCircle, XCircle, Ban } from "lucide-react";
+import { Plus, QrCode, Clock, CheckCircle, XCircle, Ban, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +11,18 @@ import { SectionLoader } from "@/components/shared/loading";
 import { formatRelative, formatDateTime } from "@/lib/utils";
 import type { Visitor, VisitorStatus } from "@shared/types";
 
-const statusConfig: Record<VisitorStatus, { label: string; variant: "default" | "success" | "secondary" | "warning" | "destructive"; icon: React.ReactNode }> = {
-  pending: { label: "Pending", variant: "warning", icon: <Clock className="h-3 w-3" /> },
-  checked_in: { label: "Inside", variant: "success" as "default", icon: <CheckCircle className="h-3 w-3" /> },
-  checked_out: { label: "Left", variant: "secondary", icon: <XCircle className="h-3 w-3" /> },
-  expired: { label: "Expired", variant: "secondary", icon: <Ban className="h-3 w-3" /> },
-  cancelled: { label: "Cancelled", variant: "destructive" as "destructive", icon: <Ban className="h-3 w-3" /> },
+const statusConfig: Record<VisitorStatus, {
+  label: string;
+  labelSw: string;
+  variant: "default" | "success" | "secondary" | "warning" | "destructive";
+  icon: React.ReactNode;
+  barColor: string;
+}> = {
+  pending:     { label: "Pending",   labelSw: "Anasubiriwa",  variant: "warning",     icon: <Clock className="h-3 w-3" />,       barColor: "bg-amber-400" },
+  checked_in:  { label: "Inside",    labelSw: "Ndani",        variant: "default",     icon: <CheckCircle className="h-3 w-3" />, barColor: "bg-[#1B5E20]" },
+  checked_out: { label: "Left",      labelSw: "Ametoka",      variant: "secondary",   icon: <XCircle className="h-3 w-3" />,     barColor: "bg-[#6B5D45]" },
+  expired:     { label: "Expired",   labelSw: "Imeisha",      variant: "secondary",   icon: <Ban className="h-3 w-3" />,         barColor: "bg-[#D4C9A8]" },
+  cancelled:   { label: "Cancelled", labelSw: "Imefutwa",     variant: "destructive", icon: <Ban className="h-3 w-3" />,         barColor: "bg-[#B71C1C]" },
 };
 
 export function VisitorList() {
@@ -36,96 +42,129 @@ export function VisitorList() {
 
   if (isLoading) return <SectionLoader />;
 
+  const active = visitors?.filter((v) => v.status === "pending" || v.status === "checked_in") ?? [];
+  const past   = visitors?.filter((v) => v.status !== "pending" && v.status !== "checked_in") ?? [];
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-gray-900">My Visitors</h2>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" /> New Pass
+        <div>
+          <h2 className="font-bold text-[#212121] text-lg">Wageni Wangu</h2>
+          <p className="text-xs text-[#6B5D45]">Pasi za wageni uliowakaribisha</p>
+        </div>
+        <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
+          <Plus className="h-4 w-4" /> Pasi Mpya
         </Button>
       </div>
 
       {visitors?.length === 0 ? (
-        <div className="text-center py-12">
-          <QrCode className="h-12 w-12 text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-400 text-sm">No visitor passes yet.</p>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="mt-3"
-            onClick={() => setCreateOpen(true)}
-          >
-            Create your first pass
+        <div className="tribal-card p-10 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-[#1B5E20]/10 flex items-center justify-center mx-auto mb-4">
+            <Users className="h-8 w-8 text-[#1B5E20]/40" />
+          </div>
+          <p className="font-semibold text-[#212121] mb-1">Hakuna wageni bado</p>
+          <p className="text-[#6B5D45] text-sm mb-4">Karibisha mgeni wako wa kwanza</p>
+          <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+            Unda Pasi ya Kwanza
           </Button>
         </div>
       ) : (
-        <div className="space-y-2">
-          {visitors?.map((v) => {
-            const cfg = statusConfig[v.status];
-            return (
-              <Card key={v.id}>
-                <CardContent className="py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm text-gray-900">{v.name}</span>
-                        <Badge
-                          variant={cfg.variant as never}
-                          className="flex items-center gap-1"
-                        >
-                          {cfg.icon}
-                          {cfg.label}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-gray-500">{v.phone}</p>
-                      {v.purpose && <p className="text-xs text-gray-400 mt-0.5">{v.purpose}</p>}
-                      {v.expectedAt && (
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          Expected: {formatDateTime(v.expectedAt)}
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-300 mt-1">{formatRelative(v.createdAt)}</p>
-                    </div>
-                    <div className="flex flex-col gap-1 shrink-0">
-                      {v.status === "pending" && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => setQrVisitor(v)}
-                            className="text-xs px-2 min-h-[32px]"
-                          >
-                            <QrCode className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => cancelMutation.mutate(v.id)}
-                            loading={cancelMutation.isPending}
-                            className="text-xs px-2 min-h-[32px]"
-                          >
-                            Cancel
-                          </Button>
-                        </>
-                      )}
-                      {v.status === "checked_in" && (
-                        <span className="text-xs text-green-600 font-medium">
-                          Checked in {formatRelative(v.checkedInAt!)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="space-y-5">
+          {active.length > 0 && (
+            <div>
+              <p className="section-label mb-2">Wanasubiriwa / Ndani ({active.length})</p>
+              <div className="space-y-2">
+                {active.map((v) => <VisitorCard key={v.id} v={v} onShowQr={setQrVisitor} onCancel={(id) => cancelMutation.mutate(id)} cancelling={cancelMutation.isPending} />)}
+              </div>
+            </div>
+          )}
+          {past.length > 0 && (
+            <div>
+              <p className="section-label mb-2">Historia ({past.length})</p>
+              <div className="space-y-2">
+                {past.map((v) => <VisitorCard key={v.id} v={v} onShowQr={setQrVisitor} onCancel={(id) => cancelMutation.mutate(id)} cancelling={cancelMutation.isPending} />)}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       <CreateVisitorPass open={createOpen} onClose={() => setCreateOpen(false)} />
-      {qrVisitor && (
-        <VisitorQrModal visitor={qrVisitor} onClose={() => setQrVisitor(null)} />
-      )}
+      {qrVisitor && <VisitorQrModal visitor={qrVisitor} onClose={() => setQrVisitor(null)} />}
     </div>
+  );
+}
+
+function VisitorCard({
+  v, onShowQr, onCancel, cancelling,
+}: {
+  v: Visitor;
+  onShowQr: (v: Visitor) => void;
+  onCancel: (id: string) => void;
+  cancelling: boolean;
+}) {
+  const cfg = statusConfig[v.status];
+  return (
+    <Card className={v.status === "checked_in" ? "border-[#1B5E20]/30 bg-[#1B5E20]/5" : ""}>
+      <CardContent className="py-0 px-0 overflow-hidden">
+        {/* Status bar */}
+        <div className={`h-1 w-full rounded-t-2xl ${cfg.barColor}`} />
+        <div className="px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-bold text-sm text-[#212121]">{v.name}</span>
+                <Badge variant={cfg.variant as never} className="flex items-center gap-1">
+                  {cfg.icon} {cfg.labelSw}
+                </Badge>
+              </div>
+              <p className="text-xs text-[#6B5D45]">{v.phone}</p>
+              {v.purpose && <p className="text-xs text-[#6B5D45] mt-0.5 italic">"{v.purpose}"</p>}
+              {v.expectedAt && (
+                <p className="text-xs text-[#6B5D45] mt-0.5 flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Anatazamiwa: {formatDateTime(v.expectedAt)}
+                </p>
+              )}
+              {v.checkedInAt && (
+                <p className="text-xs text-[#1B5E20] mt-0.5 flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Aliingia: {formatRelative(v.checkedInAt)}
+                </p>
+              )}
+              <p className="text-xs text-[#D4C9A8] mt-1">{formatRelative(v.createdAt)}</p>
+            </div>
+            <div className="flex flex-col gap-1.5 shrink-0">
+              {v.status === "pending" && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onShowQr(v)}
+                    className="text-xs px-2 min-h-[32px] gap-1"
+                  >
+                    <QrCode className="h-3.5 w-3.5" /> QR
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => onCancel(v.id)}
+                    loading={cancelling}
+                    className="text-xs px-2 min-h-[32px]"
+                  >
+                    Futa
+                  </Button>
+                </>
+              )}
+              {v.status === "checked_in" && (
+                <Button size="sm" variant="outline" onClick={() => onShowQr(v)} className="text-xs px-2 min-h-[32px] gap-1">
+                  <QrCode className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

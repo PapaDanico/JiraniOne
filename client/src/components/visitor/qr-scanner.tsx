@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { QrCode, Search, CheckCircle, XCircle } from "lucide-react";
+import { QrCode, Search, CheckCircle, XCircle, Phone, Clock } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatDateTime } from "@/lib/utils";
 import type { Visitor } from "@shared/types";
 
 export function QrScanner() {
@@ -13,7 +14,6 @@ export function QrScanner() {
   const [phone, setPhone] = useState("");
   const [result, setResult] = useState<Visitor[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [scanMode, setScanMode] = useState<"phone" | "qr">("phone");
 
   const lookupMutation = useMutation({
     mutationFn: (params: { qr?: string; phone?: string }) => {
@@ -22,21 +22,15 @@ export function QrScanner() {
         : `?phone=${encodeURIComponent(params.phone!)}`;
       return api.get<Visitor[]>(`/api/visitors/lookup${qs}`);
     },
-    onSuccess: (res) => {
-      setResult(res.data);
-      setError(null);
-    },
-    onError: (e: unknown) => {
-      setError(e instanceof Error ? e.message : "Lookup failed");
-      setResult(null);
-    },
+    onSuccess: (res) => { setResult(res.data); setError(null); },
+    onError: (e: unknown) => { setError(e instanceof Error ? e.message : "Utafutaji umeshindwa"); setResult(null); },
   });
 
   const checkInMutation = useMutation({
     mutationFn: (id: string) => api.post(`/api/visitors/${id}/check-in`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["visitors"] });
-      lookupMutation.mutate({ phone });
+      if (phone.trim()) lookupMutation.mutate({ phone: phone.trim() });
     },
   });
 
@@ -44,108 +38,121 @@ export function QrScanner() {
     mutationFn: (id: string) => api.post(`/api/visitors/${id}/check-out`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["visitors"] });
-      lookupMutation.mutate({ phone });
+      if (phone.trim()) lookupMutation.mutate({ phone: phone.trim() });
     },
   });
 
-  const handlePhoneLookup = () => {
+  const handleSearch = () => {
     if (phone.trim()) lookupMutation.mutate({ phone: phone.trim() });
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <Button
-          variant={scanMode === "phone" ? "default" : "secondary"}
-          size="sm"
-          onClick={() => setScanMode("phone")}
-        >
-          <Search className="h-4 w-4" /> Phone
-        </Button>
-        <Button
-          variant={scanMode === "qr" ? "default" : "secondary"}
-          size="sm"
-          onClick={() => setScanMode("qr")}
-        >
-          <QrCode className="h-4 w-4" /> QR Code
-        </Button>
-      </div>
-
-      {scanMode === "phone" ? (
+      {/* Phone search */}
+      <div>
+        <p className="section-label mb-2">Tafuta kwa Nambari ya Simu</p>
         <div className="flex gap-2">
-          <Input
-            type="tel"
-            inputMode="tel"
-            placeholder="0722 123 456"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handlePhoneLookup()}
-          />
+          <div className="relative flex-1">
+            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B5D45]" />
+            <Input
+              type="tel"
+              inputMode="tel"
+              placeholder="0722 123 456"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="pl-9"
+            />
+          </div>
           <Button
-            onClick={handlePhoneLookup}
+            onClick={handleSearch}
             loading={lookupMutation.isPending}
-            className="shrink-0"
+            className="shrink-0 gap-1.5"
           >
-            Search
+            <Search className="h-4 w-4" /> Tafuta
           </Button>
         </div>
-      ) : (
-        <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
-          <QrCode className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-400">
-            QR camera scanning requires the JiraniHub mobile app.
-          </p>
-          <p className="text-xs text-gray-300 mt-1">
-            Use phone lookup for now.
+      </div>
+
+      {/* QR note */}
+      <div className="bg-[#EDE7D8] border border-[#D4C9A8] rounded-2xl p-4 flex gap-3 items-start">
+        <QrCode className="h-5 w-5 text-[#6B5D45] shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold text-[#212121]">Usomaji wa QR Code</p>
+          <p className="text-xs text-[#6B5D45] mt-0.5">
+            Usomaji wa kamera unahitaji programu ya simu ya JiraniHub. Kwa sasa, tumia utafutaji wa simu.
           </p>
         </div>
-      )}
+      </div>
 
+      {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 text-sm text-red-700">
+        <div className="bg-[#B71C1C]/10 border border-[#B71C1C]/20 rounded-xl px-4 py-3 text-sm text-[#B71C1C]">
           {error}
         </div>
       )}
 
+      {/* No results */}
       {result && result.length === 0 && (
-        <p className="text-sm text-gray-400 text-center py-4">No visitors found.</p>
+        <div className="tribal-card p-8 text-center">
+          <p className="text-[#6B5D45] text-sm">Hakuna mgeni anayepatikana kwa nambari hiyo.</p>
+        </div>
       )}
 
+      {/* Results */}
       {result && result.length > 0 && (
         <div className="space-y-2">
           {result.map((v) => (
-            <Card key={v.id} className="border-2 border-[#1A5C38]/20">
+            <Card
+              key={v.id}
+              className={
+                v.status === "checked_in"
+                  ? "border-[#1B5E20]/30 bg-[#1B5E20]/5"
+                  : v.status === "pending"
+                  ? "border-amber-300/40"
+                  : "opacity-60"
+              }
+            >
               <CardContent className="py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-gray-900">{v.name}</span>
-                      <Badge
-                        variant={
-                          v.status === "checked_in"
-                            ? "default"
-                            : v.status === "pending"
-                              ? "warning"
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="w-8 h-8 rounded-full bg-[#1B5E20] flex items-center justify-center shrink-0">
+                        <span className="text-white font-bold text-sm">{v.name.charAt(0)}</span>
+                      </div>
+                      <div>
+                        <span className="font-bold text-[#212121]">{v.name}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <Badge
+                            variant={
+                              v.status === "checked_in" ? "default"
+                              : v.status === "pending" ? "warning"
                               : "secondary"
-                        }
-                      >
-                        {v.status === "checked_in"
-                          ? "Inside"
-                          : v.status === "pending"
-                            ? "Expected"
-                            : v.status}
-                      </Badge>
+                            }
+                          >
+                            {v.status === "checked_in" ? "Ndani"
+                             : v.status === "pending" ? "Anasubiriwa"
+                             : v.status}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-500">{v.phone}</p>
-                    {v.purpose && <p className="text-xs text-gray-400">{v.purpose}</p>}
+                    <p className="text-sm text-[#6B5D45] pl-10">{v.phone}</p>
+                    {v.purpose && <p className="text-xs text-[#6B5D45] italic pl-10">"{v.purpose}"</p>}
+                    {v.expectedAt && v.status === "pending" && (
+                      <p className="text-xs text-amber-700 pl-10 flex items-center gap-1 mt-0.5">
+                        <Clock className="h-3 w-3" /> Anatarajiwa: {formatDateTime(v.expectedAt)}
+                      </p>
+                    )}
                   </div>
-                  <div>
+                  <div className="shrink-0">
                     {v.status === "pending" && (
                       <Button
                         onClick={() => checkInMutation.mutate(v.id)}
                         loading={checkInMutation.isPending}
+                        className="gap-1.5"
                       >
-                        <CheckCircle className="h-4 w-4" /> Check In
+                        <CheckCircle className="h-4 w-4" /> Ruhusu Kuingia
                       </Button>
                     )}
                     {v.status === "checked_in" && (
@@ -153,12 +160,13 @@ export function QrScanner() {
                         variant="secondary"
                         onClick={() => checkOutMutation.mutate(v.id)}
                         loading={checkOutMutation.isPending}
+                        className="gap-1.5"
                       >
-                        <XCircle className="h-4 w-4" /> Check Out
+                        <XCircle className="h-4 w-4" /> Toka
                       </Button>
                     )}
                     {(v.status === "cancelled" || v.status === "expired") && (
-                      <Badge variant="destructive">Invalid</Badge>
+                      <Badge variant="destructive">Batili</Badge>
                     )}
                   </div>
                 </div>

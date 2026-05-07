@@ -7,9 +7,9 @@ export default function MaintenancePage() {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <TopBar title="Maintenance" />
-      <main className="max-w-lg mx-auto px-4 pt-4">
+    <div className="page-wrap">
+      <TopBar title="Matengenezo" />
+      <main className="max-w-lg mx-auto px-4 pt-4 page-content">
         {user?.role === "admin" ? <AdminTickets /> : <TicketList />}
       </main>
       <BottomNav />

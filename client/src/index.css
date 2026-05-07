@@ -1,13 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --brand-green: #1A5C38;
+    --brand-green: #1B5E20;
     --brand-amber: #D47A00;
-    --kenya-red: #BB0000;
+    --brand-gold: #D4A017;
+    --tribal-red: #B71C1C;
+    --tribal-cream: #F5F1E8;
+    --tribal-sand: #EDE7D8;
+    --tribal-border: #D4C9A8;
+    --tribal-earth: #6B5D45;
+    --tribal-charcoal: #212121;
   }
 
   * {
@@ -15,16 +21,15 @@
   }
 
   html {
-    font-family: 'Inter', sans-serif;
+    font-family: 'IBM Plex Sans', 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
   body {
-    @apply bg-white text-gray-900;
+    @apply bg-[#F5F1E8] text-[#212121];
     min-height: 100dvh;
   }
 
-  /* Ensure all interactive elements meet 44px touch target */
   button, a, [role="button"] {
     min-height: 44px;
     min-width: 44px;
@@ -32,36 +37,112 @@
 }
 
 @layer components {
+  /* ── Maasai stripe divider ─────────────────────────────── */
+  .maasai-stripe {
+    height: 4px;
+    flex-shrink: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      #1B5E20 0px, #1B5E20 20px,
+      #212121 20px, #212121 40px,
+      #B71C1C 40px, #B71C1C 60px,
+      #F5F1E8 60px, #F5F1E8 80px
+    );
+  }
+
+  /* ── Kitenge hero pattern ──────────────────────────────── */
+  .kitenge-hero {
+    position: relative;
+    background: linear-gradient(145deg, #1B5E20 0%, #0D3B11 60%, #1a1a1a 100%);
+  }
+  .kitenge-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        45deg,
+        rgba(212, 160, 23, 0.10) 0px, rgba(212, 160, 23, 0.10) 2px,
+        transparent 2px, transparent 20px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        rgba(183, 28, 28, 0.07) 0px, rgba(183, 28, 28, 0.07) 2px,
+        transparent 2px, transparent 20px
+      );
+    pointer-events: none;
+  }
+
+  /* ── Tribal card ───────────────────────────────────────── */
+  .tribal-card {
+    @apply bg-[#EDE7D8] border border-[#D4C9A8] rounded-2xl;
+  }
+
+  /* ── Section heading with gold accent ─────────────────── */
+  .tribal-heading {
+    @apply font-bold text-[#212121] tracking-tight;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-widest text-[#6B5D45];
+  }
+
+  /* ── Primary buttons ───────────────────────────────────── */
   .btn-primary {
-    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#1A5C38] text-white font-medium text-sm transition-colors hover:bg-[#0F3C24] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#1B5E20] text-white font-semibold text-sm transition-colors hover:bg-[#0D3B11] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-700 font-medium text-sm transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-xl border border-[#D4C9A8] bg-[#F5F1E8] text-[#212121] font-medium text-sm transition-colors hover:bg-[#EDE7D8] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
+  }
+
+  .btn-gold {
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#D4A017] text-white font-semibold text-sm transition-colors hover:bg-[#B8860B] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium text-sm transition-colors hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#B71C1C] text-white font-semibold text-sm transition-colors hover:bg-[#8B0000] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
   }
 
-  .card {
-    @apply bg-[#F8F7F5] rounded-xl border border-[#E8E6E3];
-  }
-
+  /* ── Input ─────────────────────────────────────────────── */
   .input {
-    @apply w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1A5C38] focus:border-transparent min-h-[44px];
+    @apply w-full rounded-xl border border-[#D4C9A8] bg-white px-3 py-2.5 text-sm text-[#212121] placeholder:text-[#B0A080] focus:outline-none focus:ring-2 focus:ring-[#1B5E20]/30 focus:border-[#1B5E20] min-h-[44px];
   }
 
-  .page-header {
-    @apply font-['Plus_Jakarta_Sans'] font-bold text-2xl text-gray-900;
+  /* ── Tribal gold accent line ───────────────────────────── */
+  .gold-line {
+    height: 2px;
+    background: linear-gradient(90deg, #D4A017, transparent);
+    @apply rounded-full;
   }
 
-  .status-badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  /* ── Page wrapper ──────────────────────────────────────── */
+  .page-wrap {
+    @apply min-h-screen bg-[#F5F1E8] pb-20;
   }
 }
 
 /* Mobile safe area for bottom nav */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Smooth page transitions */
+.page-content {
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* SOS pulse animation */
+@keyframes sos-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(183, 28, 28, 0.5); }
+  50%       { box-shadow: 0 0 0 16px rgba(183, 28, 28, 0); }
+}
+.sos-pulse {
+  animation: sos-pulse 2s ease-in-out infinite;
 }

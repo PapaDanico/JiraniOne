@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Store, Star, Phone, Plus, BadgeCheck } from "lucide-react";
+import { Store, Star, Phone, Plus, BadgeCheck, MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,87 +18,104 @@ export default function VendorDashboard() {
   });
 
   const myListings = allProviders?.filter((p) => p.userId === user?.id) ?? [];
+  const totalReviews = myListings.reduce((s, p) => s + p.ratingCount, 0);
   const avgRating = myListings.length
     ? (myListings.reduce((s, p) => s + Number(p.rating ?? 0), 0) / myListings.length).toFixed(1)
     : "—";
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <TopBar title="Vendor" />
+    <div className="page-wrap">
+      <TopBar title="Fundi" />
 
-      <main className="max-w-lg mx-auto px-4 pt-4 pb-6 space-y-6">
-        <div>
-          <h1 className="font-['Plus_Jakarta_Sans'] font-bold text-2xl text-gray-900">My Services</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{user?.name}</p>
+      <main className="max-w-lg mx-auto px-4 pt-4 pb-6 space-y-5 page-content">
+        {/* Hero card */}
+        <div className="kitenge-hero rounded-2xl p-5 text-white">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 rounded-full bg-[#D4A017]/25 flex items-center justify-center">
+              <span className="font-black text-xl text-[#D4A017]">{user?.name?.charAt(0) ?? "F"}</span>
+            </div>
+            <div>
+              <p className="font-bold text-lg leading-tight">{user?.name}</p>
+              <p className="text-white/70 text-sm">Fundi · JiraniHub</p>
+            </div>
+          </div>
+          <div className="maasai-stripe rounded-full" />
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Listings", value: String(myListings.length), icon: <Store className="h-5 w-5 text-[#1A5C38]" /> },
-            { label: "Avg Rating", value: avgRating, icon: <Star className="h-5 w-5 text-[#D47A00]" /> },
-            { label: "Reviews", value: String(myListings.reduce((s, p) => s + p.ratingCount, 0)), icon: <Star className="h-5 w-5 text-blue-500" /> },
+            { label: "Orodha", value: String(myListings.length), emoji: "🏪" },
+            { label: "Wastani", value: avgRating, emoji: "⭐" },
+            { label: "Maoni", value: String(totalReviews), emoji: "💬" },
           ].map((s) => (
-            <Card key={s.label}>
-              <CardContent className="py-3 px-4 text-center">
-                <div className="flex justify-center mb-1">{s.icon}</div>
-                <div className="text-xl font-bold text-gray-900">{s.value}</div>
-                <div className="text-xs text-gray-500">{s.label}</div>
-              </CardContent>
-            </Card>
+            <div key={s.label} className="tribal-card p-3 text-center">
+              <div className="text-2xl mb-1">{s.emoji}</div>
+              <div className="text-xl font-black text-[#212121]">{s.value}</div>
+              <div className="text-xs text-[#6B5D45] font-medium">{s.label}</div>
+            </div>
           ))}
         </div>
 
         {/* Listings */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-sm text-gray-700 uppercase tracking-wide">My Listings</h2>
+            <p className="section-label">Orodha Zangu</p>
             <Link href="/marketplace">
-              <Button size="sm"><Plus className="h-4 w-4" /> Add listing</Button>
+              <Button size="sm" className="gap-1.5">
+                <Plus className="h-4 w-4" /> Ongeza
+              </Button>
             </Link>
           </div>
 
           {isLoading ? (
             <SectionLoader />
           ) : !myListings.length ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <Store className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500 mb-3">
-                  You haven't added any service listings yet.
-                </p>
-                <Link href="/marketplace">
-                  <Button size="sm" variant="secondary">Add your first listing</Button>
-                </Link>
-              </CardContent>
-            </Card>
+            <div className="tribal-card p-8 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-[#D47A00]/10 flex items-center justify-center mx-auto mb-3">
+                <Store className="h-7 w-7 text-[#D47A00]" />
+              </div>
+              <p className="font-semibold text-[#212121] mb-1">Hakuna orodha</p>
+              <p className="text-[#6B5D45] text-sm mb-4">Ongeza huduma yako kwenye soko</p>
+              <Link href="/marketplace">
+                <Button size="sm" variant="secondary">Ongeza huduma yako ya kwanza</Button>
+              </Link>
+            </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {myListings.map((p) => (
                 <Card key={p.id}>
                   <CardContent className="py-3">
                     <div className="flex items-start justify-between gap-3">
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-semibold text-sm text-gray-900">{p.name}</p>
-                          {p.verified && <BadgeCheck className="h-4 w-4 text-[#1A5C38]" />}
+                          <p className="font-bold text-sm text-[#212121]">{p.name}</p>
+                          {p.verified && <BadgeCheck className="h-4 w-4 text-[#1B5E20]" />}
                         </div>
-                        <p className="text-xs text-gray-500">{p.category}</p>
-                        {p.description && <p className="text-xs text-gray-400 mt-1">{p.description}</p>}
+                        <p className="text-xs text-[#6B5D45]">{p.category}</p>
+                        {p.description && (
+                          <p className="text-xs text-[#6B5D45] mt-1 opacity-80">{p.description}</p>
+                        )}
                         {p.ratingCount > 0 && (
-                          <p className="text-xs text-amber-600 mt-1">
-                            ★ {Number(p.rating ?? 0).toFixed(1)} ({p.ratingCount} reviews)
-                          </p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Star className="h-3.5 w-3.5 text-[#D4A017] fill-[#D4A017]" />
+                            <span className="text-xs text-[#6B5D45]">
+                              {Number(p.rating ?? 0).toFixed(1)} ({p.ratingCount})
+                            </span>
+                          </div>
                         )}
                       </div>
-                      <a href={`tel:${p.phone}`} className="flex items-center gap-1 text-sm text-[#1A5C38] shrink-0">
+                      <a
+                        href={`tel:${p.phone}`}
+                        className="flex items-center gap-1.5 text-sm font-bold text-[#1B5E20] bg-[#1B5E20]/8 rounded-xl px-2.5 py-1.5 shrink-0"
+                      >
                         <Phone className="h-3.5 w-3.5" />
                       </a>
                     </div>
                     {!p.verified && (
-                      <p className="text-xs text-amber-600 mt-2 bg-amber-50 rounded px-2 py-1">
-                        Pending admin verification
-                      </p>
+                      <div className="mt-2 text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-1.5 border border-amber-200">
+                        ⏳ Inasubiri uthibitisho wa msimamizi
+                      </div>
                     )}
                   </CardContent>
                 </Card>

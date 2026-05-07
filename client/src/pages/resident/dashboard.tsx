@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
-  Users, Wrench, Megaphone, ShieldAlert,
-  CreditCard, CalendarDays, Store, Vote, BookOpen,
-  ChevronRight,
+  Users, Wrench, Megaphone, ShieldAlert, CreditCard,
+  CalendarDays, Store, Vote, BookOpen, ChevronRight, Bell,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEstate } from "@/hooks/useEstate";
@@ -16,16 +15,36 @@ import { formatRelative } from "@/lib/utils";
 import type { Announcement, Notification } from "@shared/types";
 
 const modules = [
-  { href: "/visitors", label: "Visitors", icon: <Users className="h-6 w-6" />, color: "bg-blue-50 text-blue-600" },
-  { href: "/maintenance", label: "Maintenance", icon: <Wrench className="h-6 w-6" />, color: "bg-orange-50 text-orange-600" },
-  { href: "/announcements", label: "Notices", icon: <Megaphone className="h-6 w-6" />, color: "bg-purple-50 text-purple-600" },
-  { href: "/emergency", label: "Emergency", icon: <ShieldAlert className="h-6 w-6" />, color: "bg-red-50 text-red-600" },
-  { href: "/payments", label: "Payments", icon: <CreditCard className="h-6 w-6" />, color: "bg-green-50 text-green-600" },
-  { href: "/events", label: "Events", icon: <CalendarDays className="h-6 w-6" />, color: "bg-cyan-50 text-cyan-600" },
-  { href: "/marketplace", label: "Marketplace", icon: <Store className="h-6 w-6" />, color: "bg-amber-50 text-amber-600" },
-  { href: "/governance", label: "Governance", icon: <Vote className="h-6 w-6" />, color: "bg-indigo-50 text-indigo-600" },
-  { href: "/bookings", label: "Bookings", icon: <BookOpen className="h-6 w-6" />, color: "bg-pink-50 text-pink-600" },
+  { href: "/visitors",    label: "Wageni",     icon: <Users className="h-6 w-6" />,       bg: "bg-[#1B5E20]/10",   fg: "text-[#1B5E20]" },
+  { href: "/maintenance", label: "Marekebu",   icon: <Wrench className="h-6 w-6" />,      bg: "bg-[#D47A00]/10",   fg: "text-[#D47A00]" },
+  { href: "/announcements",label: "Taarifa",   icon: <Megaphone className="h-6 w-6" />,   bg: "bg-purple-100",     fg: "text-purple-700" },
+  { href: "/emergency",   label: "Dharura",    icon: <ShieldAlert className="h-6 w-6" />, bg: "bg-[#B71C1C]/10",   fg: "text-[#B71C1C]" },
+  { href: "/payments",    label: "Malipo",     icon: <CreditCard className="h-6 w-6" />,  bg: "bg-[#D4A017]/15",   fg: "text-[#9A6E00]" },
+  { href: "/events",      label: "Matukio",    icon: <CalendarDays className="h-6 w-6" />,bg: "bg-cyan-100",       fg: "text-cyan-700" },
+  { href: "/marketplace", label: "Soko",       icon: <Store className="h-6 w-6" />,       bg: "bg-amber-100",      fg: "text-amber-700" },
+  { href: "/governance",  label: "Serikali",   icon: <Vote className="h-6 w-6" />,        bg: "bg-indigo-100",     fg: "text-indigo-700" },
+  { href: "/bookings",    label: "Bukuu",      icon: <BookOpen className="h-6 w-6" />,    bg: "bg-pink-100",       fg: "text-pink-700" },
 ];
+
+const greetings = [
+  "Habari yako",
+  "Karibu tena",
+  "Jambo",
+  "Mambo vipi",
+];
+
+function timeGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Habari za asubuhi";
+  if (h < 17) return "Habari za mchana";
+  return "Habari za jioni";
+}
+
+const priorityVariant: Record<string, "default" | "warning" | "urgent"> = {
+  info:    "default",
+  warning: "warning",
+  urgent:  "urgent",
+};
 
 export default function ResidentDashboard() {
   const { user } = useAuth();
@@ -43,50 +62,57 @@ export default function ResidentDashboard() {
 
   const unreadCount = notifications?.filter((n) => !n.read).length ?? 0;
   const latestAnnouncements = announcements?.slice(0, 3) ?? [];
-
-  const priorityVariant: Record<string, "default" | "warning" | "urgent"> = {
-    info: "default",
-    warning: "warning",
-    urgent: "urgent",
-  };
+  const firstName = user?.name.split(" ")[0] ?? "";
 
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div className="page-wrap">
       <TopBar />
 
-      <main className="max-w-lg mx-auto px-4 pt-4 pb-6 space-y-6">
-        {/* Greeting */}
-        <div>
-          <h1 className="font-['Plus_Jakarta_Sans'] font-bold text-2xl text-gray-900">
-            Habari, {user?.name.split(" ")[0]} 👋
-          </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {estate ? `${estate.name}${user?.unitNumber ? ` · Unit ${user.unitNumber}` : ""}` : "Welcome to JiraniHub"}
-          </p>
+      <main className="max-w-lg mx-auto px-4 pt-5 pb-6 space-y-6 page-content">
+        {/* Greeting card */}
+        <div className="kitenge-hero rounded-2xl p-5 relative overflow-hidden">
+          <div className="relative z-10">
+            <p className="text-[#D4A017] text-sm font-medium mb-0.5">{timeGreeting()},</p>
+            <h1 className="font-bold text-2xl text-white tracking-tight">
+              {firstName}! 👋
+            </h1>
+            <p className="text-white/60 text-sm mt-1">
+              {estate
+                ? `${estate.name}${user?.unitNumber ? ` · Nambari ${user.unitNumber}` : ""}`
+                : "Karibu JiraniHub"}
+            </p>
+          </div>
         </div>
 
         {/* Notification banner */}
         {unreadCount > 0 && (
-          <div className="bg-[#1A5C38]/5 border border-[#1A5C38]/20 rounded-xl px-4 py-3 flex items-center justify-between">
-            <span className="text-sm text-[#1A5C38] font-medium">
-              {unreadCount} unread notification{unreadCount !== 1 ? "s" : ""}
-            </span>
-            <Link href="/notifications" className="text-xs text-[#1A5C38] underline">View</Link>
-          </div>
+          <Link href="/notifications">
+            <div className="bg-[#1B5E20]/8 border border-[#1B5E20]/20 rounded-2xl px-4 py-3 flex items-center justify-between hover:bg-[#1B5E20]/12 transition-colors">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-[#1B5E20]" />
+                <span className="text-sm text-[#1B5E20] font-semibold">
+                  {unreadCount} arifa mpya
+                </span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-[#1B5E20]/60" />
+            </div>
+          </Link>
         )}
 
         {/* Module grid */}
         <div>
-          <h2 className="font-semibold text-gray-700 text-sm mb-3 uppercase tracking-wide">Quick Access</h2>
+          <p className="section-label mb-3">Moduli Zote</p>
           <div className="grid grid-cols-3 gap-3">
             {modules.map((m) => (
               <Link
                 key={m.href}
                 href={m.href}
-                className="flex flex-col items-center gap-2 p-3 rounded-xl border border-[#E8E6E3] bg-[#F8F7F5] hover:border-[#1A5C38]/30 transition-colors min-h-[80px] justify-center"
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-[#D4C9A8] bg-[#EDE7D8] hover:border-[#1B5E20]/30 hover:bg-[#E4DCC8] transition-all min-h-[84px] justify-center"
               >
-                <div className={`rounded-xl p-2 ${m.color}`}>{m.icon}</div>
-                <span className="text-xs font-medium text-gray-700 text-center">{m.label}</span>
+                <div className={`rounded-xl p-2.5 ${m.bg}`}>
+                  <span className={m.fg}>{m.icon}</span>
+                </div>
+                <span className="text-xs font-semibold text-[#212121] text-center leading-tight">{m.label}</span>
               </Link>
             ))}
           </div>
@@ -95,29 +121,34 @@ export default function ResidentDashboard() {
         {/* Latest announcements */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Notices</h2>
-            <Link href="/announcements" className="text-xs text-[#1A5C38]">See all</Link>
+            <p className="section-label">Matangazo ya Hivi Karibuni</p>
+            <Link href="/announcements" className="text-xs text-[#1B5E20] font-semibold hover:underline">
+              Ona yote →
+            </Link>
           </div>
           {loadingAnn ? (
             <SectionLoader />
           ) : latestAnnouncements.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">No announcements yet.</p>
+            <div className="tribal-card p-8 text-center">
+              <Megaphone className="h-10 w-10 text-[#D4C9A8] mx-auto mb-2" />
+              <p className="text-[#6B5D45] text-sm">Hakuna matangazo bado.</p>
+            </div>
           ) : (
             <div className="space-y-2">
               {latestAnnouncements.map((a) => (
-                <Card key={a.id}>
-                  <CardContent className="py-3">
+                <Card key={a.id} className={a.priority === "urgent" ? "border-[#B71C1C]/30 bg-[#B71C1C]/5" : ""}>
+                  <CardContent className="py-3 px-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
+                        <div className="flex items-center gap-2 mb-1">
                           <Badge variant={priorityVariant[a.priority] ?? "default"}>
                             {a.priority}
                           </Badge>
                         </div>
-                        <p className="font-medium text-sm text-gray-900 truncate">{a.title}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{formatRelative(a.createdAt)}</p>
+                        <p className="font-semibold text-sm text-[#212121] truncate">{a.title}</p>
+                        <p className="text-xs text-[#6B5D45] mt-0.5">{formatRelative(a.createdAt)}</p>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-gray-300 shrink-0 mt-1" />
+                      <ChevronRight className="h-4 w-4 text-[#D4C9A8] shrink-0 mt-1" />
                     </div>
                   </CardContent>
                 </Card>

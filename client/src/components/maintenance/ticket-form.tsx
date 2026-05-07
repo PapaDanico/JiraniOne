@@ -16,22 +16,23 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { Wrench } from "lucide-react";
 
 const CATEGORIES = [
-  { value: "plumbing", label: "Plumbing" },
-  { value: "electrical", label: "Electrical" },
-  { value: "roads", label: "Roads & Paths" },
-  { value: "landscaping", label: "Landscaping" },
-  { value: "security", label: "Security" },
-  { value: "cleaning", label: "Cleaning" },
-  { value: "other", label: "Other" },
+  { value: "plumbing",    label: "🔧 Bomba / Maji",        swahili: "Mabomba na maji" },
+  { value: "electrical",  label: "⚡ Umeme",                swahili: "Tatizo la umeme" },
+  { value: "roads",       label: "🛣️ Barabara / Njia",     swahili: "Barabara na njia" },
+  { value: "landscaping", label: "🌿 Bustani",              swahili: "Mazingira ya bustani" },
+  { value: "security",    label: "🔒 Usalama",              swahili: "Tatizo la usalama" },
+  { value: "cleaning",    label: "🧹 Usafi",                swahili: "Usafi wa mazingira" },
+  { value: "other",       label: "📋 Nyingine",             swahili: "Tatizo lingine" },
 ];
 
 const PRIORITIES = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "urgent", label: "Urgent" },
+  { value: "low",    label: "Ndogo",   color: "text-[#6B5D45]" },
+  { value: "medium", label: "Wastani", color: "text-amber-700" },
+  { value: "high",   label: "Kubwa",   color: "text-[#D47A00]" },
+  { value: "urgent", label: "Haraka",  color: "text-[#B71C1C]" },
 ];
 
 interface Props {
@@ -63,9 +64,7 @@ export function TicketForm({ open, onClose }: Props) {
       formData.append("description", data.description);
       formData.append("category", data.category);
       formData.append("priority", data.priority);
-      if (photos) {
-        Array.from(photos).forEach((f) => formData.append("photos", f));
-      }
+      if (photos) Array.from(photos).forEach((f) => formData.append("photos", f));
       return api.upload("/api/maintenance", formData);
     },
     onSuccess: () => {
@@ -75,7 +74,7 @@ export function TicketForm({ open, onClose }: Props) {
       onClose();
     },
     onError: (err: unknown) => {
-      setServerError(err instanceof Error ? err.message : "Failed to submit ticket");
+      setServerError(err instanceof Error ? err.message : "Imeshindwa kutuma tiketi");
     },
   });
 
@@ -88,20 +87,27 @@ export function TicketForm({ open, onClose }: Props) {
   const priority = watch("priority");
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); onClose(); } }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); setServerError(null); setPhotos(null); onClose(); } }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Report a Problem</DialogTitle>
-          <DialogDescription>
-            Describe the issue and we'll get it sorted.
-          </DialogDescription>
+          <div className="flex items-center gap-3 mt-2">
+            <div className="w-10 h-10 rounded-xl bg-[#D47A00] flex items-center justify-center">
+              <Wrench className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <DialogTitle>Ripoti Tatizo</DialogTitle>
+              <DialogDescription>
+                Eleza tatizo na tutalisuluhisha haraka iwezekanavyo.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="px-6 pb-2 space-y-4">
           <div>
-            <Label>Title</Label>
+            <Label className="text-[#212121] font-semibold">Kichwa cha Tatizo</Label>
             <Input
-              placeholder="e.g. Burst pipe in Block B stairwell"
+              placeholder="Mfano: Bomba lililipuka katika Block B"
               {...register("title")}
               error={errors.title?.message}
             />
@@ -109,39 +115,29 @@ export function TicketForm({ open, onClose }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Category</Label>
-              <Select
-                value={category}
-                onValueChange={(v) => setValue("category", v as never)}
-              >
+              <Label className="text-[#212121] font-semibold">Aina</Label>
+              <Select value={category} onValueChange={(v) => setValue("category", v as never)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Category" />
+                  <SelectValue placeholder="Chagua aina" />
                 </SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
-                    </SelectItem>
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {errors.category && (
-                <p className="mt-1 text-xs text-red-500">{errors.category.message}</p>
-              )}
+              {errors.category && <p className="mt-1 text-xs text-[#B71C1C]">{errors.category.message}</p>}
             </div>
             <div>
-              <Label>Priority</Label>
-              <Select
-                value={priority}
-                onValueChange={(v) => setValue("priority", v as never)}
-              >
+              <Label className="text-[#212121] font-semibold">Uzito</Label>
+              <Select value={priority} onValueChange={(v) => setValue("priority", v as never)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Priority" />
+                  <SelectValue placeholder="Chagua uzito" />
                 </SelectTrigger>
                 <SelectContent>
                   {PRIORITIES.map((p) => (
                     <SelectItem key={p.value} value={p.value}>
-                      {p.label}
+                      <span className={p.color}>{p.label}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -150,41 +146,45 @@ export function TicketForm({ open, onClose }: Props) {
           </div>
 
           <div>
-            <Label>Description</Label>
+            <Label className="text-[#212121] font-semibold">Maelezo</Label>
             <Textarea
-              placeholder="Describe the issue in detail..."
+              placeholder="Eleza tatizo kwa undani zaidi..."
               {...register("description")}
               error={errors.description?.message}
+              rows={3}
             />
           </div>
 
           <div>
-            <Label>Photos (optional, max 5)</Label>
+            <Label className="text-[#212121] font-semibold">Picha (si lazima, hadi 5)</Label>
             <input
               type="file"
               accept="image/*"
               multiple
-              className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#1A5C38]/10 file:text-[#1A5C38]"
+              className="w-full text-sm text-[#6B5D45] mt-1 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[#1B5E20]/10 file:text-[#1B5E20] hover:file:bg-[#1B5E20]/15 transition-colors"
               onChange={(e) => setPhotos(e.target.files)}
             />
+            {photos && photos.length > 0 && (
+              <p className="text-xs text-[#1B5E20] mt-1">✓ Picha {photos.length} zimechaguliwa</p>
+            )}
           </div>
 
           {serverError && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-700">
+            <div className="rounded-xl bg-[#B71C1C]/10 border border-[#B71C1C]/20 px-3 py-2.5 text-sm text-[#B71C1C]">
               {serverError}
             </div>
           )}
         </form>
 
         <DialogFooter>
-          <Button variant="secondary" onClick={() => { reset(); onClose(); }}>
-            Cancel
+          <Button variant="secondary" onClick={() => { reset(); setServerError(null); setPhotos(null); onClose(); }}>
+            Ghairi
           </Button>
           <Button
             onClick={handleSubmit(onSubmit)}
             loading={isSubmitting || mutation.isPending}
           >
-            Submit Ticket
+            Tuma Tiketi
           </Button>
         </DialogFooter>
       </DialogContent>

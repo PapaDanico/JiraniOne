@@ -19,20 +19,22 @@ import { api } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import type { Facility, Booking } from "@shared/types";
 
-const statusIcon = {
-  approved: <CheckCircle className="h-4 w-4 text-green-500" />,
-  pending: <Clock className="h-4 w-4 text-amber-500" />,
-  rejected: <XCircle className="h-4 w-4 text-red-400" />,
-  cancelled: <XCircle className="h-4 w-4 text-gray-400" />,
-  completed: <CheckCircle className="h-4 w-4 text-gray-400" />,
+const STATUS_ICON = {
+  approved:  <CheckCircle className="h-4 w-4 text-[#1B5E20]" />,
+  pending:   <Clock className="h-4 w-4 text-amber-500" />,
+  rejected:  <XCircle className="h-4 w-4 text-[#B71C1C]" />,
+  cancelled: <XCircle className="h-4 w-4 text-[#D4C9A8]" />,
+  completed: <CheckCircle className="h-4 w-4 text-[#D4C9A8]" />,
 };
 
-const statusVariant: Record<string, "success" | "warning" | "destructive" | "default"> = {
-  approved: "success",
-  pending: "warning",
-  rejected: "destructive",
-  cancelled: "default",
-  completed: "default",
+const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "default"> = {
+  approved: "success", pending: "warning", rejected: "destructive",
+  cancelled: "default", completed: "default",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  approved: "Imeidhinishwa", pending: "Inasubiri",
+  rejected: "Imekataliwa", cancelled: "Imesitishwa", completed: "Imekamilika",
 };
 
 function BookDialog({ facility, onClose }: { facility: Facility; onClose: () => void }) {
@@ -54,31 +56,49 @@ function BookDialog({ facility, onClose }: { facility: Facility; onClose: () => 
   return (
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Book {facility.name}</DialogTitle></DialogHeader>
-        <div className="px-6 pb-2 space-y-3">
-          {facility.description && (
-            <p className="text-sm text-gray-500">{facility.description}</p>
-          )}
-          <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
-            Max {facility.maxBookingHours}h per booking
-            {facility.requiresApproval ? " · Requires admin approval" : " · Auto-approved"}
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Start</Label><Input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
-            <div><Label>End</Label><Input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></div>
+        <DialogHeader>
+          <div className="flex items-center gap-3 mt-2">
+            <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center text-xl">
+              🏠
+            </div>
+            <div>
+              <DialogTitle>Hifadhi {facility.name}</DialogTitle>
+              <p className="text-xs text-[#6B5D45] mt-0.5">{facility.description}</p>
+            </div>
           </div>
-          <div><Label>Notes (optional)</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} /></div>
+        </DialogHeader>
+        <div className="px-6 pb-2 space-y-3">
+          <div className="tribal-card p-3 text-xs text-amber-800">
+            ⏱️ Kiwango cha juu: masaa {facility.maxBookingHours}
+            {facility.requiresApproval ? " · Inahitaji idhini ya msimamizi" : " · Inaidhinishwa moja kwa moja"}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-[#212121] font-semibold">Mwanzo</Label>
+              <Input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-[#212121] font-semibold">Mwisho</Label>
+              <Input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label className="text-[#212121] font-semibold">Maelezo (si lazima)</Label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+          </div>
           {mutation.isError && (
-            <p className="text-sm text-red-600">{(mutation.error as Error).message}</p>
+            <p className="text-sm text-[#B71C1C]">{(mutation.error as Error).message}</p>
           )}
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" onClick={onClose}>Ghairi</Button>
           <Button
             onClick={() => mutation.mutate()}
             loading={mutation.isPending}
             disabled={!startTime || !endTime}
-          >Book</Button>
+          >
+            Hifadhi
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -105,25 +125,41 @@ function AddFacilityDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Add Facility</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <div className="flex items-center gap-3 mt-2">
+            <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center">
+              <BookOpen className="h-5 w-5 text-white" />
+            </div>
+            <DialogTitle>Ongeza Eneo</DialogTitle>
+          </div>
+        </DialogHeader>
         <div className="px-6 pb-2 space-y-3">
-          <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Clubhouse, Swimming Pool" /></div>
-          <div><Label>Description</Label><Input value={description} onChange={(e) => setDescription(e.target.value)} /></div>
           <div>
-            <Label>Requires approval?</Label>
+            <Label className="text-[#212121] font-semibold">Jina</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="mfano: Clubhouse, Pool" />
+          </div>
+          <div>
+            <Label className="text-[#212121] font-semibold">Maelezo</Label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-[#212121] font-semibold">Idhini inahitajika?</Label>
             <Select value={requiresApproval} onValueChange={setRequiresApproval}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="false">Auto-approve</SelectItem>
-                <SelectItem value="true">Requires admin approval</SelectItem>
+                <SelectItem value="false">Inaidhinishwa moja kwa moja</SelectItem>
+                <SelectItem value="true">Inahitaji idhini ya msimamizi</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div><Label>Max hours per booking</Label><Input type="number" min={1} max={24} value={maxHours} onChange={(e) => setMaxHours(e.target.value)} /></div>
+          <div>
+            <Label className="text-[#212121] font-semibold">Masaa ya juu kwa hifadhi</Label>
+            <Input type="number" min={1} max={24} value={maxHours} onChange={(e) => setMaxHours(e.target.value)} />
+          </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} loading={mutation.isPending} disabled={!name}>Add</Button>
+          <Button variant="secondary" onClick={onClose}>Ghairi</Button>
+          <Button onClick={() => mutation.mutate()} loading={mutation.isPending} disabled={!name}>Ongeza</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -154,30 +190,30 @@ export default function BookingsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <TopBar title="Bookings" />
-      <main className="max-w-lg mx-auto px-4 pt-4">
+    <div className="page-wrap">
+      <TopBar title="Maeneo" />
+      <main className="max-w-lg mx-auto px-4 pt-4 page-content">
         <Tabs defaultValue="facilities">
           <TabsList className="w-full mb-4">
-            <TabsTrigger value="facilities" className="flex-1">Facilities</TabsTrigger>
-            <TabsTrigger value="bookings" className="flex-1">My Bookings</TabsTrigger>
-            {isAdmin && <TabsTrigger value="all" className="flex-1">All</TabsTrigger>}
+            <TabsTrigger value="facilities" className="flex-1">Maeneo</TabsTrigger>
+            <TabsTrigger value="bookings" className="flex-1">Hifadhi Zangu</TabsTrigger>
+            {isAdmin && <TabsTrigger value="all" className="flex-1">Zote</TabsTrigger>}
           </TabsList>
 
-          {/* Facilities tab */}
+          {/* Facilities */}
           <TabsContent value="facilities">
             <div className="flex justify-between items-center mb-3">
-              <h2 className="font-semibold text-sm text-gray-700">Available Facilities</h2>
+              <p className="section-label">Maeneo Yanayopatikana</p>
               {isAdmin && (
-                <Button size="sm" onClick={() => setAddFacility(true)}>
-                  <Plus className="h-4 w-4" /> Add
+                <Button size="sm" onClick={() => setAddFacility(true)} className="gap-1.5">
+                  <Plus className="h-4 w-4" /> Ongeza
                 </Button>
               )}
             </div>
             {loadFac ? <SectionLoader /> : !facilities?.length ? (
-              <div className="text-center py-12">
-                <BookOpen className="h-12 w-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-gray-400 text-sm">No facilities added yet.</p>
+              <div className="tribal-card p-12 text-center">
+                <BookOpen className="h-8 w-8 text-[#D4C9A8] mx-auto mb-2" />
+                <p className="text-[#6B5D45] text-sm">Hakuna maeneo bado.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -185,13 +221,13 @@ export default function BookingsPage() {
                   <Card key={f.id}>
                     <CardContent className="py-3 flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-sm text-gray-900">{f.name}</p>
-                        {f.description && <p className="text-xs text-gray-500">{f.description}</p>}
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          Max {f.maxBookingHours}h · {f.requiresApproval ? "Approval required" : "Auto-approve"}
+                        <p className="font-bold text-sm text-[#212121]">{f.name}</p>
+                        {f.description && <p className="text-xs text-[#6B5D45]">{f.description}</p>}
+                        <p className="text-xs text-[#D4C9A8] mt-0.5">
+                          Kiwango: masaa {f.maxBookingHours} · {f.requiresApproval ? "Inahitaji idhini" : "Moja kwa moja"}
                         </p>
                       </div>
-                      <Button size="sm" onClick={() => setBookFacility(f)}>Book</Button>
+                      <Button size="sm" onClick={() => setBookFacility(f)}>Hifadhi</Button>
                     </CardContent>
                   </Card>
                 ))}
@@ -202,27 +238,39 @@ export default function BookingsPage() {
           {/* My bookings */}
           <TabsContent value="bookings">
             {loadBk ? <SectionLoader /> : !bookings?.length ? (
-              <p className="text-center text-gray-400 text-sm py-12">No bookings yet.</p>
+              <div className="tribal-card p-10 text-center">
+                <p className="text-[#6B5D45] text-sm">Hakuna hifadhi bado.</p>
+              </div>
             ) : (
               <div className="space-y-2">
                 {bookings.map((b) => (
                   <Card key={b.id}>
                     <CardContent className="py-3">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-2">
-                          {statusIcon[b.status] ?? <Clock className="h-4 w-4 text-gray-400" />}
+                        <div className="flex items-start gap-2.5">
+                          <div className="mt-0.5">
+                            {STATUS_ICON[b.status as keyof typeof STATUS_ICON] ?? <Clock className="h-4 w-4 text-[#6B5D45]" />}
+                          </div>
                           <div>
-                            <p className="font-medium text-sm text-gray-900">{b.facilityName}</p>
-                            <p className="text-xs text-gray-500">{formatDateTime(b.startTime)} → {formatDateTime(b.endTime)}</p>
-                            {b.notes && <p className="text-xs text-gray-400 mt-0.5">{b.notes}</p>}
+                            <p className="font-semibold text-sm text-[#212121]">{b.facilityName}</p>
+                            <p className="text-xs text-[#6B5D45]">
+                              {formatDateTime(b.startTime)} → {formatDateTime(b.endTime)}
+                            </p>
+                            {b.notes && <p className="text-xs text-[#6B5D45] mt-0.5">{b.notes}</p>}
                           </div>
                         </div>
                         <div className="shrink-0 flex flex-col items-end gap-1">
-                          <Badge variant={statusVariant[b.status] ?? "default"}>{b.status}</Badge>
+                          <Badge variant={STATUS_VARIANT[b.status] ?? "default"}>
+                            {STATUS_LABEL[b.status] ?? b.status}
+                          </Badge>
                           {b.status === "pending" && (
-                            <Button size="sm" variant="ghost" className="text-red-500 h-6 text-xs px-2"
-                              onClick={() => updateBooking.mutate({ id: b.id, status: "cancelled" })}>
-                              Cancel
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-[#B71C1C] h-6 text-xs px-2"
+                              onClick={() => updateBooking.mutate({ id: b.id, status: "cancelled" })}
+                            >
+                              Sitisha
                             </Button>
                           )}
                         </div>
@@ -238,7 +286,9 @@ export default function BookingsPage() {
           {isAdmin && (
             <TabsContent value="all">
               {loadBk ? <SectionLoader /> : !bookings?.length ? (
-                <p className="text-center text-gray-400 text-sm py-12">No bookings.</p>
+                <div className="tribal-card p-10 text-center">
+                  <p className="text-[#6B5D45] text-sm">Hakuna hifadhi.</p>
+                </div>
               ) : (
                 <div className="space-y-2">
                   {bookings.map((b) => (
@@ -246,20 +296,31 @@ export default function BookingsPage() {
                       <CardContent className="py-3">
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <p className="font-medium text-sm text-gray-900">{b.facilityName}</p>
-                            <p className="text-xs text-gray-500">{b.userName} · {formatDateTime(b.startTime)}</p>
+                            <p className="font-semibold text-sm text-[#212121]">{b.facilityName}</p>
+                            <p className="text-xs text-[#6B5D45]">
+                              {b.userName} · {formatDateTime(b.startTime)}
+                            </p>
                           </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <Badge variant={statusVariant[b.status] ?? "default"}>{b.status}</Badge>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <Badge variant={STATUS_VARIANT[b.status] ?? "default"}>
+                              {STATUS_LABEL[b.status] ?? b.status}
+                            </Badge>
                             {b.status === "pending" && (
                               <div className="flex gap-1">
-                                <Button size="sm" className="h-6 text-xs px-2"
-                                  onClick={() => updateBooking.mutate({ id: b.id, status: "approved" })}>
-                                  Approve
+                                <Button
+                                  size="sm"
+                                  className="h-6 text-xs px-2"
+                                  onClick={() => updateBooking.mutate({ id: b.id, status: "approved" })}
+                                >
+                                  Idhinisha
                                 </Button>
-                                <Button size="sm" variant="secondary" className="h-6 text-xs px-2"
-                                  onClick={() => updateBooking.mutate({ id: b.id, status: "rejected" })}>
-                                  Reject
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-6 text-xs px-2"
+                                  onClick={() => updateBooking.mutate({ id: b.id, status: "rejected" })}
+                                >
+                                  Kataa
                                 </Button>
                               </div>
                             )}

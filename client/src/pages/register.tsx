@@ -38,8 +38,8 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (form.password !== form.confirm) { setError("Passwords do not match"); return; }
-    if (form.password.length < 8) { setError("Password must be at least 8 characters"); return; }
+    if (form.password !== form.confirm) { setError("Nywila hazilingani"); return; }
+    if (form.password.length < 8) { setError("Nywila lazima iwe angalau herufi 8"); return; }
     setLoading(true);
     try {
       await register({
@@ -49,39 +49,44 @@ export default function RegisterPage() {
       });
       setLocation("/dashboard/resident");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : "Usajili umeshindwa");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1A5C38] to-[#0F3C24] flex flex-col items-center justify-center p-4">
+    <div className="kitenge-hero min-h-screen flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <h1 className="font-['Plus_Jakarta_Sans'] font-bold text-3xl text-white">JiraniHub</h1>
-          <p className="text-white/60 text-sm mt-1">Create your account</p>
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/15 mb-3">
+            <span className="font-black text-xl text-[#D4A017]">JH</span>
+          </div>
+          <h1 className="font-black text-2xl text-white tracking-tight">JiraniHub</h1>
+          <p className="text-white/60 text-sm mt-0.5">Fungua akaunti yako</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-xl space-y-4">
+        <form onSubmit={handleSubmit} className="bg-[#F5F1E8] rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="maasai-stripe rounded-full mb-2" />
+
           <div>
-            <Label>Full name</Label>
+            <Label className="text-[#212121] font-semibold">Jina kamili</Label>
             <Input value={form.name} onChange={(e) => set("name", e.target.value)}
               placeholder="Jane Mwangi" required />
           </div>
 
           <div>
-            <Label>Phone number</Label>
+            <Label className="text-[#212121] font-semibold">Nambari ya simu</Label>
             <Input value={form.phone} onChange={(e) => set("phone", e.target.value)}
               placeholder="0722 123 456" required />
           </div>
 
           <div>
-            <Label>Estate</Label>
+            <Label className="text-[#212121] font-semibold">Nyumba / Estate</Label>
             <Select value={form.estateId} onValueChange={(v) => set("estateId", v)}>
               <SelectTrigger>
-                <SelectValue placeholder="Select your estate (optional)" />
+                <SelectValue placeholder="Chagua nyumba yako (si lazima)" />
               </SelectTrigger>
               <SelectContent>
                 {estates?.map((e) => (
@@ -91,42 +96,42 @@ export default function RegisterPage() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-400 mt-1">Can be assigned by admin later</p>
+            <p className="text-xs text-[#6B5D45] mt-1">Unaweza kupewa na msimamizi baadaye</p>
           </div>
 
           {form.estateId && (
             <div>
-              <Label>Unit / House number</Label>
+              <Label className="text-[#212121] font-semibold">Nambari ya nyumba</Label>
               <Input value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)}
                 placeholder="A14" />
             </div>
           )}
 
           <div>
-            <Label>Password</Label>
+            <Label className="text-[#212121] font-semibold">Nywila</Label>
             <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)}
-              placeholder="At least 8 characters" required />
+              placeholder="Angalau herufi 8" required />
           </div>
 
           <div>
-            <Label>Confirm password</Label>
+            <Label className="text-[#212121] font-semibold">Thibitisha nywila</Label>
             <Input type="password" value={form.confirm} onChange={(e) => set("confirm", e.target.value)}
-              placeholder="Repeat password" required />
+              placeholder="Rudia nywila" required />
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <div className="bg-[#B71C1C]/10 border border-[#B71C1C]/20 rounded-xl px-3 py-2.5 text-sm text-[#B71C1C]">
               {error}
-            </p>
+            </div>
           )}
 
           <Button type="submit" className="w-full" loading={loading}>
-            Create account
+            Fungua Akaunti
           </Button>
 
-          <p className="text-center text-sm text-gray-500">
-            Already have an account?{" "}
-            <a href="/login" className="text-[#1A5C38] font-medium">Sign in</a>
+          <p className="text-center text-sm text-[#6B5D45]">
+            Una akaunti?{" "}
+            <a href="/login" className="text-[#1B5E20] font-bold">Ingia</a>
           </p>
         </form>
       </div>

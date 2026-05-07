@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ShieldAlert, Phone } from "lucide-react";
+import { ShieldAlert, Phone, AlertTriangle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,21 +17,30 @@ import { api } from "@/lib/api";
 import { formatRelative } from "@/lib/utils";
 import type { EmergencyAlert } from "@shared/types";
 
-const TYPES = ["medical", "fire", "security", "accident", "other"] as const;
+const TYPES = [
+  { value: "medical",  label: "🏥 Matibabu",   color: "bg-[#B71C1C]/10 text-[#B71C1C]" },
+  { value: "fire",     label: "🔥 Moto",        color: "bg-orange-100 text-orange-700" },
+  { value: "security", label: "🔒 Usalama",     color: "bg-amber-100 text-amber-800" },
+  { value: "accident", label: "🚗 Ajali",       color: "bg-purple-100 text-purple-700" },
+  { value: "other",    label: "📋 Nyingine",    color: "bg-[#EDE7D8] text-[#6B5D45]" },
+] as const;
 
-const typeColor: Record<string, string> = {
-  medical: "bg-red-100 text-red-700",
-  fire: "bg-orange-100 text-orange-700",
-  security: "bg-yellow-100 text-yellow-700",
-  accident: "bg-purple-100 text-purple-700",
-  other: "bg-gray-100 text-gray-700",
+const typeColorMap: Record<string, string> = Object.fromEntries(TYPES.map((t) => [t.value, t.color]));
+
+const STATUS_VARIANT: Record<string, "destructive" | "warning" | "success" | "default"> = {
+  active: "destructive", responding: "warning", resolved: "success",
 };
 
-const statusVariant: Record<string, "destructive" | "warning" | "success" | "default"> = {
-  active: "destructive",
-  responding: "warning",
-  resolved: "success",
+const STATUS_LABEL: Record<string, string> = {
+  active: "Hai", responding: "Inashughulikiwa", resolved: "Imesuluhishwa",
 };
+
+const CONTACTS = [
+  { label: "Ulinzi wa Nyumba",  number: "0722 000 000", icon: "🛡️" },
+  { label: "Polisi (Kenya)",    number: "999",           icon: "👮" },
+  { label: "Ambulance (KNH)",   number: "0722 040 545", icon: "🚑" },
+  { label: "Zimamoto",          number: "020 222 2181", icon: "🚒" },
+];
 
 function RaiseAlertDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
@@ -51,45 +60,69 @@ function RaiseAlertDialog({ onClose }: { onClose: () => void }) {
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="text-red-600">🚨 Raise Emergency Alert</DialogTitle>
+          <div className="flex items-center gap-3 mt-2">
+            <div className="w-10 h-10 rounded-xl bg-[#B71C1C] flex items-center justify-center">
+              <ShieldAlert className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <DialogTitle className="text-[#B71C1C]">Tuma Taarifa ya Dharura</DialogTitle>
+              <p className="text-xs text-[#6B5D45] mt-0.5">Ulinzi na wasimamizi wataarifiwa mara moja</p>
+            </div>
+          </div>
         </DialogHeader>
+
         {done ? (
-          <div className="px-6 pb-6 text-center">
-            <div className="text-4xl mb-3">✅</div>
-            <p className="font-semibold text-gray-900">Alert sent to security and admin</p>
-            <p className="text-sm text-gray-500 mt-1">Help is on the way. Stay calm.</p>
-            <p className="text-sm font-medium text-gray-700 mt-4">
-              Security: <a href="tel:+254722000000" className="text-[#1A5C38] underline">Call now</a>
-            </p>
+          <div className="px-6 pb-6 text-center space-y-3">
+            <div className="w-16 h-16 rounded-full bg-[#1B5E20]/10 flex items-center justify-center mx-auto">
+              <CheckCircle className="h-8 w-8 text-[#1B5E20]" />
+            </div>
+            <p className="font-bold text-[#212121] text-lg">Taarifa Imetumwa!</p>
+            <p className="text-sm text-[#6B5D45]">Ulinzi na wasimamizi wamearifiwa. Subiri msaada.</p>
+            <div className="tribal-card p-3">
+              <p className="text-xs text-[#6B5D45] mb-1">Piga simu ulinzi moja kwa moja:</p>
+              <a
+                href="tel:+254722000000"
+                className="flex items-center justify-center gap-2 text-[#1B5E20] font-bold"
+              >
+                <Phone className="h-4 w-4" /> 0722 000 000
+              </a>
+            </div>
+            <Button className="w-full" onClick={onClose}>Funga</Button>
           </div>
         ) : (
           <>
             <div className="px-6 pb-2 space-y-4">
               <div>
-                <Label>Emergency type</Label>
+                <Label className="text-[#212121] font-semibold">Aina ya Dharura</Label>
                 <Select value={type} onValueChange={setType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {TYPES.map((t) => (
-                      <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Description (optional)</Label>
+                <Label className="text-[#212121] font-semibold">Maelezo (si lazima)</Label>
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Brief description of situation..."
+                  placeholder="Eleza hali ya dharura kwa ufupi..."
                   rows={3}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="secondary" onClick={onClose}>Cancel</Button>
-              <Button variant="destructive" onClick={() => mutation.mutate()} loading={mutation.isPending}>
-                Send Alert
+              <Button variant="secondary" onClick={onClose}>Ghairi</Button>
+              <Button
+                className="bg-[#B71C1C] hover:bg-[#8B0000] text-white gap-1.5"
+                onClick={() => mutation.mutate()}
+                loading={mutation.isPending}
+              >
+                <ShieldAlert className="h-4 w-4" /> Tuma Taarifa
               </Button>
             </DialogFooter>
           </>
@@ -121,72 +154,78 @@ export default function EmergencyPage() {
   });
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <TopBar title="Emergency" />
-      <main className="max-w-lg mx-auto px-4 pt-4 space-y-5">
+    <div className="page-wrap">
+      <TopBar title="Dharura" />
+      <main className="max-w-lg mx-auto px-4 pt-4 space-y-5 page-content">
 
-        {/* SOS Button */}
+        {/* SOS button */}
         <button
           onClick={() => setAlertOpen(true)}
-          className="w-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xl rounded-2xl py-6 flex flex-col items-center justify-center gap-2 shadow-lg transition-colors min-h-[120px]"
+          className="sos-pulse w-full bg-[#B71C1C] hover:bg-[#8B0000] active:bg-[#5B0000] text-white font-bold text-xl rounded-2xl py-7 flex flex-col items-center justify-center gap-2.5 shadow-xl transition-colors min-h-[130px]"
         >
-          <ShieldAlert className="h-8 w-8" />
-          <span>SOS — Raise Alert</span>
-          <span className="text-sm font-normal opacity-80">Tap to notify security instantly</span>
+          <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center">
+            <ShieldAlert className="h-8 w-8" />
+          </div>
+          <span className="text-2xl font-black tracking-wide">SOS — Tuma Taarifa</span>
+          <span className="text-sm font-normal opacity-80">Gonga ili kuarifu ulinzi mara moja</span>
         </button>
 
         {/* Emergency contacts */}
-        <Card>
-          <CardContent className="py-4 space-y-3">
-            <p className="font-semibold text-sm text-gray-700">Emergency Contacts</p>
-            <div className="space-y-2">
-              {[
-                { label: "Estate Security", number: "0722 000 000" },
-                { label: "Police (Kenya)", number: "999" },
-                { label: "Ambulance (KNH)", number: "0722 040 545" },
-                { label: "Fire Brigade", number: "020 222 2181" },
-              ].map((c) => (
-                <div key={c.label} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700">{c.label}</span>
-                  <a
-                    href={`tel:${c.number.replace(/\s/g, "")}`}
-                    className="flex items-center gap-1.5 text-sm font-medium text-[#1A5C38]"
-                  >
-                    <Phone className="h-3.5 w-3.5" />
-                    {c.number}
-                  </a>
+        <div className="tribal-card p-4">
+          <p className="section-label mb-3">Nambari za Dharura</p>
+          <div className="space-y-2">
+            {CONTACTS.map((c) => (
+              <div key={c.label} className="flex items-center justify-between py-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{c.icon}</span>
+                  <span className="text-sm font-medium text-[#212121]">{c.label}</span>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <a
+                  href={`tel:${c.number.replace(/\s/g, "")}`}
+                  className="flex items-center gap-1.5 text-sm font-bold text-[#1B5E20] bg-[#1B5E20]/8 rounded-xl px-3 py-1.5"
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  {c.number}
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Admin/Security: active alerts */}
         {canViewAll && (
           <section>
-            <h2 className="font-semibold text-gray-700 text-sm uppercase tracking-wide mb-3">Active Alerts</h2>
+            <p className="section-label mb-3">Taarifa za Dharura</p>
             {isLoading ? (
               <SectionLoader />
             ) : !alerts?.length ? (
-              <p className="text-sm text-gray-400 text-center py-6">No active alerts.</p>
+              <div className="tribal-card p-8 text-center">
+                <AlertTriangle className="h-8 w-8 text-[#D4C9A8] mx-auto mb-2" />
+                <p className="text-[#6B5D45] text-sm">Hakuna taarifa za dharura sasa hivi.</p>
+              </div>
             ) : (
               <div className="space-y-2">
                 {alerts.map((a) => (
-                  <Card key={a.id} className={a.status === "active" ? "border-red-200 bg-red-50/40" : ""}>
+                  <Card
+                    key={a.id}
+                    className={a.status === "active" ? "border-[#B71C1C]/30 bg-[#B71C1C]/4" : ""}
+                  >
                     <CardContent className="py-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-xs font-medium rounded-full px-2 py-0.5 capitalize ${typeColor[a.type] ?? ""}`}>
-                              {a.type}
+                            <span className={`text-xs font-semibold rounded-full px-2.5 py-0.5 ${typeColorMap[a.type] ?? "bg-[#EDE7D8] text-[#6B5D45]"}`}>
+                              {TYPES.find((t) => t.value === a.type)?.label ?? a.type}
                             </span>
-                            <Badge variant={statusVariant[a.status] ?? "default"}>{a.status}</Badge>
+                            <Badge variant={STATUS_VARIANT[a.status] ?? "default"}>
+                              {STATUS_LABEL[a.status] ?? a.status}
+                            </Badge>
                           </div>
                           {a.description && (
-                            <p className="text-sm text-gray-700">{a.description}</p>
+                            <p className="text-sm text-[#212121]">{a.description}</p>
                           )}
-                          <p className="text-xs text-gray-400 mt-1">
-                            {(a as { userName?: string }).userName ?? "Unknown"} · {formatRelative(a.createdAt)}
+                          <p className="text-xs text-[#6B5D45] mt-1">
+                            {(a as { userName?: string }).userName ?? "Mkazi"} · {formatRelative(a.createdAt)}
                           </p>
                         </div>
                         {a.status !== "resolved" && (
@@ -195,8 +234,9 @@ export default function EmergencyPage() {
                             variant="secondary"
                             onClick={() => resolve.mutate(a.id)}
                             loading={resolve.isPending}
+                            className="text-xs shrink-0"
                           >
-                            Resolve
+                            Imesuluhishwa
                           </Button>
                         )}
                       </div>
