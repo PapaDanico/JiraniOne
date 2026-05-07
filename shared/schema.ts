@@ -639,6 +639,11 @@ export const pollOptions = pgTable(
   }),
 );
 
+// votes.userId is nullable: NULL means the vote was cast on an anonymous poll
+// and the voter's identity is intentionally not recorded here. Eligibility
+// (who-voted, for double-vote prevention) lives in vote_eligibility instead,
+// so an admin running SELECT * FROM votes cannot deanonymize an anonymous
+// poll.
 export const votes = pgTable(
   "votes",
   {
@@ -649,14 +654,33 @@ export const votes = pgTable(
     optionId: text("option_id")
       .notNull()
       .references(() => pollOptions.id),
+    userId: text("user_id").references(() => users.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    pollIdIdx: index("votes_poll_id_idx").on(t.pollId),
+    userIdIdx: index("votes_user_id_idx").on(t.userId),
+  }),
+);
+
+// Tracks WHO voted (for double-vote prevention) without revealing WHAT they
+// voted for. Always populated, even for anonymous polls.
+export const voteEligibility = pgTable(
+  "vote_eligibility",
+  {
+    id: text("id").primaryKey(),
+    pollId: text("poll_id")
+      .notNull()
+      .references(() => polls.id, { onDelete: "cascade" }),
     userId: text("user_id")
       .notNull()
       .references(() => users.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
-    pollIdIdx: index("votes_poll_id_idx").on(t.pollId),
-    userIdIdx: index("votes_user_id_idx").on(t.userId),
+    pollIdIdx: index("vote_eligibility_poll_id_idx").on(t.pollId),
+    userIdIdx: index("vote_eligibility_user_id_idx").on(t.userId),
+    pollUserUq: index("vote_eligibility_poll_user_uq").on(t.pollId, t.userId),
   }),
 );
 

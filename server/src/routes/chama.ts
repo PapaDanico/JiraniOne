@@ -2,6 +2,10 @@ import { Router } from "express";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { chamas, chamaMembers, chamaContributions, users } from "@shared/schema.js";
+import {
+  createChamaSchema,
+  chamaContributeSchema,
+} from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { newId } from "../lib/ids.js";
 
@@ -59,21 +63,12 @@ chamaRouter.post("/", async (req, res) => {
     return;
   }
 
-  const { name, description, contributionAmount, frequency } = req.body as {
-    name: string;
-    description?: string;
-    contributionAmount: number;
-    frequency?: "weekly" | "monthly";
-  };
-
-  if (!name?.trim()) {
-    res.status(400).json({ error: "name is required" });
+  const parsed = createChamaSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
-  if (!contributionAmount || Number(contributionAmount) < 1) {
-    res.status(400).json({ error: "contributionAmount is required and must be positive" });
-    return;
-  }
+  const { name, description, contributionAmount, frequency } = parsed.data;
 
   const chamaId = newId();
 
@@ -86,7 +81,7 @@ chamaRouter.post("/", async (req, res) => {
       name: name.trim(),
       description: description?.trim() ?? null,
       contributionAmount: String(contributionAmount),
-      frequency: frequency ?? "monthly",
+      frequency,
       status: "active",
     })
     .returning();
@@ -168,19 +163,12 @@ chamaRouter.post("/:id/contribute", async (req, res) => {
     return;
   }
 
-  const { amount, periodLabel } = req.body as {
-    amount: number;
-    periodLabel: string;
-  };
-
-  if (!amount || Number(amount) < 1) {
-    res.status(400).json({ error: "amount is required and must be positive" });
+  const parsed = chamaContributeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
-  if (!periodLabel?.trim()) {
-    res.status(400).json({ error: "periodLabel is required (e.g. '2025-05')" });
-    return;
-  }
+  const { amount, periodLabel } = parsed.data;
 
   const [chama] = await db
     .select()

@@ -1,7 +1,12 @@
 import { Router } from "express";
-import { eq, desc, and } from "drizzle-orm";
-import { db } from "../db.js";
+import { eq, desc, and, sql } from "drizzle-orm";
+import { db, dbTx } from "../db.js";
 import { fundraisingCampaigns, donations, users } from "@shared/schema.js";
+import {
+  createHarambeeSchema,
+  updateHarambeeSchema,
+  donateSchema,
+} from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
@@ -78,21 +83,12 @@ harambeeRouter.post("/", requireRole("admin"), async (req, res) => {
     return;
   }
 
-  const { title, description, goalAmount, deadline } = req.body as {
-    title: string;
-    description?: string;
-    goalAmount: number;
-    deadline?: string;
-  };
-
-  if (!title?.trim()) {
-    res.status(400).json({ error: "title is required" });
+  const parsed = createHarambeeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
-  if (!goalAmount || Number(goalAmount) < 1) {
-    res.status(400).json({ error: "goalAmount is required and must be positive" });
-    return;
-  }
+  const { title, description, goalAmount, deadline } = parsed.data;
 
   const [campaign] = await db
     .insert(fundraisingCampaigns)
@@ -119,13 +115,12 @@ harambeeRouter.patch("/:id", requireRole("admin"), async (req, res) => {
     return;
   }
 
-  const { status, title, description, goalAmount, deadline } = req.body as {
-    status?: "active" | "completed" | "cancelled";
-    title?: string;
-    description?: string;
-    goalAmount?: number;
-    deadline?: string;
-  };
+  const parsed = updateHarambeeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { status, title, description, goalAmount, deadline } = parsed.data;
 
   const [campaign] = await db
     .select()
@@ -147,7 +142,7 @@ harambeeRouter.patch("/:id", requireRole("admin"), async (req, res) => {
     updatedAt: new Date(),
   };
   if (status) updates.status = status;
-  if (title?.trim()) updates.title = title.trim();
+  if (title !== undefined && title.trim()) updates.title = title.trim();
   if (description !== undefined) updates.description = description?.trim() ?? null;
   if (goalAmount !== undefined) updates.goalAmount = String(goalAmount);
   if (deadline !== undefined) updates.deadline = deadline ? new Date(deadline) : null;
@@ -161,7 +156,11 @@ harambeeRouter.patch("/:id", requireRole("admin"), async (req, res) => {
   res.json({ data: updated });
 });
 
-// POST /:id/donate — any user donates
+// POST /:id/donate — atomic insert + increment in a transaction.
+// NOTE: still stub-credits the balance pending real M-PESA STK Push wiring
+// (tracked in the readiness audit as a P1 follow-up — full integration
+// will route through paymentsRouter.post('/stk-push') first and credit
+// the balance only in the M-PESA callback after ResultCode === 0).
 harambeeRouter.post("/:id/donate", async (req, res) => {
   const user = res.locals.user!;
   if (!user.estateId) {
@@ -169,15 +168,12 @@ harambeeRouter.post("/:id/donate", async (req, res) => {
     return;
   }
 
-  const { amount, anonymous } = req.body as {
-    amount: number;
-    anonymous?: boolean;
-  };
-
-  if (!amount || Number(amount) < 1) {
-    res.status(400).json({ error: "amount is required and must be positive" });
+  const parsed = donateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
+  const { amount, anonymous } = parsed.data;
 
   const [campaign] = await db
     .select()
@@ -199,26 +195,30 @@ harambeeRouter.post("/:id/donate", async (req, res) => {
     return;
   }
 
-  const [donation] = await db
-    .insert(donations)
-    .values({
-      id: newId(),
-      campaignId: campaign.id,
-      donorId: user.id,
-      amount: String(amount),
-      anonymous: anonymous ?? false,
-      mpesaRef: "STUB", // dev stub
-    })
-    .returning();
+  const donation = await dbTx.transaction(async (tx) => {
+    const [d] = await tx
+      .insert(donations)
+      .values({
+        id: newId(),
+        campaignId: campaign.id,
+        donorId: user.id,
+        amount: String(amount),
+        anonymous,
+        mpesaRef: "STUB",
+      })
+      .returning();
 
-  // Update currentAmount on campaign
-  await db
-    .update(fundraisingCampaigns)
-    .set({
-      currentAmount: String(Number(campaign.currentAmount) + Number(amount)),
-      updatedAt: new Date(),
-    })
-    .where(eq(fundraisingCampaigns.id, campaign.id));
+    // SQL-side increment — no read-modify-write race.
+    await tx
+      .update(fundraisingCampaigns)
+      .set({
+        currentAmount: sql`${fundraisingCampaigns.currentAmount} + ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(fundraisingCampaigns.id, campaign.id));
+
+    return d;
+  });
 
   res.status(201).json({ data: donation });
 });

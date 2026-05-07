@@ -163,6 +163,81 @@ export const donateSchema = z.object({
   anonymous: z.boolean().default(false),
 });
 
+export const createHarambeeSchema = z.object({
+  title: z.string().min(3).max(200),
+  description: z.string().max(2000).optional(),
+  goalAmount: z.number().int().min(1).max(100_000_000),
+  deadline: z.string().datetime().optional(),
+});
+
+export const updateHarambeeSchema = z.object({
+  status: z.enum(["active", "completed", "cancelled"]).optional(),
+  title: z.string().min(3).max(200).optional(),
+  description: z.string().max(2000).nullable().optional(),
+  goalAmount: z.number().int().min(1).max(100_000_000).optional(),
+  deadline: z.string().datetime().nullable().optional(),
+});
+
+export const createChamaSchema = z.object({
+  name: z.string().min(2).max(150),
+  description: z.string().max(2000).optional(),
+  contributionAmount: z.number().int().min(1).max(10_000_000),
+  frequency: z.enum(["weekly", "monthly"]).default("monthly"),
+});
+
+export const chamaContributeSchema = z.object({
+  amount: z.number().int().min(1).max(500000),
+  periodLabel: z.string().min(1).max(20),
+});
+
+export const castVoteSchema = z.object({
+  optionId: z.string().min(1).max(64),
+});
+
+export const createServiceProviderSchema = z.object({
+  name: z.string().min(2).max(100),
+  category: z.string().min(2).max(50),
+  phone: kenyanPhone,
+  description: z.string().max(500).optional(),
+});
+
+export const createParcelSchema = z.object({
+  residentId: z.string().min(1),
+  description: z.string().min(1).max(200),
+  trackingRef: z.string().max(100).optional(),
+  sender: z.string().max(100).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+export const createClassifiedSchema = z.object({
+  title: z.string().min(3).max(200),
+  description: z.string().min(10).max(5000),
+  price: z.number().min(0).max(10_000_000).optional(),
+  category: z.enum(["sell", "buy", "give", "service"]).default("sell"),
+  contactPhone: kenyanPhone.optional(),
+  imageUrl: z.string().url().max(500).optional(),
+});
+
+export const createCarpoolOfferSchema = z.object({
+  origin: z.string().min(2).max(200),
+  destination: z.string().min(2).max(200),
+  departureTime: z.string().datetime(),
+  seatsTotal: z.number().int().min(1).max(20),
+  fare: z.number().int().min(0).max(100_000).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+export const eventRsvpSchema = z.object({
+  attending: z.boolean(),
+});
+
+export const createFacilitySchema = z.object({
+  name: z.string().min(2).max(100),
+  description: z.string().max(500).optional(),
+  requiresApproval: z.boolean().default(false),
+  maxBookingHours: z.number().int().min(1).max(24).default(4),
+});
+
 export const createPollSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().optional(),
@@ -176,13 +251,6 @@ export const createBookingSchema = z.object({
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
   notes: z.string().max(500).optional(),
-});
-
-export const createFacilitySchema = z.object({
-  name: z.string().min(2).max(100),
-  description: z.string().optional(),
-  requiresApproval: z.boolean().default(false),
-  maxBookingHours: z.number().int().min(1).max(24).default(4),
 });
 
 export const createServiceSchema = z.object({
