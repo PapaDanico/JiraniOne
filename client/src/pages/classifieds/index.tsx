@@ -262,7 +262,7 @@ export default function ClassifiedsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["classifieds"],
     queryFn: () =>
-      api.get<{ data: Classified[] }>("/api/classifieds").then((r) => r.data.data),
+      api.get<Classified[]>("/api/classifieds").then((r) => r.data),
   });
 
   const filtered = activeFilter === "all"

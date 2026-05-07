@@ -195,7 +195,7 @@ function ResidentParcels() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["parcels", "my"],
-    queryFn: () => api.get<{ data: Parcel[] }>("/api/parcels/my").then((r) => r.data.data),
+    queryFn: () => api.get<Parcel[]>("/api/parcels/my").then((r) => r.data),
   });
 
   const { mutate: markCollected } = useMutation({
@@ -270,7 +270,7 @@ function EstateParcels() {
   const { data, isLoading } = useQuery({
     queryKey: ["parcels", "estate"],
     queryFn: () =>
-      api.get<{ data: Parcel[] }>("/api/parcels/estate").then((r) => r.data.data),
+      api.get<Parcel[]>("/api/parcels/estate").then((r) => r.data),
   });
 
   const { mutate: markCollected } = useMutation({

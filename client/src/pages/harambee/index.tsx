@@ -47,7 +47,7 @@ export default function HarambeePage() {
 
   const { data: campaigns, isLoading } = useQuery<FundraisingCampaign[]>({
     queryKey: ["harambee"],
-    queryFn: () => api.get<{ data: FundraisingCampaign[] }>("/api/harambee").then((r) => r.data.data),
+    queryFn: () => api.get<FundraisingCampaign[]>("/api/harambee").then((r) => r.data),
   });
 
   const createMut = useMutation({
