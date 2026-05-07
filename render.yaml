@@ -4,7 +4,7 @@ services:
     runtime: node
     region: fra  # Frankfurt — closest to Kenya
     plan: starter
-    buildCommand: npm ci && npm run build
+    buildCommand: npm install --omit=dev
     startCommand: node dist/server/index.js
     healthCheckPath: /api/health
     envVars:
