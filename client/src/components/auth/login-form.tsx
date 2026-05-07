@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff, Lock, Phone, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { loginSchema, type LoginInput } from "@shared/validators";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 export function LoginForm() {
   const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -30,39 +32,109 @@ export function LoginForm() {
     }
   };
 
+  const inputBase =
+    "w-full rounded-xl border bg-white pl-12 pr-3 py-3 text-sm text-[#212121] " +
+    "placeholder:text-[#B0A080] min-h-[48px] transition-shadow " +
+    "focus:outline-none focus:ring-2 focus:ring-[#1B5E20]/30 focus:border-[#1B5E20]";
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div>
-        <Label htmlFor="phone">Phone Number</Label>
-        <Input
-          id="phone"
-          type="tel"
-          placeholder="0722 123 456"
-          inputMode="tel"
-          {...register("phone")}
-          error={errors.phone?.message}
-        />
+        <Label htmlFor="phone" className="text-[#212121] font-semibold text-sm">
+          Phone number
+        </Label>
+        <div className="relative mt-1.5">
+          <span className="absolute inset-y-0 left-0 flex items-center gap-1.5 pl-3 text-[#6B5D45] pointer-events-none">
+            <Phone className="h-4 w-4" />
+            <span className="text-xs font-semibold tracking-tight">+254</span>
+          </span>
+          <input
+            id="phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="722 123 456"
+            className={cn(
+              inputBase,
+              "pl-[5.25rem]",
+              errors.phone
+                ? "border-[#B71C1C] focus:ring-[#B71C1C]/30 focus:border-[#B71C1C]"
+                : "border-[#D4C9A8]",
+            )}
+            {...register("phone")}
+          />
+        </div>
+        {errors.phone?.message && (
+          <p className="mt-1.5 text-xs text-[#B71C1C] flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {errors.phone.message}
+          </p>
+        )}
       </div>
 
       <div>
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          placeholder="Enter your password"
-          {...register("password")}
-          error={errors.password?.message}
-        />
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password" className="text-[#212121] font-semibold text-sm">
+            Password
+          </Label>
+          <a
+            href="/forgot-password"
+            className="text-xs font-semibold text-[#1B5E20] hover:underline"
+          >
+            Forgot?
+          </a>
+        </div>
+        <div className="relative mt-1.5">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-[#6B5D45] pointer-events-none">
+            <Lock className="h-4 w-4" />
+          </span>
+          <input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            placeholder="Enter your password"
+            className={cn(
+              inputBase,
+              "pr-12",
+              errors.password
+                ? "border-[#B71C1C] focus:ring-[#B71C1C]/30 focus:border-[#B71C1C]"
+                : "border-[#D4C9A8]",
+            )}
+            {...register("password")}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#6B5D45] hover:text-[#1B5E20] transition-colors"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        {errors.password?.message && (
+          <p className="mt-1.5 text-xs text-[#B71C1C] flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {errors.password.message}
+          </p>
+        )}
       </div>
 
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-700">
-          {error}
+        <div
+          role="alert"
+          className="rounded-xl bg-[#B71C1C]/10 border border-[#B71C1C]/30 px-3 py-2.5 text-sm text-[#8B0000] flex items-start gap-2"
+        >
+          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
-      <Button type="submit" className="w-full" loading={isSubmitting}>
-        Sign In
+      <Button
+        type="submit"
+        className="w-full text-base py-3 min-h-[48px] shadow-md shadow-[#1B5E20]/20"
+        loading={isSubmitting}
+      >
+        {isSubmitting ? "Signing in…" : "Sign In"}
       </Button>
     </form>
   );
