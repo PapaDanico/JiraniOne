@@ -43,7 +43,7 @@ export function GateLog() {
         <div className="bg-[#1B5E20]/8 border border-[#1B5E20]/20 rounded-2xl px-4 py-3 flex items-center gap-2">
           <CheckCircle className="h-4 w-4 text-[#1B5E20]" />
           <span className="text-sm font-semibold text-[#1B5E20]">
-            {insideCount} mgeni {insideCount === 1 ? "yuko" : "wako"} ndani sasa hivi
+            {insideCount} visitor{insideCount === 1 ? "" : "s"} currently inside
           </span>
         </div>
       )}
@@ -52,7 +52,7 @@ export function GateLog() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B5D45]" />
         <Input
-          placeholder="Tafuta jina au simu..."
+          placeholder="Search by name or phone..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -63,7 +63,7 @@ export function GateLog() {
         <SectionLoader />
       ) : filtered?.length === 0 ? (
         <div className="tribal-card p-10 text-center">
-          <p className="text-[#6B5D45] text-sm">Hakuna wageni wanaopatikana.</p>
+          <p className="text-[#6B5D45] text-sm">No visitors found.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -92,24 +92,24 @@ export function GateLog() {
                             : "warning"
                         }
                       >
-                        {v.status === "checked_in" ? "Ndani" : v.status === "checked_out" ? "Ametoka" : "Anasubiriwa"}
+                        {v.status === "checked_in" ? "Inside" : v.status === "checked_out" ? "Left" : "Expected"}
                       </Badge>
                     </div>
                     <p className="text-xs text-[#6B5D45]">{v.phone}</p>
                     {v.purpose && <p className="text-xs text-[#6B5D45] italic mt-0.5">"{v.purpose}"</p>}
                     {v.checkedInAt && (
                       <p className="text-xs text-[#1B5E20] mt-0.5 flex items-center gap-1">
-                        <LogIn className="h-3 w-3" /> Aliingia: {formatDateTime(v.checkedInAt)}
+                        <LogIn className="h-3 w-3" /> Checked in: {formatDateTime(v.checkedInAt)}
                       </p>
                     )}
                     {v.checkedOutAt && (
                       <p className="text-xs text-[#6B5D45] flex items-center gap-1">
-                        <LogOut className="h-3 w-3" /> Alitoka: {formatDateTime(v.checkedOutAt)}
+                        <LogOut className="h-3 w-3" /> Checked out: {formatDateTime(v.checkedOutAt)}
                       </p>
                     )}
                     {!v.checkedInAt && v.expectedAt && (
                       <p className="text-xs text-amber-700 flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> Anatarajiwa: {formatDateTime(v.expectedAt)}
+                        <Clock className="h-3 w-3" /> Expected: {formatDateTime(v.expectedAt)}
                       </p>
                     )}
                     <p className="text-xs text-[#D4C9A8] mt-1">{formatRelative(v.createdAt)}</p>
@@ -122,7 +122,7 @@ export function GateLog() {
                         loading={checkInMutation.isPending}
                         className="text-xs min-h-[36px] gap-1"
                       >
-                        <LogIn className="h-3 w-3" /> Ingia
+                        <LogIn className="h-3 w-3" /> Check In
                       </Button>
                     )}
                     {v.status === "checked_in" && (
@@ -133,7 +133,7 @@ export function GateLog() {
                         loading={checkOutMutation.isPending}
                         className="text-xs min-h-[36px] gap-1"
                       >
-                        <LogOut className="h-3 w-3" /> Toka
+                        <LogOut className="h-3 w-3" /> Check Out
                       </Button>
                     )}
                   </div>

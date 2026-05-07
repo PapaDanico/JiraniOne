@@ -11,18 +11,18 @@ import { formatRelative } from "@/lib/utils";
 import type { MaintenanceTicket, TicketStatus, TicketPriority } from "@shared/types";
 
 const STATUS_MAP: Record<TicketStatus, { label: string; variant: string; icon: React.ReactNode; bar: string }> = {
-  open:        { label: "Wazi",      variant: "warning",   icon: <AlertCircle className="h-3 w-3" />, bar: "bg-amber-500" },
-  assigned:    { label: "Amepewa",   variant: "info",      icon: <Clock className="h-3 w-3" />,       bar: "bg-blue-500" },
-  in_progress: { label: "Inafanywa", variant: "default",   icon: <Clock className="h-3 w-3" />,       bar: "bg-[#1B5E20]" },
-  resolved:    { label: "Imefanywa", variant: "success",   icon: <CheckCircle className="h-3 w-3" />, bar: "bg-[#1B5E20]" },
-  closed:      { label: "Imefungwa", variant: "secondary", icon: <CheckCircle className="h-3 w-3" />, bar: "bg-[#D4C9A8]" },
+  open:        { label: "Open",        variant: "warning",   icon: <AlertCircle className="h-3 w-3" />, bar: "bg-amber-500" },
+  assigned:    { label: "Assigned",    variant: "info",      icon: <Clock className="h-3 w-3" />,       bar: "bg-blue-500" },
+  in_progress: { label: "In Progress", variant: "default",   icon: <Clock className="h-3 w-3" />,       bar: "bg-[#1B5E20]" },
+  resolved:    { label: "Resolved",    variant: "success",   icon: <CheckCircle className="h-3 w-3" />, bar: "bg-[#1B5E20]" },
+  closed:      { label: "Closed",      variant: "secondary", icon: <CheckCircle className="h-3 w-3" />, bar: "bg-[#D4C9A8]" },
 };
 
 const PRIORITY_MAP: Record<TicketPriority, { label: string; variant: string; color: string }> = {
-  low:    { label: "Ndogo",   variant: "secondary", color: "text-[#6B5D45]" },
-  medium: { label: "Wastani", variant: "info",      color: "text-amber-700" },
-  high:   { label: "Kubwa",   variant: "warning",   color: "text-[#D47A00]" },
-  urgent: { label: "Haraka",  variant: "urgent",    color: "text-[#B71C1C]" },
+  low:    { label: "Low",    variant: "secondary", color: "text-[#6B5D45]" },
+  medium: { label: "Medium", variant: "info",      color: "text-amber-700" },
+  high:   { label: "High",   variant: "warning",   color: "text-[#D47A00]" },
+  urgent: { label: "Urgent", variant: "urgent",    color: "text-[#B71C1C]" },
 };
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -44,10 +44,10 @@ export function TicketList() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="section-label">Malalamiko Yangu</p>
+          <p className="section-label">My Tickets</p>
         </div>
         <Button size="sm" onClick={() => setFormOpen(true)} className="gap-1.5">
-          <Plus className="h-4 w-4" /> Ripoti Tatizo
+          <Plus className="h-4 w-4" /> Report Issue
         </Button>
       </div>
 
@@ -56,10 +56,10 @@ export function TicketList() {
           <div className="w-14 h-14 rounded-2xl bg-[#D47A00]/10 flex items-center justify-center mx-auto mb-3">
             <Wrench className="h-7 w-7 text-[#D47A00]" />
           </div>
-          <p className="font-semibold text-[#212121] mb-1">Hakuna malalamiko</p>
-          <p className="text-[#6B5D45] text-sm mb-4">Ripoti tatizo lolote la nyumba au mazingira</p>
+          <p className="font-semibold text-[#212121] mb-1">No tickets yet</p>
+          <p className="text-[#6B5D45] text-sm mb-4">Report any issue with the estate or facilities</p>
           <Button variant="secondary" size="sm" onClick={() => setFormOpen(true)}>
-            Ripoti Tatizo
+            Report Issue
           </Button>
         </div>
       ) : (
@@ -86,7 +86,7 @@ export function TicketList() {
                       </div>
                       {t.adminNotes && (
                         <div className="mt-1.5 pl-2 border-l-2 border-[#1B5E20]/40">
-                          <p className="text-xs text-[#1B5E20] font-medium">Maelezo ya Admin:</p>
+                          <p className="text-xs text-[#1B5E20] font-medium">Admin Notes:</p>
                           <p className="text-xs text-[#1B5E20]/80">{t.adminNotes}</p>
                         </div>
                       )}

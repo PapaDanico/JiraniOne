@@ -9,11 +9,26 @@ export function Spinner({ className = "h-6 w-6" }: { className?: string }) {
 
 export function PageLoader() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#F5F1E8] gap-3">
-      <div className="w-12 h-12 rounded-2xl bg-[#1B5E20] flex items-center justify-center">
-        <span className="text-white font-bold text-lg">J</span>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#F5F1E8] gap-4">
+      <img
+        src="/logo.png"
+        alt="JiraniHub"
+        className="w-20 h-20 object-contain drop-shadow-md"
+        onError={(e) => {
+          const t = e.currentTarget;
+          t.style.display = "none";
+          const fallback = t.nextElementSibling as HTMLElement;
+          if (fallback) fallback.style.display = "flex";
+        }}
+      />
+      <div
+        className="w-16 h-16 rounded-2xl bg-[#1B5E20] items-center justify-center hidden"
+        style={{ display: "none" }}
+      >
+        <span className="text-white font-black text-xl">JH</span>
       </div>
       <Spinner className="h-6 w-6" />
+      <p className="text-xs text-[#6B5D45] font-medium tracking-wide">JiraniHub</p>
     </div>
   );
 }

@@ -39,7 +39,7 @@ export function CreateVisitorPass({ open, onClose }: Props) {
       onClose();
     },
     onError: (err: unknown) => {
-      setServerError(err instanceof Error ? err.message : "Imeshindwa kuunda pasi");
+      setServerError(err instanceof Error ? err.message : "Failed to create visitor pass");
     },
   });
 
@@ -57,9 +57,9 @@ export function CreateVisitorPass({ open, onClose }: Props) {
               <UserPlus className="h-5 w-5 text-white" />
             </div>
             <div>
-              <DialogTitle>Karibisha Mgeni</DialogTitle>
+              <DialogTitle>Invite a Visitor</DialogTitle>
               <DialogDescription>
-                QR code itatolewa na kutumwa kwa mgeni wako.
+                A QR code will be generated and sent to your visitor.
               </DialogDescription>
             </div>
           </div>
@@ -67,17 +67,17 @@ export function CreateVisitorPass({ open, onClose }: Props) {
 
         <form onSubmit={handleSubmit(onSubmit)} className="px-6 pb-2 space-y-4">
           <div>
-            <Label htmlFor="vname" className="text-[#212121] font-semibold">Jina la Mgeni</Label>
+            <Label htmlFor="vname" className="text-[#212121] font-semibold">Visitor's Name</Label>
             <Input
               id="vname"
-              placeholder="Mfano: John Kamau"
+              placeholder="e.g. John Kamau"
               {...register("name")}
               error={errors.name?.message}
             />
           </div>
 
           <div>
-            <Label htmlFor="vphone" className="text-[#212121] font-semibold">Nambari ya Simu</Label>
+            <Label htmlFor="vphone" className="text-[#212121] font-semibold">Phone Number</Label>
             <Input
               id="vphone"
               type="tel"
@@ -89,17 +89,17 @@ export function CreateVisitorPass({ open, onClose }: Props) {
           </div>
 
           <div>
-            <Label htmlFor="vpurpose" className="text-[#212121] font-semibold">Sababu ya Kutembelea (si lazima)</Label>
+            <Label htmlFor="vpurpose" className="text-[#212121] font-semibold">Purpose of Visit (optional)</Label>
             <Input
               id="vpurpose"
-              placeholder="Mfano: Ziara ya nyumbani, uwasilishaji"
+              placeholder="e.g. Home visit, delivery"
               {...register("purpose")}
               error={errors.purpose?.message}
             />
           </div>
 
           <div>
-            <Label htmlFor="vexpected" className="text-[#212121] font-semibold">Wakati wa Kutarajiwa (si lazima)</Label>
+            <Label htmlFor="vexpected" className="text-[#212121] font-semibold">Expected Arrival Time (optional)</Label>
             <Input
               id="vexpected"
               type="datetime-local"
@@ -117,13 +117,13 @@ export function CreateVisitorPass({ open, onClose }: Props) {
 
         <DialogFooter>
           <Button variant="secondary" onClick={() => { reset(); setServerError(null); onClose(); }}>
-            Ghairi
+            Cancel
           </Button>
           <Button
             onClick={handleSubmit(onSubmit)}
             loading={isSubmitting || mutation.isPending}
           >
-            Unda Pasi
+            Create Pass
           </Button>
         </DialogFooter>
       </DialogContent>

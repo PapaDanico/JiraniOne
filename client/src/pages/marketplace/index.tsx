@@ -15,17 +15,17 @@ import { displayPhone } from "@/lib/utils";
 import type { ServiceProvider } from "@shared/types";
 
 const CATEGORIES = [
-  { value: "Plumber",        emoji: "🔧", swahili: "Fundi bomba" },
-  { value: "Electrician",    emoji: "⚡", swahili: "Fundi umeme" },
-  { value: "Cleaner",        emoji: "🧹", swahili: "Msafi" },
-  { value: "Painter",        emoji: "🎨", swahili: "Mpakaji" },
-  { value: "Carpenter",      emoji: "🪚", swahili: "Seremala" },
-  { value: "Security Guard", emoji: "🛡️", swahili: "Askari" },
-  { value: "Gardener",       emoji: "🌿", swahili: "Mtunza bustani" },
-  { value: "Handyman",       emoji: "🛠️", swahili: "Fundi wa kila aina" },
-  { value: "Driver",         emoji: "🚗", swahili: "Dereva" },
-  { value: "Tutor",          emoji: "📚", swahili: "Mwalimu" },
-  { value: "Other",          emoji: "📋", swahili: "Nyingine" },
+  { value: "Plumber",        emoji: "🔧", label: "Plumber" },
+  { value: "Electrician",    emoji: "⚡", label: "Electrician" },
+  { value: "Cleaner",        emoji: "🧹", label: "Cleaner" },
+  { value: "Painter",        emoji: "🎨", label: "Painter" },
+  { value: "Carpenter",      emoji: "🪚", label: "Carpenter" },
+  { value: "Security Guard", emoji: "🛡️", label: "Security Guard" },
+  { value: "Gardener",       emoji: "🌿", label: "Gardener" },
+  { value: "Handyman",       emoji: "🛠️", label: "Handyman" },
+  { value: "Driver",         emoji: "🚗", label: "Driver" },
+  { value: "Tutor",          emoji: "📚", label: "Tutor" },
+  { value: "Other",          emoji: "📋", label: "Other" },
 ];
 
 const CAT_MAP = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));
@@ -51,16 +51,16 @@ function AddProviderDialog({ onClose }: { onClose: () => void }) {
             <div className="w-10 h-10 rounded-xl bg-[#D47A00]/10 flex items-center justify-center text-xl">
               🏪
             </div>
-            <DialogTitle>Ongeza Mtoa Huduma</DialogTitle>
+            <DialogTitle>Add Service Provider</DialogTitle>
           </div>
         </DialogHeader>
         <div className="px-6 pb-2 space-y-3">
           <div>
-            <Label className="text-[#212121] font-semibold">Jina</Label>
-            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Jina kamili" />
+            <Label className="text-[#212121] font-semibold">Name</Label>
+            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Full name" />
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Aina ya Huduma</Label>
+            <Label className="text-[#212121] font-semibold">Service Type</Label>
             <div className="flex flex-wrap gap-2 mt-1">
               {CATEGORIES.map((c) => (
                 <button
@@ -73,22 +73,22 @@ function AddProviderDialog({ onClose }: { onClose: () => void }) {
                       : "border-[#D4C9A8] text-[#6B5D45] hover:border-[#1B5E20]/40"
                   }`}
                 >
-                  {c.emoji} {c.swahili}
+                  {c.emoji} {c.label}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Simu</Label>
+            <Label className="text-[#212121] font-semibold">Phone</Label>
             <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="07XXXXXXXX" />
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Maelezo</Label>
+            <Label className="text-[#212121] font-semibold">Description</Label>
             <Textarea
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
               rows={2}
-              placeholder="Uzoefu, viwango, huduma maalum..."
+              placeholder="Experience, rates, specialisations..."
             />
           </div>
           {mutation.isError && (
@@ -96,13 +96,13 @@ function AddProviderDialog({ onClose }: { onClose: () => void }) {
           )}
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Ghairi</Button>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button
             onClick={() => mutation.mutate()}
             loading={mutation.isPending}
             disabled={!form.name || !form.category || !form.phone}
           >
-            Ongeza
+            Add
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -140,7 +140,7 @@ export default function MarketplacePage() {
 
   return (
     <div className="page-wrap">
-      <TopBar title="Soko" />
+      <TopBar title="Marketplace" />
       <main className="max-w-lg mx-auto px-4 pt-4 space-y-4 page-content">
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -148,7 +148,7 @@ export default function MarketplacePage() {
             <Input
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              placeholder="Tafuta jina au aina..."
+              placeholder="Search by name or type..."
               className="pl-9"
             />
           </div>
@@ -167,10 +167,10 @@ export default function MarketplacePage() {
               <Store className="h-7 w-7 text-[#D47A00]" />
             </div>
             <p className="font-semibold text-[#212121] mb-1">
-              {filter ? "Hakuna matokeo" : "Hakuna watoa huduma"}
+              {filter ? "No results found" : "No service providers yet"}
             </p>
             <p className="text-[#6B5D45] text-sm">
-              {filter ? "Jaribu neno tofauti" : "Watoa huduma wataonekana hapa"}
+              {filter ? "Try a different search term" : "Service providers will appear here"}
             </p>
           </div>
         ) : (
@@ -179,7 +179,7 @@ export default function MarketplacePage() {
             return (
               <section key={cat}>
                 <p className="section-label mb-2">
-                  {catCfg ? `${catCfg.emoji} ${catCfg.swahili}` : cat}
+                  {catCfg ? `${catCfg.emoji} ${catCfg.label}` : cat}
                 </p>
                 <div className="space-y-2">
                   {items.map((p) => (
@@ -190,7 +190,7 @@ export default function MarketplacePage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="font-bold text-sm text-[#212121]">{p.name}</p>
                               {p.verified && (
-                                <BadgeCheck className="h-4 w-4 text-[#1B5E20]" aria-label="Amethibitishwa" />
+                                <BadgeCheck className="h-4 w-4 text-[#1B5E20]" aria-label="Verified" />
                               )}
                             </div>
                             {p.description && (
@@ -220,14 +220,14 @@ export default function MarketplacePage() {
                                 className="h-6 text-xs px-2"
                                 onClick={() => verify.mutate(p.id)}
                               >
-                                Thibitisha
+                                Verify
                               </Button>
                             )}
                           </div>
                         </div>
                         {!p.verified && (
                           <div className="mt-2 text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-1.5 border border-amber-200">
-                            ⏳ Inasubiri uthibitisho
+                            ⏳ Pending verification
                           </div>
                         )}
                       </CardContent>

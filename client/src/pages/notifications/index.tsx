@@ -9,11 +9,11 @@ import { cn } from "@/lib/utils";
 import type { Notification } from "@shared/types";
 
 const TYPE_CONFIG: Record<string, { label: string; color: string; emoji: string }> = {
-  ticket_update:   { label: "Tatizo",   color: "bg-[#D47A00]/10 text-[#D47A00]",   emoji: "🔧" },
-  visitor_checkin: { label: "Mgeni",    color: "bg-[#1B5E20]/10 text-[#1B5E20]",   emoji: "🚪" },
-  payment:         { label: "Malipo",   color: "bg-[#D4A017]/10 text-[#9A6E00]",   emoji: "💳" },
-  emergency:       { label: "Dharura",  color: "bg-[#B71C1C]/10 text-[#B71C1C]",   emoji: "🚨" },
-  announcement:    { label: "Tangazo",  color: "bg-[#6B5D45]/10 text-[#6B5D45]",   emoji: "📢" },
+  ticket_update:   { label: "Maintenance", color: "bg-[#D47A00]/10 text-[#D47A00]",   emoji: "🔧" },
+  visitor_checkin: { label: "Visitor",     color: "bg-[#1B5E20]/10 text-[#1B5E20]",   emoji: "🚪" },
+  payment:         { label: "Payment",     color: "bg-[#D4A017]/10 text-[#9A6E00]",   emoji: "💳" },
+  emergency:       { label: "Emergency",   color: "bg-[#B71C1C]/10 text-[#B71C1C]",   emoji: "🚨" },
+  announcement:    { label: "Announcement",color: "bg-[#6B5D45]/10 text-[#6B5D45]",   emoji: "📢" },
 };
 
 export default function NotificationsPage() {
@@ -38,11 +38,11 @@ export default function NotificationsPage() {
 
   return (
     <div className="page-wrap">
-      <TopBar title="Arifa" />
+      <TopBar title="Notifications" />
       <main className="max-w-lg mx-auto px-4 pt-4 page-content">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <p className="section-label">Arifa Zangu</p>
+            <p className="section-label">My Notifications</p>
             {unreadCount > 0 && (
               <span className="text-xs bg-[#B71C1C] text-white rounded-full px-2 py-0.5 font-bold">
                 {unreadCount}
@@ -57,7 +57,7 @@ export default function NotificationsPage() {
               loading={markAllRead.isPending}
               className="text-xs text-[#1B5E20] gap-1"
             >
-              <CheckCheck className="h-3.5 w-3.5" /> Soma zote
+              <CheckCheck className="h-3.5 w-3.5" /> Mark all read
             </Button>
           )}
         </div>
@@ -69,8 +69,8 @@ export default function NotificationsPage() {
             <div className="w-14 h-14 rounded-2xl bg-[#1B5E20]/10 flex items-center justify-center mx-auto mb-3">
               <Bell className="h-7 w-7 text-[#1B5E20]" />
             </div>
-            <p className="font-semibold text-[#212121] mb-1">Hakuna arifa</p>
-            <p className="text-[#6B5D45] text-sm">Umesoma arifa zote — hongera!</p>
+            <p className="font-semibold text-[#212121] mb-1">No notifications</p>
+            <p className="text-[#6B5D45] text-sm">You're all caught up — great!</p>
           </div>
         ) : (
           <div className="space-y-2">

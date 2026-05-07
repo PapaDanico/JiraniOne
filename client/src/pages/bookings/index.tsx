@@ -33,8 +33,8 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "de
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  approved: "Imeidhinishwa", pending: "Inasubiri",
-  rejected: "Imekataliwa", cancelled: "Imesitishwa", completed: "Imekamilika",
+  approved: "Approved", pending: "Pending",
+  rejected: "Rejected", cancelled: "Cancelled", completed: "Completed",
 };
 
 function BookDialog({ facility, onClose }: { facility: Facility; onClose: () => void }) {
@@ -62,28 +62,28 @@ function BookDialog({ facility, onClose }: { facility: Facility; onClose: () => 
               🏠
             </div>
             <div>
-              <DialogTitle>Hifadhi {facility.name}</DialogTitle>
+              <DialogTitle>Book {facility.name}</DialogTitle>
               <p className="text-xs text-[#6B5D45] mt-0.5">{facility.description}</p>
             </div>
           </div>
         </DialogHeader>
         <div className="px-6 pb-2 space-y-3">
           <div className="tribal-card p-3 text-xs text-amber-800">
-            ⏱️ Kiwango cha juu: masaa {facility.maxBookingHours}
-            {facility.requiresApproval ? " · Inahitaji idhini ya msimamizi" : " · Inaidhinishwa moja kwa moja"}
+            ⏱️ Max booking: {facility.maxBookingHours} hours
+            {facility.requiresApproval ? " · Requires admin approval" : " · Auto-approved"}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-[#212121] font-semibold">Mwanzo</Label>
+              <Label className="text-[#212121] font-semibold">Start</Label>
               <Input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
             </div>
             <div>
-              <Label className="text-[#212121] font-semibold">Mwisho</Label>
+              <Label className="text-[#212121] font-semibold">End</Label>
               <Input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
             </div>
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Maelezo (si lazima)</Label>
+            <Label className="text-[#212121] font-semibold">Notes (optional)</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
           {mutation.isError && (
@@ -91,13 +91,13 @@ function BookDialog({ facility, onClose }: { facility: Facility; onClose: () => 
           )}
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Ghairi</Button>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button
             onClick={() => mutation.mutate()}
             loading={mutation.isPending}
             disabled={!startTime || !endTime}
           >
-            Hifadhi
+            Book
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -130,36 +130,36 @@ function AddFacilityDialog({ onClose }: { onClose: () => void }) {
             <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center">
               <BookOpen className="h-5 w-5 text-white" />
             </div>
-            <DialogTitle>Ongeza Eneo</DialogTitle>
+            <DialogTitle>Add Facility</DialogTitle>
           </div>
         </DialogHeader>
         <div className="px-6 pb-2 space-y-3">
           <div>
-            <Label className="text-[#212121] font-semibold">Jina</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="mfano: Clubhouse, Pool" />
+            <Label className="text-[#212121] font-semibold">Name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Clubhouse, Pool" />
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Maelezo</Label>
+            <Label className="text-[#212121] font-semibold">Description</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Idhini inahitajika?</Label>
+            <Label className="text-[#212121] font-semibold">Requires approval?</Label>
             <Select value={requiresApproval} onValueChange={setRequiresApproval}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="false">Inaidhinishwa moja kwa moja</SelectItem>
-                <SelectItem value="true">Inahitaji idhini ya msimamizi</SelectItem>
+                <SelectItem value="false">Auto-approved</SelectItem>
+                <SelectItem value="true">Requires admin approval</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Masaa ya juu kwa hifadhi</Label>
+            <Label className="text-[#212121] font-semibold">Max booking hours</Label>
             <Input type="number" min={1} max={24} value={maxHours} onChange={(e) => setMaxHours(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Ghairi</Button>
-          <Button onClick={() => mutation.mutate()} loading={mutation.isPending} disabled={!name}>Ongeza</Button>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mutation.mutate()} loading={mutation.isPending} disabled={!name}>Add</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -191,29 +191,29 @@ export default function BookingsPage() {
 
   return (
     <div className="page-wrap">
-      <TopBar title="Maeneo" />
+      <TopBar title="Facilities" />
       <main className="max-w-lg mx-auto px-4 pt-4 page-content">
         <Tabs defaultValue="facilities">
           <TabsList className="w-full mb-4">
-            <TabsTrigger value="facilities" className="flex-1">Maeneo</TabsTrigger>
-            <TabsTrigger value="bookings" className="flex-1">Hifadhi Zangu</TabsTrigger>
-            {isAdmin && <TabsTrigger value="all" className="flex-1">Zote</TabsTrigger>}
+            <TabsTrigger value="facilities" className="flex-1">Facilities</TabsTrigger>
+            <TabsTrigger value="bookings" className="flex-1">My Bookings</TabsTrigger>
+            {isAdmin && <TabsTrigger value="all" className="flex-1">All</TabsTrigger>}
           </TabsList>
 
           {/* Facilities */}
           <TabsContent value="facilities">
             <div className="flex justify-between items-center mb-3">
-              <p className="section-label">Maeneo Yanayopatikana</p>
+              <p className="section-label">Available Facilities</p>
               {isAdmin && (
                 <Button size="sm" onClick={() => setAddFacility(true)} className="gap-1.5">
-                  <Plus className="h-4 w-4" /> Ongeza
+                  <Plus className="h-4 w-4" /> Add
                 </Button>
               )}
             </div>
             {loadFac ? <SectionLoader /> : !facilities?.length ? (
               <div className="tribal-card p-12 text-center">
                 <BookOpen className="h-8 w-8 text-[#D4C9A8] mx-auto mb-2" />
-                <p className="text-[#6B5D45] text-sm">Hakuna maeneo bado.</p>
+                <p className="text-[#6B5D45] text-sm">No facilities yet.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -224,10 +224,10 @@ export default function BookingsPage() {
                         <p className="font-bold text-sm text-[#212121]">{f.name}</p>
                         {f.description && <p className="text-xs text-[#6B5D45]">{f.description}</p>}
                         <p className="text-xs text-[#D4C9A8] mt-0.5">
-                          Kiwango: masaa {f.maxBookingHours} · {f.requiresApproval ? "Inahitaji idhini" : "Moja kwa moja"}
+                          Max: {f.maxBookingHours}h · {f.requiresApproval ? "Requires approval" : "Auto-approved"}
                         </p>
                       </div>
-                      <Button size="sm" onClick={() => setBookFacility(f)}>Hifadhi</Button>
+                      <Button size="sm" onClick={() => setBookFacility(f)}>Book</Button>
                     </CardContent>
                   </Card>
                 ))}
@@ -239,7 +239,7 @@ export default function BookingsPage() {
           <TabsContent value="bookings">
             {loadBk ? <SectionLoader /> : !bookings?.length ? (
               <div className="tribal-card p-10 text-center">
-                <p className="text-[#6B5D45] text-sm">Hakuna hifadhi bado.</p>
+                <p className="text-[#6B5D45] text-sm">No bookings yet.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -270,7 +270,7 @@ export default function BookingsPage() {
                               className="text-[#B71C1C] h-6 text-xs px-2"
                               onClick={() => updateBooking.mutate({ id: b.id, status: "cancelled" })}
                             >
-                              Sitisha
+                              Cancel
                             </Button>
                           )}
                         </div>
@@ -287,7 +287,7 @@ export default function BookingsPage() {
             <TabsContent value="all">
               {loadBk ? <SectionLoader /> : !bookings?.length ? (
                 <div className="tribal-card p-10 text-center">
-                  <p className="text-[#6B5D45] text-sm">Hakuna hifadhi.</p>
+                  <p className="text-[#6B5D45] text-sm">No bookings.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -312,7 +312,7 @@ export default function BookingsPage() {
                                   className="h-6 text-xs px-2"
                                   onClick={() => updateBooking.mutate({ id: b.id, status: "approved" })}
                                 >
-                                  Idhinisha
+                                  Approve
                                 </Button>
                                 <Button
                                   size="sm"
@@ -320,7 +320,7 @@ export default function BookingsPage() {
                                   className="h-6 text-xs px-2"
                                   onClick={() => updateBooking.mutate({ id: b.id, status: "rejected" })}
                                 >
-                                  Kataa
+                                  Reject
                                 </Button>
                               </div>
                             )}

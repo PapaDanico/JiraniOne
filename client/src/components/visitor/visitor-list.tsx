@@ -13,16 +13,15 @@ import type { Visitor, VisitorStatus } from "@shared/types";
 
 const statusConfig: Record<VisitorStatus, {
   label: string;
-  labelSw: string;
   variant: "default" | "success" | "secondary" | "warning" | "destructive";
   icon: React.ReactNode;
   barColor: string;
 }> = {
-  pending:     { label: "Pending",   labelSw: "Anasubiriwa",  variant: "warning",     icon: <Clock className="h-3 w-3" />,       barColor: "bg-amber-400" },
-  checked_in:  { label: "Inside",    labelSw: "Ndani",        variant: "default",     icon: <CheckCircle className="h-3 w-3" />, barColor: "bg-[#1B5E20]" },
-  checked_out: { label: "Left",      labelSw: "Ametoka",      variant: "secondary",   icon: <XCircle className="h-3 w-3" />,     barColor: "bg-[#6B5D45]" },
-  expired:     { label: "Expired",   labelSw: "Imeisha",      variant: "secondary",   icon: <Ban className="h-3 w-3" />,         barColor: "bg-[#D4C9A8]" },
-  cancelled:   { label: "Cancelled", labelSw: "Imefutwa",     variant: "destructive", icon: <Ban className="h-3 w-3" />,         barColor: "bg-[#B71C1C]" },
+  pending:     { label: "Expected",  variant: "warning",     icon: <Clock className="h-3 w-3" />,       barColor: "bg-amber-400" },
+  checked_in:  { label: "Inside",    variant: "default",     icon: <CheckCircle className="h-3 w-3" />, barColor: "bg-[#1B5E20]" },
+  checked_out: { label: "Left",      variant: "secondary",   icon: <XCircle className="h-3 w-3" />,     barColor: "bg-[#6B5D45]" },
+  expired:     { label: "Expired",   variant: "secondary",   icon: <Ban className="h-3 w-3" />,         barColor: "bg-[#D4C9A8]" },
+  cancelled:   { label: "Cancelled", variant: "destructive", icon: <Ban className="h-3 w-3" />,         barColor: "bg-[#B71C1C]" },
 };
 
 export function VisitorList() {
@@ -49,11 +48,11 @@ export function VisitorList() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-bold text-[#212121] text-lg">Wageni Wangu</h2>
-          <p className="text-xs text-[#6B5D45]">Pasi za wageni uliowakaribisha</p>
+          <h2 className="font-bold text-[#212121] text-lg">My Visitors</h2>
+          <p className="text-xs text-[#6B5D45]">Passes you've created for visitors</p>
         </div>
         <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
-          <Plus className="h-4 w-4" /> Pasi Mpya
+          <Plus className="h-4 w-4" /> New Pass
         </Button>
       </div>
 
@@ -62,17 +61,17 @@ export function VisitorList() {
           <div className="w-16 h-16 rounded-2xl bg-[#1B5E20]/10 flex items-center justify-center mx-auto mb-4">
             <Users className="h-8 w-8 text-[#1B5E20]/40" />
           </div>
-          <p className="font-semibold text-[#212121] mb-1">Hakuna wageni bado</p>
-          <p className="text-[#6B5D45] text-sm mb-4">Karibisha mgeni wako wa kwanza</p>
+          <p className="font-semibold text-[#212121] mb-1">No visitors yet</p>
+          <p className="text-[#6B5D45] text-sm mb-4">Invite your first visitor to the estate</p>
           <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-            Unda Pasi ya Kwanza
+            Create First Pass
           </Button>
         </div>
       ) : (
         <div className="space-y-5">
           {active.length > 0 && (
             <div>
-              <p className="section-label mb-2">Wanasubiriwa / Ndani ({active.length})</p>
+              <p className="section-label mb-2">Expected / Inside ({active.length})</p>
               <div className="space-y-2">
                 {active.map((v) => <VisitorCard key={v.id} v={v} onShowQr={setQrVisitor} onCancel={(id) => cancelMutation.mutate(id)} cancelling={cancelMutation.isPending} />)}
               </div>
@@ -80,7 +79,7 @@ export function VisitorList() {
           )}
           {past.length > 0 && (
             <div>
-              <p className="section-label mb-2">Historia ({past.length})</p>
+              <p className="section-label mb-2">History ({past.length})</p>
               <div className="space-y-2">
                 {past.map((v) => <VisitorCard key={v.id} v={v} onShowQr={setQrVisitor} onCancel={(id) => cancelMutation.mutate(id)} cancelling={cancelMutation.isPending} />)}
               </div>
@@ -115,7 +114,7 @@ function VisitorCard({
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-bold text-sm text-[#212121]">{v.name}</span>
                 <Badge variant={cfg.variant as never} className="flex items-center gap-1">
-                  {cfg.icon} {cfg.labelSw}
+                  {cfg.icon} {cfg.label}
                 </Badge>
               </div>
               <p className="text-xs text-[#6B5D45]">{v.phone}</p>
@@ -123,13 +122,13 @@ function VisitorCard({
               {v.expectedAt && (
                 <p className="text-xs text-[#6B5D45] mt-0.5 flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  Anatazamiwa: {formatDateTime(v.expectedAt)}
+                  Expected: {formatDateTime(v.expectedAt)}
                 </p>
               )}
               {v.checkedInAt && (
                 <p className="text-xs text-[#1B5E20] mt-0.5 flex items-center gap-1">
                   <CheckCircle className="h-3 w-3" />
-                  Aliingia: {formatRelative(v.checkedInAt)}
+                  Checked in: {formatRelative(v.checkedInAt)}
                 </p>
               )}
               <p className="text-xs text-[#D4C9A8] mt-1">{formatRelative(v.createdAt)}</p>
@@ -152,7 +151,7 @@ function VisitorCard({
                     loading={cancelling}
                     className="text-xs px-2 min-h-[32px]"
                   >
-                    Futa
+                    Cancel
                   </Button>
                 </>
               )}

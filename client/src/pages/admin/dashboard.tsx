@@ -15,16 +15,16 @@ import { SectionLoader } from "@/components/shared/loading";
 interface TicketStats { open: number; overdue: number; inProgress: number }
 
 const modules = [
-  { href: "/visitors",      label: "Wageni",      icon: <Users className="h-5 w-5" />,       bg: "bg-[#1B5E20]/10",  fg: "text-[#1B5E20]" },
-  { href: "/maintenance",   label: "Tiketi",      icon: <Wrench className="h-5 w-5" />,      bg: "bg-[#D47A00]/10",  fg: "text-[#D47A00]" },
-  { href: "/announcements", label: "Matangazo",   icon: <Megaphone className="h-5 w-5" />,   bg: "bg-purple-100",    fg: "text-purple-700" },
-  { href: "/payments",      label: "Malipo",      icon: <CreditCard className="h-5 w-5" />,  bg: "bg-[#D4A017]/15",  fg: "text-[#9A6E00]" },
-  { href: "/emergency",     label: "Dharura",     icon: <ShieldAlert className="h-5 w-5" />, bg: "bg-[#B71C1C]/10",  fg: "text-[#B71C1C]" },
-  { href: "/events",        label: "Matukio",     icon: <CalendarDays className="h-5 w-5" />,bg: "bg-cyan-100",      fg: "text-cyan-700" },
-  { href: "/governance",    label: "Serikali",    icon: <Vote className="h-5 w-5" />,        bg: "bg-indigo-100",    fg: "text-indigo-700" },
-  { href: "/bookings",      label: "Bukuu",       icon: <BookOpen className="h-5 w-5" />,    bg: "bg-pink-100",      fg: "text-pink-700" },
-  { href: "/marketplace",   label: "Soko",        icon: <Store className="h-5 w-5" />,       bg: "bg-amber-100",     fg: "text-amber-700" },
-  { href: "/admin/users",   label: "Wakazi",      icon: <UserCog className="h-5 w-5" />,     bg: "bg-slate-100",     fg: "text-slate-700" },
+  { href: "/visitors",      label: "Visitors",      icon: <Users className="h-5 w-5" />,       bg: "bg-[#1B5E20]/10",  fg: "text-[#1B5E20]" },
+  { href: "/maintenance",   label: "Tickets",       icon: <Wrench className="h-5 w-5" />,      bg: "bg-[#D47A00]/10",  fg: "text-[#D47A00]" },
+  { href: "/announcements", label: "Announcements", icon: <Megaphone className="h-5 w-5" />,   bg: "bg-purple-100",    fg: "text-purple-700" },
+  { href: "/payments",      label: "Payments",      icon: <CreditCard className="h-5 w-5" />,  bg: "bg-[#D4A017]/15",  fg: "text-[#9A6E00]" },
+  { href: "/emergency",     label: "Emergency",     icon: <ShieldAlert className="h-5 w-5" />, bg: "bg-[#B71C1C]/10",  fg: "text-[#B71C1C]" },
+  { href: "/events",        label: "Events",        icon: <CalendarDays className="h-5 w-5" />,bg: "bg-cyan-100",      fg: "text-cyan-700" },
+  { href: "/governance",    label: "Governance",    icon: <Vote className="h-5 w-5" />,        bg: "bg-indigo-100",    fg: "text-indigo-700" },
+  { href: "/bookings",      label: "Bookings",      icon: <BookOpen className="h-5 w-5" />,    bg: "bg-pink-100",      fg: "text-pink-700" },
+  { href: "/marketplace",   label: "Marketplace",   icon: <Store className="h-5 w-5" />,       bg: "bg-amber-100",     fg: "text-amber-700" },
+  { href: "/admin/users",   label: "Residents",     icon: <UserCog className="h-5 w-5" />,     bg: "bg-slate-100",     fg: "text-slate-700" },
 ];
 
 export default function AdminDashboard() {
@@ -45,8 +45,8 @@ export default function AdminDashboard() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <p className="section-label mb-0.5">Bodi ya Usimamizi</p>
-            <h1 className="tribal-heading text-2xl">Jopo la Msimamizi</h1>
+            <p className="section-label mb-0.5">Management Board</p>
+            <h1 className="tribal-heading text-2xl">Admin Dashboard</h1>
             <p className="text-sm text-[#6B5D45] mt-0.5">{user?.name} · {estate?.name ?? "…"}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center shrink-0">
@@ -56,15 +56,15 @@ export default function AdminDashboard() {
 
         {/* Maintenance stats */}
         <div>
-          <p className="section-label mb-3">Tiketi za Matengenezo</p>
+          <p className="section-label mb-3">Maintenance Tickets</p>
           {isLoading ? (
             <SectionLoader />
           ) : (
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Wazi",     value: stats?.open ?? 0,       icon: <AlertCircle className="h-4 w-4" />, color: "text-[#D47A00]",  bg: "bg-[#D47A00]/10" },
-                { label: "Zilizochelewa", value: stats?.overdue ?? 0, icon: <Clock className="h-4 w-4" />,     color: "text-[#B71C1C]",  bg: "bg-[#B71C1C]/10" },
-                { label: "Zinaendelea", value: stats?.inProgress ?? 0,icon: <CheckCircle className="h-4 w-4" />,color: "text-[#1B5E20]", bg: "bg-[#1B5E20]/10" },
+                { label: "Open",        value: stats?.open ?? 0,       icon: <AlertCircle className="h-4 w-4" />, color: "text-[#D47A00]",  bg: "bg-[#D47A00]/10" },
+                { label: "Overdue",     value: stats?.overdue ?? 0,    icon: <Clock className="h-4 w-4" />,      color: "text-[#B71C1C]",  bg: "bg-[#B71C1C]/10" },
+                { label: "In Progress", value: stats?.inProgress ?? 0, icon: <CheckCircle className="h-4 w-4" />,color: "text-[#1B5E20]",  bg: "bg-[#1B5E20]/10" },
               ].map((s) => (
                 <Card key={s.label} className="text-center">
                   <CardContent className="py-4 px-3">
@@ -82,7 +82,7 @@ export default function AdminDashboard() {
 
         {/* Module grid */}
         <div>
-          <p className="section-label mb-3">Moduli Zote</p>
+          <p className="section-label mb-3">All Modules</p>
           <div className="grid grid-cols-3 gap-3">
             {modules.map((m) => (
               <Link

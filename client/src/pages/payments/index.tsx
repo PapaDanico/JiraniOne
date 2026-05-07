@@ -25,7 +25,7 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "de
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  completed: "Imelipwa", pending: "Inasubiri", failed: "Imeshindwa",
+  completed: "Paid", pending: "Pending", failed: "Failed",
 };
 
 function PayDialog({ onClose }: { onClose: () => void }) {
@@ -39,13 +39,13 @@ function PayDialog({ onClose }: { onClose: () => void }) {
       api.post<{ message?: string; stub?: boolean }>("/api/payments/stk-push", {
         amount: Number(amount),
         type: "levy",
-        description: "Ada ya kila mwezi",
+        description: "Monthly levy",
       }),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["payments"] });
       setMsg(
         res.data.message ??
-        (res.data.stub ? "Hali ya majaribio: malipo yamehifadhiwa." : "Angalia simu yako kwa ombi la M-PESA."),
+        (res.data.stub ? "Test mode: payment recorded." : "Check your phone for the M-PESA prompt."),
       );
     },
   });
@@ -59,24 +59,24 @@ function PayDialog({ onClose }: { onClose: () => void }) {
               <CreditCard className="h-5 w-5 text-white" />
             </div>
             <div>
-              <DialogTitle>Lipa Ada ya Kila Mwezi</DialogTitle>
-              <p className="text-xs text-[#6B5D45] mt-0.5">Malipo kupitia M-PESA</p>
+              <DialogTitle>Pay Monthly Levy</DialogTitle>
+              <p className="text-xs text-[#6B5D45] mt-0.5">Payment via M-PESA</p>
             </div>
           </div>
         </DialogHeader>
         <div className="px-6 pb-2 space-y-4">
           <div className="tribal-card p-3">
-            <p className="text-xs text-[#6B5D45]">Simu ya M-PESA</p>
+            <p className="text-xs text-[#6B5D45]">M-PESA Phone</p>
             <p className="font-bold text-[#212121]">{user?.phone}</p>
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Kiasi (KES)</Label>
+            <Label className="text-[#212121] font-semibold">Amount (KES)</Label>
             <Input
               type="number"
               min={1}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="mfano: 5000"
+              placeholder="e.g. 5000"
             />
           </div>
           {msg && (
@@ -86,14 +86,14 @@ function PayDialog({ onClose }: { onClose: () => void }) {
           )}
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Funga</Button>
+          <Button variant="secondary" onClick={onClose}>Close</Button>
           {!msg && (
             <Button
               onClick={() => mutation.mutate()}
               loading={mutation.isPending}
               disabled={!amount || Number(amount) < 1}
             >
-              Lipa KES {amount || "—"}
+              Pay KES {amount || "—"}
             </Button>
           )}
         </DialogFooter>
@@ -120,15 +120,15 @@ export default function PaymentsPage() {
 
   return (
     <div className="page-wrap">
-      <TopBar title="Malipo" />
+      <TopBar title="Payments" />
       <main className="max-w-lg mx-auto px-4 pt-4 space-y-6 page-content">
 
-        {/* Harambee / Fundraising campaigns */}
+        {/* Harambee / Fundraising campaigns — "Harambee" branding kept intentionally */}
         {(campaigns?.length ?? 0) > 0 && (
           <section>
             <div className="flex items-center gap-2 mb-3">
               <Heart className="h-4 w-4 text-[#D4A017]" />
-              <p className="section-label">Harambee za Nyumba</p>
+              <p className="section-label">Harambee Campaigns</p>
             </div>
             <div className="space-y-3">
               {campaigns!.map((c) => {
@@ -148,11 +148,11 @@ export default function PaymentsPage() {
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-sm text-[#212121] truncate">{c.title}</p>
                           {c.deadline && (
-                            <p className="text-xs text-[#6B5D45] mt-0.5">Mwisho: {formatDate(c.deadline)}</p>
+                            <p className="text-xs text-[#6B5D45] mt-0.5">Deadline: {formatDate(c.deadline)}</p>
                           )}
                         </div>
                         <Badge variant={c.status === "active" ? "success" : "default"}>
-                          {c.status === "active" ? "Hai" : c.status}
+                          {c.status === "active" ? "Active" : c.status}
                         </Badge>
                       </div>
                       <div className="flex justify-between items-center text-xs">
@@ -180,8 +180,8 @@ export default function PaymentsPage() {
               <CreditCard className="h-5 w-5" />
             </div>
             <div className="text-left">
-              <p className="font-bold text-base">Lipa Ada ya Kila Mwezi</p>
-              <p className="text-xs text-white/70">Kupitia M-PESA</p>
+              <p className="font-bold text-base">Pay Monthly Levy</p>
+              <p className="text-xs text-white/70">Via M-PESA</p>
             </div>
           </button>
         )}
@@ -190,7 +190,7 @@ export default function PaymentsPage() {
         <section>
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="h-4 w-4 text-[#6B5D45]" />
-            <p className="section-label">{isAdmin ? "Malipo ya Nyumba" : "Historia ya Malipo"}</p>
+            <p className="section-label">{isAdmin ? "Estate Payments" : "Payment History"}</p>
           </div>
           {isLoading ? (
             <SectionLoader />
@@ -199,8 +199,8 @@ export default function PaymentsPage() {
               <div className="w-14 h-14 rounded-2xl bg-[#1B5E20]/10 flex items-center justify-center mx-auto mb-3">
                 <CreditCard className="h-7 w-7 text-[#1B5E20]" />
               </div>
-              <p className="font-semibold text-[#212121] mb-1">Hakuna malipo</p>
-              <p className="text-[#6B5D45] text-sm">Historia ya malipo yako itaonekana hapa</p>
+              <p className="font-semibold text-[#212121] mb-1">No payments yet</p>
+              <p className="text-[#6B5D45] text-sm">Your payment history will appear here</p>
             </div>
           ) : (
             <div className="space-y-2">

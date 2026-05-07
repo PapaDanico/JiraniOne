@@ -39,41 +39,41 @@ function CreateEventDialog({ onClose }: { onClose: () => void }) {
             <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center text-xl">
               🎉
             </div>
-            <DialogTitle>Tengeneza Tukio</DialogTitle>
+            <DialogTitle>Create Event</DialogTitle>
           </div>
         </DialogHeader>
         <div className="px-6 pb-2 space-y-3">
           <div>
-            <Label className="text-[#212121] font-semibold">Jina la Tukio</Label>
-            <Input value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Jina la tukio" />
+            <Label className="text-[#212121] font-semibold">Event Name</Label>
+            <Input value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Event title" />
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Maelezo</Label>
+            <Label className="text-[#212121] font-semibold">Description</Label>
             <Textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={2} />
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Mahali</Label>
-            <Input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="mfano: Clubhouse" />
+            <Label className="text-[#212121] font-semibold">Location</Label>
+            <Input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="e.g. Clubhouse" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-[#212121] font-semibold">Mwanzo</Label>
+              <Label className="text-[#212121] font-semibold">Start</Label>
               <Input type="datetime-local" value={form.startTime} onChange={(e) => set("startTime", e.target.value)} />
             </div>
             <div>
-              <Label className="text-[#212121] font-semibold">Mwisho</Label>
+              <Label className="text-[#212121] font-semibold">End</Label>
               <Input type="datetime-local" value={form.endTime} onChange={(e) => set("endTime", e.target.value)} />
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Ghairi</Button>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button
             onClick={() => mutation.mutate()}
             loading={mutation.isPending}
             disabled={!form.title || !form.startTime || !form.endTime}
           >
-            Tengeneza
+            Create
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -99,13 +99,13 @@ export default function EventsPage() {
 
   return (
     <div className="page-wrap">
-      <TopBar title="Matukio" />
+      <TopBar title="Events" />
       <main className="max-w-lg mx-auto px-4 pt-4 page-content">
         <div className="flex items-center justify-between mb-4">
-          <p className="section-label">Matukio ya Nyumba</p>
+          <p className="section-label">Estate Events</p>
           {user?.role === "admin" && (
             <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Ongeza
+              <Plus className="h-4 w-4" /> Add
             </Button>
           )}
         </div>
@@ -117,8 +117,8 @@ export default function EventsPage() {
             <div className="w-14 h-14 rounded-2xl bg-[#1B5E20]/10 flex items-center justify-center mx-auto mb-3">
               <CalendarDays className="h-7 w-7 text-[#1B5E20]" />
             </div>
-            <p className="font-semibold text-[#212121] mb-1">Hakuna matukio</p>
-            <p className="text-[#6B5D45] text-sm">Matukio ya nyumba yataonekana hapa</p>
+            <p className="font-semibold text-[#212121] mb-1">No events yet</p>
+            <p className="text-[#6B5D45] text-sm">Estate events will appear here</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -142,7 +142,7 @@ export default function EventsPage() {
                           </span>
                         )}
                         <span className="flex items-center gap-1 text-xs text-[#6B5D45]">
-                          <Users className="h-3.5 w-3.5" /> {e.rsvpCount ?? 0} watahudhuria
+                          <Users className="h-3.5 w-3.5" /> {e.rsvpCount ?? 0} attending
                         </span>
                       </div>
                     </div>
@@ -153,14 +153,14 @@ export default function EventsPage() {
                           variant="secondary"
                           onClick={() => rsvp.mutate({ id: e.id, attending: false })}
                         >
-                          Nitahudhuria ✓
+                          Attending ✓
                         </Button>
                       ) : (
                         <Button
                           size="sm"
                           onClick={() => rsvp.mutate({ id: e.id, attending: true })}
                         >
-                          Niandikishe
+                          RSVP
                         </Button>
                       )}
                     </div>

@@ -42,47 +42,47 @@ function CreatePollDialog({ onClose }: { onClose: () => void }) {
             <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center">
               <Vote className="h-5 w-5 text-white" />
             </div>
-            <DialogTitle>Tengeneza Kura</DialogTitle>
+            <DialogTitle>Create Poll</DialogTitle>
           </div>
         </DialogHeader>
         <div className="px-6 pb-2 space-y-4">
           <div>
-            <Label className="text-[#212121] font-semibold">Swali</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Unataka kuuliza nini?" />
+            <Label className="text-[#212121] font-semibold">Question</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What would you like to ask?" />
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Maelezo (si lazima)</Label>
+            <Label className="text-[#212121] font-semibold">Description (optional)</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Majibu</Label>
+            <Label className="text-[#212121] font-semibold">Options</Label>
             <div className="space-y-2 mt-1">
               {options.map((o, i) => (
                 <div key={i} className="flex gap-2">
-                  <Input value={o} onChange={(e) => setOption(i, e.target.value)} placeholder={`Jibu ${i + 1}`} />
+                  <Input value={o} onChange={(e) => setOption(i, e.target.value)} placeholder={`Option ${i + 1}`} />
                   {options.length > 2 && (
                     <Button size="sm" variant="ghost" onClick={() => removeOption(i)}>✕</Button>
                   )}
                 </div>
               ))}
               {options.length < 10 && (
-                <Button size="sm" variant="secondary" onClick={addOption}>+ Ongeza jibu</Button>
+                <Button size="sm" variant="secondary" onClick={addOption}>+ Add option</Button>
               )}
             </div>
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Iisha tarehe (si lazima)</Label>
+            <Label className="text-[#212121] font-semibold">Closing date (optional)</Label>
             <Input type="datetime-local" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Ghairi</Button>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button
             onClick={() => mutation.mutate()}
             loading={mutation.isPending}
             disabled={!title || options.filter(Boolean).length < 2}
           >
-            Tuma Kura
+            Create Poll
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -110,13 +110,13 @@ function PollCard({ poll }: { poll: Poll }) {
           <div className="flex items-center gap-1 shrink-0">
             {isClosed && <Lock className="h-3.5 w-3.5 text-[#6B5D45]" />}
             <Badge variant={isClosed ? "secondary" : "success"}>
-              {isClosed ? "Imefungwa" : "Wazi"}
+              {isClosed ? "Closed" : "Open"}
             </Badge>
           </div>
         </div>
         {poll.description && <p className="text-xs text-[#6B5D45]">{poll.description}</p>}
         {poll.closesAt && !isClosed && (
-          <p className="text-xs text-amber-700 font-medium">Inaisha: {formatDate(poll.closesAt)}</p>
+          <p className="text-xs text-amber-700 font-medium">Closes: {formatDate(poll.closesAt)}</p>
         )}
       </CardHeader>
       <CardContent className="space-y-2">
@@ -150,7 +150,7 @@ function PollCard({ poll }: { poll: Poll }) {
           );
         })}
         <p className="text-xs text-[#D4C9A8] text-right">
-          Kura {total} jumla
+          {total} vote{total !== 1 ? "s" : ""} total
         </p>
       </CardContent>
     </Card>
@@ -168,13 +168,13 @@ export default function GovernancePage() {
 
   return (
     <div className="page-wrap">
-      <TopBar title="Uongozi" />
+      <TopBar title="Governance" />
       <main className="max-w-lg mx-auto px-4 pt-4 page-content">
         <div className="flex items-center justify-between mb-4">
-          <p className="section-label">Kura za Nyumba</p>
+          <p className="section-label">Estate Polls</p>
           {user?.role === "admin" && (
             <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Kura
+              <Plus className="h-4 w-4" /> New Poll
             </Button>
           )}
         </div>
@@ -186,8 +186,8 @@ export default function GovernancePage() {
             <div className="w-14 h-14 rounded-2xl bg-[#1B5E20]/10 flex items-center justify-center mx-auto mb-3">
               <Vote className="h-7 w-7 text-[#1B5E20]" />
             </div>
-            <p className="font-semibold text-[#212121] mb-1">Hakuna kura</p>
-            <p className="text-[#6B5D45] text-sm">Kura za nyumba zitaonekana hapa</p>
+            <p className="font-semibold text-[#212121] mb-1">No polls yet</p>
+            <p className="text-[#6B5D45] text-sm">Estate polls will appear here</p>
           </div>
         ) : (
           <div className="space-y-4">

@@ -20,10 +20,10 @@ interface EstateUser {
 }
 
 const ROLE_CONFIG: Record<string, { label: string; variant: string; emoji: string }> = {
-  admin:    { label: "Msimamizi", variant: "warning", emoji: "👑" },
-  security: { label: "Ulinzi",    variant: "info",    emoji: "🛡️" },
-  vendor:   { label: "Fundi",     variant: "success", emoji: "🔧" },
-  resident: { label: "Mkazi",     variant: "default", emoji: "🏠" },
+  admin:    { label: "Admin",    variant: "warning", emoji: "👑" },
+  security: { label: "Security", variant: "info",    emoji: "🛡️" },
+  vendor:   { label: "Vendor",   variant: "success", emoji: "🔧" },
+  resident: { label: "Resident", variant: "default", emoji: "🏠" },
 };
 
 function AddUserDialog({ onClose }: { onClose: () => void }) {
@@ -54,61 +54,61 @@ function AddUserDialog({ onClose }: { onClose: () => void }) {
             <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center">
               <UserPlus className="h-5 w-5 text-white" />
             </div>
-            <DialogTitle>Ongeza Mkazi</DialogTitle>
+            <DialogTitle>Add Resident</DialogTitle>
           </div>
         </DialogHeader>
         {result ? (
           <div className="px-6 pb-6 space-y-3">
-            <p className="text-sm text-[#212121] font-semibold">✓ Akaunti imetengenezwa!</p>
+            <p className="text-sm text-[#212121] font-semibold">✓ Account created!</p>
             <div className="bg-[#1B5E20]/8 border border-[#1B5E20]/20 rounded-xl p-4">
-              <p className="text-xs text-[#6B5D45] mb-1">Nywila ya muda — shiriki kwa usalama:</p>
+              <p className="text-xs text-[#6B5D45] mb-1">Temporary password — share securely:</p>
               <p className="font-mono font-black text-lg text-[#1B5E20]">{result.tempPassword}</p>
-              <p className="text-xs text-[#D4C9A8] mt-2">Mkazi abadilishe nywila baada ya kuingia mara ya kwanza.</p>
+              <p className="text-xs text-[#D4C9A8] mt-2">Ask the user to change their password after first login.</p>
             </div>
-            <Button className="w-full" onClick={onClose}>Imekamilika</Button>
+            <Button className="w-full" onClick={onClose}>Done</Button>
           </div>
         ) : (
           <>
             <div className="px-6 pb-2 space-y-3">
               <div>
-                <Label className="text-[#212121] font-semibold">Jina kamili</Label>
+                <Label className="text-[#212121] font-semibold">Full name</Label>
                 <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Jane Mwangi" />
               </div>
               <div>
-                <Label className="text-[#212121] font-semibold">Simu</Label>
+                <Label className="text-[#212121] font-semibold">Phone</Label>
                 <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="07XXXXXXXX" />
               </div>
               <div>
-                <Label className="text-[#212121] font-semibold">Jukumu</Label>
+                <Label className="text-[#212121] font-semibold">Role</Label>
                 <Select value={form.role} onValueChange={(v) => set("role", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="resident">🏠 Mkazi</SelectItem>
-                    <SelectItem value="security">🛡️ Ulinzi</SelectItem>
-                    <SelectItem value="vendor">🔧 Fundi</SelectItem>
-                    <SelectItem value="admin">👑 Msimamizi</SelectItem>
+                    <SelectItem value="resident">🏠 Resident</SelectItem>
+                    <SelectItem value="security">🛡️ Security</SelectItem>
+                    <SelectItem value="vendor">🔧 Vendor</SelectItem>
+                    <SelectItem value="admin">👑 Admin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               {form.role === "resident" && (
                 <div>
-                  <Label className="text-[#212121] font-semibold">Nambari ya nyumba</Label>
+                  <Label className="text-[#212121] font-semibold">Unit / House number</Label>
                   <Input value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)} placeholder="A14" />
                 </div>
               )}
               <div>
-                <Label className="text-[#212121] font-semibold">Nywila (acha wazi kwa kuzalisha kiotomatiki)</Label>
-                <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="Itazalishwa kama haikujazwa" />
+                <Label className="text-[#212121] font-semibold">Password (leave blank to auto-generate)</Label>
+                <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="Will be auto-generated if left blank" />
               </div>
               {mutation.isError && (
                 <p className="text-sm text-[#B71C1C]">{(mutation.error as Error).message}</p>
               )}
             </div>
             <DialogFooter>
-              <Button variant="secondary" onClick={onClose}>Ghairi</Button>
+              <Button variant="secondary" onClick={onClose}>Cancel</Button>
               <Button onClick={() => mutation.mutate()} loading={mutation.isPending}
                 disabled={!form.name || !form.phone}>
-                Tengeneza Akaunti
+                Create Account
               </Button>
             </DialogFooter>
           </>
@@ -139,34 +139,34 @@ function EditUserDialog({ user, onClose }: { user: EstateUser; onClose: () => vo
             <div className="w-10 h-10 rounded-xl bg-[#D47A00]/10 flex items-center justify-center">
               <Pencil className="h-5 w-5 text-[#D47A00]" />
             </div>
-            <DialogTitle>Hariri {user.name}</DialogTitle>
+            <DialogTitle>Edit {user.name}</DialogTitle>
           </div>
         </DialogHeader>
         <div className="px-6 pb-2 space-y-3">
           <div>
-            <Label className="text-[#212121] font-semibold">Jina kamili</Label>
+            <Label className="text-[#212121] font-semibold">Full name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Jukumu</Label>
+            <Label className="text-[#212121] font-semibold">Role</Label>
             <Select value={role} onValueChange={setRole}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="resident">🏠 Mkazi</SelectItem>
-                <SelectItem value="security">🛡️ Ulinzi</SelectItem>
-                <SelectItem value="vendor">🔧 Fundi</SelectItem>
-                <SelectItem value="admin">👑 Msimamizi</SelectItem>
+                <SelectItem value="resident">🏠 Resident</SelectItem>
+                <SelectItem value="security">🛡️ Security</SelectItem>
+                <SelectItem value="vendor">🔧 Vendor</SelectItem>
+                <SelectItem value="admin">👑 Admin</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Nambari ya nyumba</Label>
+            <Label className="text-[#212121] font-semibold">Unit / House number</Label>
             <Input value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} placeholder="A14" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Ghairi</Button>
-          <Button onClick={() => mutation.mutate()} loading={mutation.isPending}>Hifadhi</Button>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mutation.mutate()} loading={mutation.isPending}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -203,7 +203,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="page-wrap">
-      <TopBar title="Watumiaji" />
+      <TopBar title="Users" />
       <main className="max-w-lg mx-auto px-4 pt-4 space-y-4 page-content">
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -211,7 +211,7 @@ export default function AdminUsersPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tafuta jina, simu au nambari ya nyumba..."
+              placeholder="Search by name, phone or unit..."
               className="pl-9"
             />
           </div>
@@ -228,7 +228,7 @@ export default function AdminUsersPage() {
               <Users className="h-7 w-7 text-[#1B5E20]" />
             </div>
             <p className="font-semibold text-[#212121] mb-1">
-              {search ? "Hakuna matokeo" : "Hakuna watumiaji"}
+              {search ? "No results found" : "No users yet"}
             </p>
           </div>
         ) : (
@@ -273,7 +273,7 @@ export default function AdminUsersPage() {
                             variant="ghost"
                             className="h-8 w-8 p-0 text-[#B71C1C]"
                             onClick={() => {
-                              if (confirm(`Futa ${u.name}?`)) deactivate.mutate(u.id);
+                              if (confirm(`Remove ${u.name}?`)) deactivate.mutate(u.id);
                             }}
                           >
                             <Trash2 className="h-3.5 w-3.5" />

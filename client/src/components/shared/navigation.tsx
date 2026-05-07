@@ -16,25 +16,25 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "/dashboard/resident", label: "Nyumbani",  icon: <Home className="h-5 w-5" />,       roles: ["resident"] },
-  { href: "/visitors",           label: "Wageni",    icon: <Users className="h-5 w-5" />,       roles: ["resident"] },
-  { href: "/maintenance",        label: "Marekebu",  icon: <Wrench className="h-5 w-5" />,      roles: ["resident"] },
-  { href: "/payments",           label: "Malipo",    icon: <CreditCard className="h-5 w-5" />,  roles: ["resident"] },
-  { href: "/emergency",          label: "SOS",       icon: <ShieldAlert className="h-5 w-5" />, roles: ["resident"] },
+  { href: "/dashboard/resident", label: "Home",        icon: <Home className="h-5 w-5" />,       roles: ["resident"] },
+  { href: "/visitors",           label: "Visitors",    icon: <Users className="h-5 w-5" />,       roles: ["resident"] },
+  { href: "/maintenance",        label: "Maintenance", icon: <Wrench className="h-5 w-5" />,      roles: ["resident"] },
+  { href: "/payments",           label: "Payments",    icon: <CreditCard className="h-5 w-5" />,  roles: ["resident"] },
+  { href: "/emergency",          label: "SOS",         icon: <ShieldAlert className="h-5 w-5" />, roles: ["resident"] },
 
-  { href: "/dashboard/admin",    label: "Nyumbani",  icon: <Home className="h-5 w-5" />,        roles: ["admin"] },
-  { href: "/visitors",           label: "Wageni",    icon: <Users className="h-5 w-5" />,       roles: ["admin"] },
-  { href: "/maintenance",        label: "Tiketi",    icon: <Wrench className="h-5 w-5" />,      roles: ["admin"] },
-  { href: "/announcements",      label: "Matangazo", icon: <Megaphone className="h-5 w-5" />,   roles: ["admin"] },
-  { href: "/governance",         label: "Serikali",  icon: <Vote className="h-5 w-5" />,        roles: ["admin"] },
+  { href: "/dashboard/admin",    label: "Home",        icon: <Home className="h-5 w-5" />,        roles: ["admin"] },
+  { href: "/visitors",           label: "Visitors",    icon: <Users className="h-5 w-5" />,       roles: ["admin"] },
+  { href: "/maintenance",        label: "Tickets",     icon: <Wrench className="h-5 w-5" />,      roles: ["admin"] },
+  { href: "/announcements",      label: "Notices",     icon: <Megaphone className="h-5 w-5" />,   roles: ["admin"] },
+  { href: "/governance",         label: "Polls",       icon: <Vote className="h-5 w-5" />,        roles: ["admin"] },
 
-  { href: "/dashboard/security", label: "Lango",     icon: <ShieldAlert className="h-5 w-5" />, roles: ["security"] },
-  { href: "/visitors",           label: "Wageni",    icon: <Users className="h-5 w-5" />,       roles: ["security"] },
-  { href: "/emergency",          label: "Hatari",    icon: <ShieldAlert className="h-5 w-5" />, roles: ["security"] },
-  { href: "/announcements",      label: "Taarifa",   icon: <Megaphone className="h-5 w-5" />,   roles: ["security"] },
+  { href: "/dashboard/security", label: "Gate",        icon: <ShieldAlert className="h-5 w-5" />, roles: ["security"] },
+  { href: "/visitors",           label: "Visitors",    icon: <Users className="h-5 w-5" />,       roles: ["security"] },
+  { href: "/emergency",          label: "Alerts",      icon: <ShieldAlert className="h-5 w-5" />, roles: ["security"] },
+  { href: "/announcements",      label: "Notices",     icon: <Megaphone className="h-5 w-5" />,   roles: ["security"] },
 
-  { href: "/dashboard/vendor",   label: "Wasifu",    icon: <Store className="h-5 w-5" />,       roles: ["vendor"] },
-  { href: "/marketplace",        label: "Soko",      icon: <Store className="h-5 w-5" />,       roles: ["vendor"] },
+  { href: "/dashboard/vendor",   label: "Profile",     icon: <Store className="h-5 w-5" />,       roles: ["vendor"] },
+  { href: "/marketplace",        label: "Marketplace", icon: <Store className="h-5 w-5" />,       roles: ["vendor"] },
 ];
 
 export function BottomNav() {
@@ -52,7 +52,7 @@ export function BottomNav() {
           const active = location === item.href || location.startsWith(item.href + "/");
           return (
             <Link
-              key={item.href}
+              key={item.href + item.label}
               href={item.href}
               className={cn(
                 "flex flex-col items-center justify-center py-2 px-1 flex-1 min-h-[56px] text-xs gap-1 transition-colors",
@@ -83,30 +83,45 @@ export function TopBar({ title }: { title?: string }) {
   if (!user) return null;
 
   const roleLabel: Record<string, string> = {
-    admin:    "Msimamizi",
-    resident: "Mkazi",
-    security: "Ulinzi",
-    vendor:   "Muuzaji",
+    admin:    "Admin",
+    resident: "Resident",
+    security: "Security",
+    vendor:   "Vendor",
   };
 
   return (
     <header className="sticky top-0 z-40">
       <div className="bg-[#1B5E20] text-white">
         <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#D4A017] flex items-center justify-center">
-              <span className="text-[#212121] font-bold text-xs">JH</span>
+          <div className="flex items-center gap-2.5">
+            {/* Logo */}
+            <img
+              src="/logo.png"
+              alt="JiraniHub"
+              className="h-8 w-8 object-contain"
+              onError={(e) => {
+                const t = e.currentTarget;
+                t.style.display = "none";
+                const fb = t.nextElementSibling as HTMLElement;
+                if (fb) fb.style.removeProperty("display");
+              }}
+            />
+            <div
+              className="w-7 h-7 rounded-lg bg-[#D4A017] items-center justify-center"
+              style={{ display: "none" }}
+            >
+              <span className="text-[#212121] font-black text-xs">JH</span>
             </div>
             <span className="font-bold text-lg tracking-tight">JiraniHub</span>
             {title && (
               <>
-                <span className="text-white/30 mx-1">/</span>
+                <span className="text-white/30 mx-0.5">/</span>
                 <span className="text-sm font-medium text-white/75">{title}</span>
               </>
             )}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs bg-[#D4A017]/20 text-[#D4A017] rounded-full px-2.5 py-0.5 font-medium">
+            <span className="text-xs bg-[#D4A017]/20 text-[#D4A017] rounded-full px-2.5 py-0.5 font-semibold">
               {roleLabel[user.role]}
             </span>
             <button
@@ -119,12 +134,14 @@ export function TopBar({ title }: { title?: string }) {
         </div>
       </div>
 
-      {/* Maasai stripe always visible under header */}
+      {/* Maasai stripe */}
       <div className="maasai-stripe" />
 
+      {/* Drawer */}
       {menuOpen && (
         <div className="bg-[#0D3B11] text-white border-b border-[#D4A017]/20">
           <div className="max-w-2xl mx-auto px-4 py-4">
+            {/* User info */}
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-[#D4A017]/20 flex items-center justify-center">
                 <span className="text-[#D4A017] font-bold">{user.name.charAt(0)}</span>
@@ -134,16 +151,18 @@ export function TopBar({ title }: { title?: string }) {
                 <div className="text-xs text-white/50">{user.phone}</div>
               </div>
             </div>
+            {/* Menu links */}
             <div className="grid grid-cols-3 gap-x-4 gap-y-1 mb-4">
               {[
-                { href: "/announcements", label: "Matangazo",  roles: ["resident","admin","security"] },
-                { href: "/payments",      label: "Malipo",     roles: ["resident","admin"] },
-                { href: "/events",        label: "Matukio",    roles: ["resident","admin","security"] },
-                { href: "/bookings",      label: "Booking",    roles: ["resident","admin"] },
-                { href: "/marketplace",   label: "Soko",       roles: ["resident","admin","vendor"] },
-                { href: "/governance",    label: "Serikali",   roles: ["resident","admin"] },
-                { href: "/emergency",     label: "Dharura",    roles: ["resident","admin","security"] },
-                { href: "/notifications", label: "Arifa",      roles: ["resident","admin","security","vendor"] },
+                { href: "/announcements", label: "Announcements", roles: ["resident","admin","security"] },
+                { href: "/payments",      label: "Payments",      roles: ["resident","admin"] },
+                { href: "/events",        label: "Events",        roles: ["resident","admin","security"] },
+                { href: "/bookings",      label: "Bookings",      roles: ["resident","admin"] },
+                { href: "/marketplace",   label: "Marketplace",   roles: ["resident","admin","vendor"] },
+                { href: "/governance",    label: "Governance",    roles: ["resident","admin"] },
+                { href: "/emergency",     label: "Emergency",     roles: ["resident","admin","security"] },
+                { href: "/notifications", label: "Notifications", roles: ["resident","admin","security","vendor"] },
+                { href: "/users",         label: "Residents",     roles: ["admin"] },
               ]
                 .filter((i) => i.roles.includes(user.role))
                 .map((i) => (
@@ -152,7 +171,9 @@ export function TopBar({ title }: { title?: string }) {
                     href={i.href}
                     onClick={() => setMenuOpen(false)}
                     className="text-sm text-white/70 hover:text-white py-1.5 transition-colors"
-                  >{i.label}</Link>
+                  >
+                    {i.label}
+                  </Link>
                 ))
               }
             </div>
@@ -162,7 +183,7 @@ export function TopBar({ title }: { title?: string }) {
                 className="flex items-center gap-2 text-sm text-white/70 hover:text-white py-1.5 w-full transition-colors min-h-0"
               >
                 <LogOut className="h-4 w-4" />
-                Toka (Sign out)
+                Sign out
               </button>
             </div>
           </div>

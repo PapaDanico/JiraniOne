@@ -13,7 +13,7 @@ export function VisitorQrModal({ visitor, onClose }: Props) {
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-xs">
         <DialogHeader>
-          <DialogTitle className="text-center">Pasi ya Mgeni</DialogTitle>
+          <DialogTitle className="text-center">Visitor Pass</DialogTitle>
         </DialogHeader>
 
         <div className="px-5 pb-6 text-center space-y-4">
@@ -33,7 +33,7 @@ export function VisitorQrModal({ visitor, onClose }: Props) {
           {visitor.expectedAt && (
             <div className="flex items-center justify-center gap-1.5 text-sm text-[#6B5D45]">
               <Clock className="h-4 w-4" />
-              Anatarajiwa: {formatDateTime(visitor.expectedAt)}
+              Expected: {formatDateTime(visitor.expectedAt)}
             </div>
           )}
 
@@ -50,7 +50,7 @@ export function VisitorQrModal({ visitor, onClose }: Props) {
 
           {/* Pass ID */}
           <div className="bg-[#EDE7D8] rounded-xl px-4 py-2.5 border border-[#D4C9A8]">
-            <p className="text-xs text-[#6B5D45] mb-0.5">Nambari ya Pasi</p>
+            <p className="text-xs text-[#6B5D45] mb-0.5">Pass ID</p>
             <p className="font-mono font-bold text-[#212121] text-lg tracking-widest">
               {visitor.id.slice(0, 8).toUpperCase()}
             </p>
@@ -59,11 +59,11 @@ export function VisitorQrModal({ visitor, onClose }: Props) {
           {visitor.smsSent && (
             <div className="flex items-center justify-center gap-1.5 text-sm text-[#1B5E20] font-semibold">
               <CheckCircle className="h-4 w-4" />
-              SMS imetumwa kwa mgeni
+              SMS sent to visitor
             </div>
           )}
 
-          <p className="text-xs text-[#D4C9A8]">Onyesha msimbo huu langoni</p>
+          <p className="text-xs text-[#D4C9A8]">Show this code at the gate</p>
         </div>
       </DialogContent>
     </Dialog>

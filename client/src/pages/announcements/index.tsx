@@ -22,9 +22,9 @@ import { formatRelative } from "@/lib/utils";
 import type { Announcement } from "@shared/types";
 
 const PRIORITY_CONFIG = {
-  info:    { label: "Habari",   variant: "default"     as const, left: "border-l-4 border-l-[#1B5E20]",  icon: "📢" },
-  warning: { label: "Tahadhari", variant: "warning"    as const, left: "border-l-4 border-l-amber-500",  icon: "⚠️" },
-  urgent:  { label: "Haraka",   variant: "destructive" as const, left: "border-l-4 border-l-[#B71C1C]",  icon: "🚨" },
+  info:    { label: "Info",    variant: "default"     as const, left: "border-l-4 border-l-[#1B5E20]",  icon: "📢" },
+  warning: { label: "Warning", variant: "warning"    as const, left: "border-l-4 border-l-amber-500",  icon: "⚠️" },
+  urgent:  { label: "Urgent",  variant: "destructive" as const, left: "border-l-4 border-l-[#B71C1C]",  icon: "🚨" },
 };
 
 function ComposeModal({ onClose }: { onClose: () => void }) {
@@ -51,49 +51,49 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
               <Volume2 className="h-5 w-5 text-white" />
             </div>
             <div>
-              <DialogTitle>Tuma Tangazo</DialogTitle>
-              <p className="text-xs text-[#6B5D45] mt-0.5">Wakazi wote watapokea tangazo hili</p>
+              <DialogTitle>Post Announcement</DialogTitle>
+              <p className="text-xs text-[#6B5D45] mt-0.5">All residents will receive this announcement</p>
             </div>
           </div>
         </DialogHeader>
         <div className="px-6 pb-2 space-y-4">
           <div>
-            <Label className="text-[#212121] font-semibold">Kichwa</Label>
+            <Label className="text-[#212121] font-semibold">Title</Label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Mada ya tangazo"
+              placeholder="Announcement subject"
             />
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Ujumbe</Label>
+            <Label className="text-[#212121] font-semibold">Message</Label>
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Andika tangazo hapa..."
+              placeholder="Write your announcement here..."
               rows={4}
             />
           </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Kiwango</Label>
+            <Label className="text-[#212121] font-semibold">Priority</Label>
             <Select value={priority} onValueChange={setPriority}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="info">📢 Habari</SelectItem>
-                <SelectItem value="warning">⚠️ Tahadhari</SelectItem>
-                <SelectItem value="urgent">🚨 Haraka</SelectItem>
+                <SelectItem value="info">📢 Info</SelectItem>
+                <SelectItem value="warning">⚠️ Warning</SelectItem>
+                <SelectItem value="urgent">🚨 Urgent</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>Ghairi</Button>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button
             onClick={() => mutation.mutate()}
             loading={mutation.isPending}
             disabled={!title || !body}
           >
-            Tuma
+            Post
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -113,13 +113,13 @@ export default function AnnouncementsPage() {
 
   return (
     <div className="page-wrap">
-      <TopBar title="Matangazo" />
+      <TopBar title="Announcements" />
       <main className="max-w-lg mx-auto px-4 pt-4 page-content">
         <div className="flex items-center justify-between mb-4">
-          <p className="section-label">Matangazo ya Nyumba</p>
+          <p className="section-label">Estate Announcements</p>
           {user?.role === "admin" && (
             <Button size="sm" onClick={() => setComposeOpen(true)} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Tuma
+              <Plus className="h-4 w-4" /> Post
             </Button>
           )}
         </div>
@@ -131,8 +131,8 @@ export default function AnnouncementsPage() {
             <div className="w-14 h-14 rounded-2xl bg-[#1B5E20]/10 flex items-center justify-center mx-auto mb-3">
               <Megaphone className="h-7 w-7 text-[#1B5E20]" />
             </div>
-            <p className="font-semibold text-[#212121] mb-1">Hakuna matangazo</p>
-            <p className="text-[#6B5D45] text-sm">Matangazo ya nyumba yataonekana hapa</p>
+            <p className="font-semibold text-[#212121] mb-1">No announcements yet</p>
+            <p className="text-[#6B5D45] text-sm">Estate announcements will appear here</p>
           </div>
         ) : (
           <div className="space-y-3">

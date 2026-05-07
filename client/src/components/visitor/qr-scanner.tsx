@@ -23,7 +23,7 @@ export function QrScanner() {
       return api.get<Visitor[]>(`/api/visitors/lookup${qs}`);
     },
     onSuccess: (res) => { setResult(res.data); setError(null); },
-    onError: (e: unknown) => { setError(e instanceof Error ? e.message : "Utafutaji umeshindwa"); setResult(null); },
+    onError: (e: unknown) => { setError(e instanceof Error ? e.message : "Search failed"); setResult(null); },
   });
 
   const checkInMutation = useMutation({
@@ -50,7 +50,7 @@ export function QrScanner() {
     <div className="space-y-4">
       {/* Phone search */}
       <div>
-        <p className="section-label mb-2">Tafuta kwa Nambari ya Simu</p>
+        <p className="section-label mb-2">Search by Phone Number</p>
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B5D45]" />
@@ -69,7 +69,7 @@ export function QrScanner() {
             loading={lookupMutation.isPending}
             className="shrink-0 gap-1.5"
           >
-            <Search className="h-4 w-4" /> Tafuta
+            <Search className="h-4 w-4" /> Search
           </Button>
         </div>
       </div>
@@ -78,9 +78,9 @@ export function QrScanner() {
       <div className="bg-[#EDE7D8] border border-[#D4C9A8] rounded-2xl p-4 flex gap-3 items-start">
         <QrCode className="h-5 w-5 text-[#6B5D45] shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-[#212121]">Usomaji wa QR Code</p>
+          <p className="text-sm font-semibold text-[#212121]">QR Code Scanning</p>
           <p className="text-xs text-[#6B5D45] mt-0.5">
-            Usomaji wa kamera unahitaji programu ya simu ya JiraniHub. Kwa sasa, tumia utafutaji wa simu.
+            Camera scanning requires the JiraniHub mobile app. For now, use phone number search.
           </p>
         </div>
       </div>
@@ -95,7 +95,7 @@ export function QrScanner() {
       {/* No results */}
       {result && result.length === 0 && (
         <div className="tribal-card p-8 text-center">
-          <p className="text-[#6B5D45] text-sm">Hakuna mgeni anayepatikana kwa nambari hiyo.</p>
+          <p className="text-[#6B5D45] text-sm">No visitor found with that phone number.</p>
         </div>
       )}
 
@@ -130,8 +130,9 @@ export function QrScanner() {
                               : "secondary"
                             }
                           >
-                            {v.status === "checked_in" ? "Ndani"
-                             : v.status === "pending" ? "Anasubiriwa"
+                            {v.status === "checked_in" ? "Inside"
+                             : v.status === "pending" ? "Expected"
+                             : v.status === "checked_out" ? "Left"
                              : v.status}
                           </Badge>
                         </div>
@@ -141,7 +142,7 @@ export function QrScanner() {
                     {v.purpose && <p className="text-xs text-[#6B5D45] italic pl-10">"{v.purpose}"</p>}
                     {v.expectedAt && v.status === "pending" && (
                       <p className="text-xs text-amber-700 pl-10 flex items-center gap-1 mt-0.5">
-                        <Clock className="h-3 w-3" /> Anatarajiwa: {formatDateTime(v.expectedAt)}
+                        <Clock className="h-3 w-3" /> Expected: {formatDateTime(v.expectedAt)}
                       </p>
                     )}
                   </div>
@@ -152,7 +153,7 @@ export function QrScanner() {
                         loading={checkInMutation.isPending}
                         className="gap-1.5"
                       >
-                        <CheckCircle className="h-4 w-4" /> Ruhusu Kuingia
+                        <CheckCircle className="h-4 w-4" /> Allow Entry
                       </Button>
                     )}
                     {v.status === "checked_in" && (
@@ -162,11 +163,11 @@ export function QrScanner() {
                         loading={checkOutMutation.isPending}
                         className="gap-1.5"
                       >
-                        <XCircle className="h-4 w-4" /> Toka
+                        <XCircle className="h-4 w-4" /> Check Out
                       </Button>
                     )}
                     {(v.status === "cancelled" || v.status === "expired") && (
-                      <Badge variant="destructive">Batili</Badge>
+                      <Badge variant="destructive">Invalid</Badge>
                     )}
                   </div>
                 </div>

@@ -38,8 +38,8 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (form.password !== form.confirm) { setError("Nywila hazilingani"); return; }
-    if (form.password.length < 8) { setError("Nywila lazima iwe angalau herufi 8"); return; }
+    if (form.password !== form.confirm) { setError("Passwords do not match"); return; }
+    if (form.password.length < 8) { setError("Password must be at least 8 characters"); return; }
     setLoading(true);
     try {
       await register({
@@ -49,7 +49,7 @@ export default function RegisterPage() {
       });
       setLocation("/dashboard/resident");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Usajili umeshindwa");
+      setError(err instanceof Error ? err.message : "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -60,33 +60,49 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/15 mb-3">
-            <span className="font-black text-xl text-[#D4A017]">JH</span>
+          <div className="flex justify-center mb-3">
+            <img
+              src="/logo.png"
+              alt="JiraniHub"
+              className="h-20 w-20 object-contain drop-shadow-xl"
+              onError={(e) => {
+                const t = e.currentTarget;
+                t.style.display = "none";
+                const fb = t.nextElementSibling as HTMLElement;
+                if (fb) fb.style.removeProperty("display");
+              }}
+            />
+            <div
+              className="w-16 h-16 rounded-2xl bg-white/15 items-center justify-center"
+              style={{ display: "none" }}
+            >
+              <span className="font-black text-2xl text-[#D4A017]">JH</span>
+            </div>
           </div>
           <h1 className="font-black text-2xl text-white tracking-tight">JiraniHub</h1>
-          <p className="text-white/60 text-sm mt-0.5">Fungua akaunti yako</p>
+          <p className="text-white/60 text-sm mt-0.5">Create your resident account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-[#F5F1E8] rounded-2xl p-6 shadow-xl space-y-4">
           <div className="maasai-stripe rounded-full mb-2" />
 
           <div>
-            <Label className="text-[#212121] font-semibold">Jina kamili</Label>
+            <Label className="text-[#212121] font-semibold">Full name</Label>
             <Input value={form.name} onChange={(e) => set("name", e.target.value)}
               placeholder="Jane Mwangi" required />
           </div>
 
           <div>
-            <Label className="text-[#212121] font-semibold">Nambari ya simu</Label>
+            <Label className="text-[#212121] font-semibold">Phone number</Label>
             <Input value={form.phone} onChange={(e) => set("phone", e.target.value)}
               placeholder="0722 123 456" required />
           </div>
 
           <div>
-            <Label className="text-[#212121] font-semibold">Nyumba / Estate</Label>
+            <Label className="text-[#212121] font-semibold">Estate</Label>
             <Select value={form.estateId} onValueChange={(v) => set("estateId", v)}>
               <SelectTrigger>
-                <SelectValue placeholder="Chagua nyumba yako (si lazima)" />
+                <SelectValue placeholder="Select your estate (optional)" />
               </SelectTrigger>
               <SelectContent>
                 {estates?.map((e) => (
@@ -96,27 +112,27 @@ export default function RegisterPage() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-[#6B5D45] mt-1">Unaweza kupewa na msimamizi baadaye</p>
+            <p className="text-xs text-[#6B5D45] mt-1">Can be assigned by your admin later</p>
           </div>
 
           {form.estateId && (
             <div>
-              <Label className="text-[#212121] font-semibold">Nambari ya nyumba</Label>
+              <Label className="text-[#212121] font-semibold">Unit / House number</Label>
               <Input value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)}
                 placeholder="A14" />
             </div>
           )}
 
           <div>
-            <Label className="text-[#212121] font-semibold">Nywila</Label>
+            <Label className="text-[#212121] font-semibold">Password</Label>
             <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)}
-              placeholder="Angalau herufi 8" required />
+              placeholder="At least 8 characters" required />
           </div>
 
           <div>
-            <Label className="text-[#212121] font-semibold">Thibitisha nywila</Label>
+            <Label className="text-[#212121] font-semibold">Confirm password</Label>
             <Input type="password" value={form.confirm} onChange={(e) => set("confirm", e.target.value)}
-              placeholder="Rudia nywila" required />
+              placeholder="Repeat your password" required />
           </div>
 
           {error && (
@@ -126,12 +142,12 @@ export default function RegisterPage() {
           )}
 
           <Button type="submit" className="w-full" loading={loading}>
-            Fungua Akaunti
+            Create Account
           </Button>
 
           <p className="text-center text-sm text-[#6B5D45]">
-            Una akaunti?{" "}
-            <a href="/login" className="text-[#1B5E20] font-bold">Ingia</a>
+            Already have an account?{" "}
+            <a href="/login" className="text-[#1B5E20] font-bold">Sign in</a>
           </p>
         </form>
       </div>

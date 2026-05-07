@@ -19,20 +19,20 @@ import {
 import { Wrench } from "lucide-react";
 
 const CATEGORIES = [
-  { value: "plumbing",    label: "🔧 Bomba / Maji",        swahili: "Mabomba na maji" },
-  { value: "electrical",  label: "⚡ Umeme",                swahili: "Tatizo la umeme" },
-  { value: "roads",       label: "🛣️ Barabara / Njia",     swahili: "Barabara na njia" },
-  { value: "landscaping", label: "🌿 Bustani",              swahili: "Mazingira ya bustani" },
-  { value: "security",    label: "🔒 Usalama",              swahili: "Tatizo la usalama" },
-  { value: "cleaning",    label: "🧹 Usafi",                swahili: "Usafi wa mazingira" },
-  { value: "other",       label: "📋 Nyingine",             swahili: "Tatizo lingine" },
+  { value: "plumbing",    label: "🔧 Plumbing / Water"  },
+  { value: "electrical",  label: "⚡ Electrical"         },
+  { value: "roads",       label: "🛣️ Roads / Pathways"  },
+  { value: "landscaping", label: "🌿 Landscaping"        },
+  { value: "security",    label: "🔒 Security"           },
+  { value: "cleaning",    label: "🧹 Cleaning"           },
+  { value: "other",       label: "📋 Other"              },
 ];
 
 const PRIORITIES = [
-  { value: "low",    label: "Ndogo",   color: "text-[#6B5D45]" },
-  { value: "medium", label: "Wastani", color: "text-amber-700" },
-  { value: "high",   label: "Kubwa",   color: "text-[#D47A00]" },
-  { value: "urgent", label: "Haraka",  color: "text-[#B71C1C]" },
+  { value: "low",    label: "Low",    color: "text-[#6B5D45]" },
+  { value: "medium", label: "Medium", color: "text-amber-700" },
+  { value: "high",   label: "High",   color: "text-[#D47A00]" },
+  { value: "urgent", label: "Urgent", color: "text-[#B71C1C]" },
 ];
 
 interface Props {
@@ -95,9 +95,9 @@ export function TicketForm({ open, onClose }: Props) {
               <Wrench className="h-5 w-5 text-white" />
             </div>
             <div>
-              <DialogTitle>Ripoti Tatizo</DialogTitle>
+              <DialogTitle>Report an Issue</DialogTitle>
               <DialogDescription>
-                Eleza tatizo na tutalisuluhisha haraka iwezekanavyo.
+                Describe the problem and we'll get it resolved as soon as possible.
               </DialogDescription>
             </div>
           </div>
@@ -105,9 +105,9 @@ export function TicketForm({ open, onClose }: Props) {
 
         <form onSubmit={handleSubmit(onSubmit)} className="px-6 pb-2 space-y-4">
           <div>
-            <Label className="text-[#212121] font-semibold">Kichwa cha Tatizo</Label>
+            <Label className="text-[#212121] font-semibold">Issue Title</Label>
             <Input
-              placeholder="Mfano: Bomba lililipuka katika Block B"
+              placeholder="e.g. Burst pipe in Block B"
               {...register("title")}
               error={errors.title?.message}
             />
@@ -115,10 +115,10 @@ export function TicketForm({ open, onClose }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-[#212121] font-semibold">Aina</Label>
+              <Label className="text-[#212121] font-semibold">Category</Label>
               <Select value={category} onValueChange={(v) => setValue("category", v as never)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Chagua aina" />
+                  <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map((c) => (
@@ -129,10 +129,10 @@ export function TicketForm({ open, onClose }: Props) {
               {errors.category && <p className="mt-1 text-xs text-[#B71C1C]">{errors.category.message}</p>}
             </div>
             <div>
-              <Label className="text-[#212121] font-semibold">Uzito</Label>
+              <Label className="text-[#212121] font-semibold">Priority</Label>
               <Select value={priority} onValueChange={(v) => setValue("priority", v as never)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Chagua uzito" />
+                  <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
                   {PRIORITIES.map((p) => (
@@ -146,9 +146,9 @@ export function TicketForm({ open, onClose }: Props) {
           </div>
 
           <div>
-            <Label className="text-[#212121] font-semibold">Maelezo</Label>
+            <Label className="text-[#212121] font-semibold">Description</Label>
             <Textarea
-              placeholder="Eleza tatizo kwa undani zaidi..."
+              placeholder="Describe the issue in detail..."
               {...register("description")}
               error={errors.description?.message}
               rows={3}
@@ -156,7 +156,7 @@ export function TicketForm({ open, onClose }: Props) {
           </div>
 
           <div>
-            <Label className="text-[#212121] font-semibold">Picha (si lazima, hadi 5)</Label>
+            <Label className="text-[#212121] font-semibold">Photos (optional, up to 5)</Label>
             <input
               type="file"
               accept="image/*"
@@ -165,7 +165,7 @@ export function TicketForm({ open, onClose }: Props) {
               onChange={(e) => setPhotos(e.target.files)}
             />
             {photos && photos.length > 0 && (
-              <p className="text-xs text-[#1B5E20] mt-1">✓ Picha {photos.length} zimechaguliwa</p>
+              <p className="text-xs text-[#1B5E20] mt-1">✓ {photos.length} photo{photos.length !== 1 ? "s" : ""} selected</p>
             )}
           </div>
 
@@ -178,13 +178,13 @@ export function TicketForm({ open, onClose }: Props) {
 
         <DialogFooter>
           <Button variant="secondary" onClick={() => { reset(); setServerError(null); setPhotos(null); onClose(); }}>
-            Ghairi
+            Cancel
           </Button>
           <Button
             onClick={handleSubmit(onSubmit)}
             loading={isSubmitting || mutation.isPending}
           >
-            Tuma Tiketi
+            Submit Ticket
           </Button>
         </DialogFooter>
       </DialogContent>

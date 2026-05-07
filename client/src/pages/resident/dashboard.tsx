@@ -15,29 +15,22 @@ import { formatRelative } from "@/lib/utils";
 import type { Announcement, Notification } from "@shared/types";
 
 const modules = [
-  { href: "/visitors",    label: "Wageni",     icon: <Users className="h-6 w-6" />,       bg: "bg-[#1B5E20]/10",   fg: "text-[#1B5E20]" },
-  { href: "/maintenance", label: "Marekebu",   icon: <Wrench className="h-6 w-6" />,      bg: "bg-[#D47A00]/10",   fg: "text-[#D47A00]" },
-  { href: "/announcements",label: "Taarifa",   icon: <Megaphone className="h-6 w-6" />,   bg: "bg-purple-100",     fg: "text-purple-700" },
-  { href: "/emergency",   label: "Dharura",    icon: <ShieldAlert className="h-6 w-6" />, bg: "bg-[#B71C1C]/10",   fg: "text-[#B71C1C]" },
-  { href: "/payments",    label: "Malipo",     icon: <CreditCard className="h-6 w-6" />,  bg: "bg-[#D4A017]/15",   fg: "text-[#9A6E00]" },
-  { href: "/events",      label: "Matukio",    icon: <CalendarDays className="h-6 w-6" />,bg: "bg-cyan-100",       fg: "text-cyan-700" },
-  { href: "/marketplace", label: "Soko",       icon: <Store className="h-6 w-6" />,       bg: "bg-amber-100",      fg: "text-amber-700" },
-  { href: "/governance",  label: "Serikali",   icon: <Vote className="h-6 w-6" />,        bg: "bg-indigo-100",     fg: "text-indigo-700" },
-  { href: "/bookings",    label: "Bukuu",      icon: <BookOpen className="h-6 w-6" />,    bg: "bg-pink-100",       fg: "text-pink-700" },
-];
-
-const greetings = [
-  "Habari yako",
-  "Karibu tena",
-  "Jambo",
-  "Mambo vipi",
+  { href: "/visitors",    label: "Visitors",      icon: <Users className="h-6 w-6" />,       bg: "bg-[#1B5E20]/10",   fg: "text-[#1B5E20]" },
+  { href: "/maintenance", label: "Maintenance",   icon: <Wrench className="h-6 w-6" />,      bg: "bg-[#D47A00]/10",   fg: "text-[#D47A00]" },
+  { href: "/announcements",label: "Notices",      icon: <Megaphone className="h-6 w-6" />,   bg: "bg-purple-100",     fg: "text-purple-700" },
+  { href: "/emergency",   label: "Emergency",     icon: <ShieldAlert className="h-6 w-6" />, bg: "bg-[#B71C1C]/10",   fg: "text-[#B71C1C]" },
+  { href: "/payments",    label: "Payments",      icon: <CreditCard className="h-6 w-6" />,  bg: "bg-[#D4A017]/15",   fg: "text-[#9A6E00]" },
+  { href: "/events",      label: "Events",        icon: <CalendarDays className="h-6 w-6" />,bg: "bg-cyan-100",       fg: "text-cyan-700" },
+  { href: "/marketplace", label: "Marketplace",   icon: <Store className="h-6 w-6" />,       bg: "bg-amber-100",      fg: "text-amber-700" },
+  { href: "/governance",  label: "Governance",    icon: <Vote className="h-6 w-6" />,        bg: "bg-indigo-100",     fg: "text-indigo-700" },
+  { href: "/bookings",    label: "Bookings",      icon: <BookOpen className="h-6 w-6" />,    bg: "bg-pink-100",       fg: "text-pink-700" },
 ];
 
 function timeGreeting() {
   const h = new Date().getHours();
-  if (h < 12) return "Habari za asubuhi";
-  if (h < 17) return "Habari za mchana";
-  return "Habari za jioni";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
 }
 
 const priorityVariant: Record<string, "default" | "warning" | "urgent"> = {
@@ -78,8 +71,8 @@ export default function ResidentDashboard() {
             </h1>
             <p className="text-white/60 text-sm mt-1">
               {estate
-                ? `${estate.name}${user?.unitNumber ? ` · Nambari ${user.unitNumber}` : ""}`
-                : "Karibu JiraniHub"}
+                ? `${estate.name}${user?.unitNumber ? ` · Unit ${user.unitNumber}` : ""}`
+                : "Welcome to JiraniHub"}
             </p>
           </div>
         </div>
@@ -91,7 +84,7 @@ export default function ResidentDashboard() {
               <div className="flex items-center gap-2">
                 <Bell className="h-4 w-4 text-[#1B5E20]" />
                 <span className="text-sm text-[#1B5E20] font-semibold">
-                  {unreadCount} arifa mpya
+                  {unreadCount} new notification{unreadCount !== 1 ? "s" : ""}
                 </span>
               </div>
               <ChevronRight className="h-4 w-4 text-[#1B5E20]/60" />
@@ -101,7 +94,7 @@ export default function ResidentDashboard() {
 
         {/* Module grid */}
         <div>
-          <p className="section-label mb-3">Moduli Zote</p>
+          <p className="section-label mb-3">All Modules</p>
           <div className="grid grid-cols-3 gap-3">
             {modules.map((m) => (
               <Link
@@ -121,9 +114,9 @@ export default function ResidentDashboard() {
         {/* Latest announcements */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <p className="section-label">Matangazo ya Hivi Karibuni</p>
+            <p className="section-label">Latest Announcements</p>
             <Link href="/announcements" className="text-xs text-[#1B5E20] font-semibold hover:underline">
-              Ona yote →
+              View all →
             </Link>
           </div>
           {loadingAnn ? (
@@ -131,7 +124,7 @@ export default function ResidentDashboard() {
           ) : latestAnnouncements.length === 0 ? (
             <div className="tribal-card p-8 text-center">
               <Megaphone className="h-10 w-10 text-[#D4C9A8] mx-auto mb-2" />
-              <p className="text-[#6B5D45] text-sm">Hakuna matangazo bado.</p>
+              <p className="text-[#6B5D45] text-sm">No announcements yet.</p>
             </div>
           ) : (
             <div className="space-y-2">
