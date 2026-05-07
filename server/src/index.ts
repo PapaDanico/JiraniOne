@@ -12,7 +12,7 @@ import { visitorsRouter } from "./routes/visitors.js";
 import { maintenanceRouter } from "./routes/maintenance.js";
 import { announcementsRouter } from "./routes/announcements.js";
 import { notificationsRouter } from "./routes/notifications.js";
-import { paymentsRouter } from "./routes/payments.js";
+import { paymentsRouter, mpesaCallbackRouter } from "./routes/payments.js";
 import { emergencyRouter } from "./routes/emergency.js";
 import { eventsRouter } from "./routes/events.js";
 import { pollsRouter } from "./routes/polls.js";
@@ -28,12 +28,18 @@ import { carpoolRouter } from "./routes/carpool.js";
 import { chamaRouter } from "./routes/chama.js";
 import { analyticsRouter } from "./routes/analytics.js";
 import { createWsServer } from "./ws.js";
+import { registerCronJobs } from "./cron.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === "production";
 const PORT = Number(process.env.PORT ?? 5000);
 
 const app = express();
+
+// Render terminates TLS at its load balancer; trust the first proxy hop so
+// req.ip resolves to the real client IP (used by the M-PESA IP allowlist
+// and rate limiters).
+app.set("trust proxy", 1);
 
 // ─── Security ─────────────────────────────────────────────────────────────────
 app.use(
@@ -179,6 +185,10 @@ app.use(express.urlencoded({ extended: true }));
 // ─── Static uploads ───────────────────────────────────────────────────────────
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
+// ─── M-PESA callback (public, IP-allowlisted) ─────────────────────────────────
+// Mounted BEFORE the authenticated paymentsRouter so Safaricom can reach it.
+app.use("/api/payments", mpesaCallbackRouter);
+
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use("/api/auth", authRouter);
 app.use("/api/visitors", visitorsRouter);
@@ -218,6 +228,7 @@ if (isProd) {
 // ─── Start ────────────────────────────────────────────────────────────────────
 const httpServer = createServer(app);
 createWsServer(httpServer);
+registerCronJobs();
 
 httpServer.listen(PORT, () => {
   console.info(`JiraniHub server running on http://localhost:${PORT}`);

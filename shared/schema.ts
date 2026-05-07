@@ -171,8 +171,60 @@ export const passwordResetTokens = pgTable(
   (t) => ({
     userIdIdx: index("password_reset_user_id_idx").on(t.userId),
     expiresAtIdx: index("password_reset_expires_at_idx").on(t.expiresAt),
+    createdAtIdx: index("password_reset_created_at_idx").on(t.createdAt),
   }),
 );
+
+// Audit trail for admin/security-sensitive actions
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: text("id").primaryKey(),
+    actorId: text("actor_id").references(() => users.id, { onDelete: "set null" }),
+    actorRole: varchar("actor_role", { length: 20 }),
+    action: varchar("action", { length: 80 }).notNull(),
+    targetType: varchar("target_type", { length: 40 }),
+    targetId: text("target_id"),
+    estateId: text("estate_id").references(() => estates.id, { onDelete: "set null" }),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    ip: varchar("ip", { length: 64 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    actorIdIdx: index("audit_logs_actor_id_idx").on(t.actorId),
+    targetIdIdx: index("audit_logs_target_id_idx").on(t.targetId),
+    estateIdIdx: index("audit_logs_estate_id_idx").on(t.estateId),
+    createdAtIdx: index("audit_logs_created_at_idx").on(t.createdAt),
+  }),
+);
+
+// Per-user daily SMS counter (budget control)
+export const smsQuotas = pgTable("sms_quotas", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  day: timestamp("day", { mode: "date" }).notNull(),
+  sentCount: integer("sent_count").notNull().default(0),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Global daily SMS counter (circuit breaker)
+export const smsGlobalQuota = pgTable("sms_global_quota", {
+  day: timestamp("day", { mode: "date" }).primaryKey(),
+  sentCount: integer("sent_count").notNull().default(0),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Per-user failed-login tracking for account lockout
+export const loginAttempts = pgTable("login_attempts", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  failedCount: integer("failed_count").notNull().default(0),
+  lockedUntil: timestamp("locked_until"),
+  lastFailedAt: timestamp("last_failed_at"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
 
 // ─── Visitor Management ───────────────────────────────────────────────────────
 

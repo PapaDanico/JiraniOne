@@ -100,8 +100,10 @@ export const emergencyAlertSchema = z.object({
   locationLng: z.number().optional(),
 });
 
+// M-PESA only handles whole shillings; .int() rejects decimals upstream so
+// we don't quietly Math.round() at the Daraja boundary.
 export const initiatePaymentSchema = z.object({
-  amount: z.number().min(1).max(500000),
+  amount: z.number().int().min(1).max(500000),
   type: z.string().min(1).max(50),
   description: z.string().max(100).optional(),
   phone: kenyanPhone.optional(),
@@ -110,8 +112,13 @@ export const initiatePaymentSchema = z.object({
 export const createCampaignSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().optional(),
-  goalAmount: z.number().min(100),
+  goalAmount: z.number().int().min(100).max(100_000_000),
   deadline: z.string().datetime().optional(),
+});
+
+export const donateSchema = z.object({
+  amount: z.number().int().min(1).max(500000),
+  anonymous: z.boolean().default(false),
 });
 
 export const createPollSchema = z.object({
