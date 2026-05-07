@@ -112,7 +112,7 @@ app.get("/api/health", (_req, res) => {
 
 // ─── Serve React in production ────────────────────────────────────────────────
 if (isProd) {
-  const staticPath = path.join(__dirname, "../public");
+  const staticPath = path.join(process.cwd(), "dist/public");
   app.use(express.static(staticPath));
   app.get("*", (_req, res) => {
     res.sendFile(path.join(staticPath, "index.html"));

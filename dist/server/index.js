@@ -2258,7 +2258,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: (/* @__PURE__ */ new Date()).toISOString() });
 });
 if (isProd) {
-  const staticPath = path2.join(__dirname, "../public");
+  const staticPath = path2.join(process.cwd(), "dist/public");
   app.use(express.static(staticPath));
   app.get("*", (_req, res) => {
     res.sendFile(path2.join(staticPath, "index.html"));
