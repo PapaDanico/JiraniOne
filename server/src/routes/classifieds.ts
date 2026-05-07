@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and, desc, ne } from "drizzle-orm";
 import { db } from "../db.js";
 import { classifieds } from "@shared/schema.js";
+import { createClassifiedSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
@@ -44,24 +45,12 @@ classifiedsRouter.post("/", async (req, res) => {
   const user = res.locals.user!;
   if (!user.estateId) { res.status(400).json({ error: "No estate assigned" }); return; }
 
-  const { title, description, price, category, contactPhone } = req.body as {
-    title: string;
-    description: string;
-    price?: string;
-    category: string;
-    contactPhone?: string;
-  };
-
-  if (!title?.trim() || !description?.trim()) {
-    res.status(400).json({ error: "Title and description are required" });
+  const parsed = createClassifiedSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
-
-  const validCategories = ["sell", "buy", "give", "service"];
-  if (!validCategories.includes(category)) {
-    res.status(400).json({ error: "Invalid category" });
-    return;
-  }
+  const { title, description, price, category, contactPhone, imageUrl } = parsed.data;
 
   const [listing] = await db
     .insert(classifieds)
@@ -71,9 +60,10 @@ classifiedsRouter.post("/", async (req, res) => {
       userId: user.id,
       title: title.trim(),
       description: description.trim(),
-      price: price ? String(parseFloat(price)) : null,
-      category: category as "sell" | "buy" | "give" | "service",
-      contactPhone: contactPhone?.trim() || null,
+      price: price !== undefined ? String(price) : null,
+      category,
+      contactPhone: contactPhone ?? null,
+      imageUrl: imageUrl ?? null,
       status: "active",
     })
     .returning();

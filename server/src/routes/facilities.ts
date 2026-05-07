@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, desc, and, lte, gte, or } from "drizzle-orm";
 import { db } from "../db.js";
 import { facilities, bookings, users } from "@shared/schema.js";
+import { createFacilitySchema, createBookingSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
@@ -22,18 +23,20 @@ facilitiesRouter.get("/", async (_req, res) => {
 // Admin: create facility
 facilitiesRouter.post("/", requireRole("admin"), async (req, res) => {
   const user = res.locals.user!;
-  const { name, description, requiresApproval, maxBookingHours } = req.body as {
-    name: string; description?: string; requiresApproval?: boolean; maxBookingHours?: number;
-  };
-  if (!name) { res.status(400).json({ error: "name required" }); return; }
+  const parsed = createFacilitySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { name, description, requiresApproval, maxBookingHours } = parsed.data;
 
   const [row] = await db.insert(facilities).values({
     id: newId(),
     estateId: user.estateId!,
     name,
     description: description ?? null,
-    requiresApproval: requiresApproval ?? false,
-    maxBookingHours: maxBookingHours ?? 4,
+    requiresApproval,
+    maxBookingHours,
   }).returning();
   res.status(201).json({ data: row });
 });
@@ -116,13 +119,12 @@ facilitiesRouter.post("/bookings", async (req, res) => {
   const user = res.locals.user!;
   if (!user.estateId) { res.status(400).json({ error: "No estate assigned" }); return; }
 
-  const { facilityId, startTime, endTime, notes } = req.body as {
-    facilityId: string; startTime: string; endTime: string; notes?: string;
-  };
-  if (!facilityId || !startTime || !endTime) {
-    res.status(400).json({ error: "facilityId, startTime, endTime required" });
+  const parsed = createBookingSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
+  const { facilityId, startTime, endTime, notes } = parsed.data;
 
   const start = new Date(startTime);
   const end = new Date(endTime);
@@ -170,7 +172,12 @@ facilitiesRouter.post("/bookings", async (req, res) => {
 // Admin: approve/reject | Resident: cancel
 facilitiesRouter.patch("/bookings/:id", async (req, res) => {
   const user = res.locals.user!;
-  const { status } = req.body as { status: string };
+  const status = (req.body as { status?: string })?.status;
+  const allowedStatuses = ["approved", "rejected", "cancelled", "completed"] as const;
+  if (!status || !allowedStatuses.includes(status as typeof allowedStatuses[number])) {
+    res.status(400).json({ error: "Invalid status" });
+    return;
+  }
 
   const [booking] = await db.select().from(bookings)
     .where(eq(bookings.id, req.params['id']!)).limit(1);

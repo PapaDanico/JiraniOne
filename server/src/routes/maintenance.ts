@@ -13,6 +13,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
 import { broadcastToEstate } from "../ws.js";
+import { processUploadedImages } from "../lib/imageUpload.js";
 
 export const maintenanceRouter = Router();
 maintenanceRouter.use(requireAuth);
@@ -168,8 +169,15 @@ maintenanceRouter.post(
       return;
     }
 
-    const files = req.files as Express.Multer.File[];
-    const photoUrls = files?.map((f) => `/uploads/${f.filename}`) ?? [];
+    let photoUrls: string[] = [];
+    try {
+      photoUrls = await processUploadedImages(req.files as Express.Multer.File[]);
+    } catch (err) {
+      res.status(400).json({
+        error: err instanceof Error ? err.message : "Photo processing failed",
+      });
+      return;
+    }
 
     const [ticket] = await db
       .insert(maintenanceTickets)

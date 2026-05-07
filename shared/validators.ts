@@ -202,10 +202,14 @@ export const createServiceProviderSchema = z.object({
 });
 
 export const createParcelSchema = z.object({
-  residentId: z.string().min(1),
   description: z.string().min(1).max(200),
   trackingRef: z.string().max(100).optional(),
   sender: z.string().max(100).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+export const updateParcelSchema = z.object({
+  status: z.enum(["expected", "at_gate", "collected", "returned"]).optional(),
   notes: z.string().max(500).optional(),
 });
 

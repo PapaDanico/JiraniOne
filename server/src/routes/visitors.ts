@@ -290,11 +290,32 @@ visitorsRouter.get(
       .where(eq(visitors.estateId, user.estateId!))
       .orderBy(desc(visitors.createdAt));
 
+    // Visitor names and purposes are user-controlled. Without escaping,
+    // a name like `=cmd|'/c calc'!A1` becomes a live formula when the
+    // CSV opens in Excel/Sheets — formula-injection attack. Prefix any
+    // cell starting with =, +, -, @, tab, or CR with a single quote and
+    // wrap in double quotes (escaping internal quotes by doubling).
+    const safeCell = (raw: unknown): string => {
+      const v = raw == null ? "" : String(raw);
+      const needsPrefix = /^[=+\-@\t\r]/.test(v);
+      const escaped = (needsPrefix ? `'${v}` : v).replace(/"/g, '""');
+      return `"${escaped}"`;
+    };
+
     const header = "id,name,phone,purpose,status,expectedAt,checkedInAt,checkedOutAt,createdAt\n";
     const csv = rows
-      .map(
-        (v) =>
-          `${v.id},"${v.name}","${v.phone}","${v.purpose ?? ""}",${v.status},${v.expectedAt ?? ""},${v.checkedInAt ?? ""},${v.checkedOutAt ?? ""},${v.createdAt}`,
+      .map((v) =>
+        [
+          safeCell(v.id),
+          safeCell(v.name),
+          safeCell(v.phone),
+          safeCell(v.purpose),
+          safeCell(v.status),
+          safeCell(v.expectedAt?.toISOString?.() ?? v.expectedAt),
+          safeCell(v.checkedInAt?.toISOString?.() ?? v.checkedInAt),
+          safeCell(v.checkedOutAt?.toISOString?.() ?? v.checkedOutAt),
+          safeCell(v.createdAt?.toISOString?.() ?? v.createdAt),
+        ].join(","),
       )
       .join("\n");
 

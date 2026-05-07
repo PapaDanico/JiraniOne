@@ -230,7 +230,20 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // ─── Static uploads ───────────────────────────────────────────────────────────
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+// Filenames are content-addressed (random hex from imageUpload.ts), so we
+// can long-cache and mark immutable. nosniff prevents browser MIME-type
+// guessing — defence in depth on top of magic-byte validation at upload.
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads"), {
+    maxAge: "30d",
+    immutable: true,
+    setHeaders: (res) => {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Content-Disposition", "inline");
+    },
+  }),
+);
 
 // ─── M-PESA callback (public, IP-allowlisted) ─────────────────────────────────
 // Mounted BEFORE the authenticated paymentsRouter so Safaricom can reach it.
