@@ -29,6 +29,20 @@ __export(schema_exports, {
   announcements: () => announcements,
   bookingStatusEnum: () => bookingStatusEnum,
   bookings: () => bookings,
+  carpoolBookingStatusEnum: () => carpoolBookingStatusEnum,
+  carpoolBookings: () => carpoolBookings,
+  carpoolBookingsRelations: () => carpoolBookingsRelations,
+  carpoolOffers: () => carpoolOffers,
+  carpoolOffersRelations: () => carpoolOffersRelations,
+  carpoolStatusEnum: () => carpoolStatusEnum,
+  chamaContributions: () => chamaContributions,
+  chamaContributionsRelations: () => chamaContributionsRelations,
+  chamaFrequencyEnum: () => chamaFrequencyEnum,
+  chamaMembers: () => chamaMembers,
+  chamaMembersRelations: () => chamaMembersRelations,
+  chamaStatusEnum: () => chamaStatusEnum,
+  chamas: () => chamas,
+  chamasRelations: () => chamasRelations,
   classifiedCategoryEnum: () => classifiedCategoryEnum,
   classifiedStatusEnum: () => classifiedStatusEnum,
   classifieds: () => classifieds,
@@ -591,6 +605,112 @@ var classifieds = pgTable(
     createdAtIdx: index("classifieds_created_at_idx").on(t.createdAt)
   })
 );
+var carpoolStatusEnum = pgEnum("carpool_status", [
+  "active",
+  "full",
+  "cancelled",
+  "completed"
+]);
+var carpoolBookingStatusEnum = pgEnum("carpool_booking_status", [
+  "pending",
+  "confirmed",
+  "cancelled"
+]);
+var carpoolOffers = pgTable(
+  "carpool_offers",
+  {
+    id: text("id").primaryKey(),
+    estateId: text("estate_id").notNull().references(() => estates.id),
+    driverId: text("driver_id").notNull().references(() => users.id),
+    origin: varchar("origin", { length: 200 }).notNull(),
+    destination: varchar("destination", { length: 200 }).notNull(),
+    departureTime: timestamp("departure_time").notNull(),
+    seatsTotal: integer("seats_total").notNull().default(3),
+    seatsAvailable: integer("seats_available").notNull().default(3),
+    fare: decimal("fare", { precision: 10, scale: 2 }),
+    notes: text("notes"),
+    status: carpoolStatusEnum("status").notNull().default("active"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow()
+  },
+  (t) => ({
+    estateIdIdx: index("carpool_estate_id_idx").on(t.estateId),
+    driverIdIdx: index("carpool_driver_id_idx").on(t.driverId),
+    departureIdx: index("carpool_departure_idx").on(t.departureTime)
+  })
+);
+var carpoolBookings = pgTable(
+  "carpool_bookings",
+  {
+    id: text("id").primaryKey(),
+    offerId: text("offer_id").notNull().references(() => carpoolOffers.id, { onDelete: "cascade" }),
+    passengerId: text("passenger_id").notNull().references(() => users.id),
+    status: carpoolBookingStatusEnum("booking_status").notNull().default("confirmed"),
+    createdAt: timestamp("created_at").notNull().defaultNow()
+  },
+  (t) => ({
+    offerIdIdx: index("carpool_bookings_offer_id_idx").on(t.offerId),
+    passengerIdIdx: index("carpool_bookings_passenger_id_idx").on(t.passengerId)
+  })
+);
+var chamaStatusEnum = pgEnum("chama_status", [
+  "active",
+  "paused",
+  "dissolved"
+]);
+var chamaFrequencyEnum = pgEnum("chama_frequency", [
+  "weekly",
+  "monthly"
+]);
+var chamas = pgTable(
+  "chamas",
+  {
+    id: text("id").primaryKey(),
+    estateId: text("estate_id").notNull().references(() => estates.id),
+    adminId: text("admin_id").notNull().references(() => users.id),
+    name: varchar("name", { length: 150 }).notNull(),
+    description: text("description"),
+    contributionAmount: decimal("contribution_amount", { precision: 12, scale: 2 }).notNull(),
+    frequency: chamaFrequencyEnum("frequency").notNull().default("monthly"),
+    status: chamaStatusEnum("status").notNull().default("active"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow()
+  },
+  (t) => ({
+    estateIdIdx: index("chamas_estate_id_idx").on(t.estateId)
+  })
+);
+var chamaMembers = pgTable(
+  "chama_members",
+  {
+    id: text("id").primaryKey(),
+    chamaId: text("chama_id").notNull().references(() => chamas.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull().references(() => users.id),
+    role: varchar("role", { length: 20 }).notNull().default("member"),
+    joinedAt: timestamp("joined_at").notNull().defaultNow()
+  },
+  (t) => ({
+    chamaIdIdx: index("chama_members_chama_id_idx").on(t.chamaId),
+    userIdIdx: index("chama_members_user_id_idx").on(t.userId)
+  })
+);
+var chamaContributions = pgTable(
+  "chama_contributions",
+  {
+    id: text("id").primaryKey(),
+    chamaId: text("chama_id").notNull().references(() => chamas.id),
+    userId: text("user_id").notNull().references(() => users.id),
+    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+    periodLabel: varchar("period_label", { length: 20 }).notNull(),
+    mpesaRef: varchar("mpesa_ref", { length: 50 }),
+    paidAt: timestamp("paid_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow()
+  },
+  (t) => ({
+    chamaIdIdx: index("chama_contributions_chama_id_idx").on(t.chamaId),
+    userIdIdx: index("chama_contributions_user_id_idx").on(t.userId)
+  })
+);
 var parcelsRelations = relations(parcels, ({ one }) => ({
   resident: one(users, { fields: [parcels.residentId], references: [users.id] }),
   receivedBy: one(users, { fields: [parcels.receivedById], references: [users.id] }),
@@ -654,6 +774,29 @@ var ticketCommentsRelations = relations(ticketComments, ({ one }) => ({
     fields: [ticketComments.authorId],
     references: [users.id]
   })
+}));
+var carpoolOffersRelations = relations(carpoolOffers, ({ one, many }) => ({
+  driver: one(users, { fields: [carpoolOffers.driverId], references: [users.id] }),
+  estate: one(estates, { fields: [carpoolOffers.estateId], references: [estates.id] }),
+  bookings: many(carpoolBookings)
+}));
+var carpoolBookingsRelations = relations(carpoolBookings, ({ one }) => ({
+  offer: one(carpoolOffers, { fields: [carpoolBookings.offerId], references: [carpoolOffers.id] }),
+  passenger: one(users, { fields: [carpoolBookings.passengerId], references: [users.id] })
+}));
+var chamasRelations = relations(chamas, ({ one, many }) => ({
+  admin: one(users, { fields: [chamas.adminId], references: [users.id] }),
+  estate: one(estates, { fields: [chamas.estateId], references: [estates.id] }),
+  members: many(chamaMembers),
+  contributions: many(chamaContributions)
+}));
+var chamaMembersRelations = relations(chamaMembers, ({ one }) => ({
+  chama: one(chamas, { fields: [chamaMembers.chamaId], references: [chamas.id] }),
+  user: one(users, { fields: [chamaMembers.userId], references: [users.id] })
+}));
+var chamaContributionsRelations = relations(chamaContributions, ({ one }) => ({
+  chama: one(chamas, { fields: [chamaContributions.chamaId], references: [chamas.id] }),
+  user: one(users, { fields: [chamaContributions.userId], references: [users.id] })
 }));
 
 // server/src/db.ts
@@ -1847,7 +1990,7 @@ pollsRouter.get("/", async (_req, res) => {
     ...p,
     options: optionRows.filter((o) => o.pollId === p.id),
     myVoteOptionId: myVoteMap.get(p.id) ?? null,
-    totalVotes: optionRows.filter((o) => o.pollId === p.id).reduce((sum, o) => sum + o.voteCount, 0)
+    totalVotes: optionRows.filter((o) => o.pollId === p.id).reduce((sum2, o) => sum2 + o.voteCount, 0)
   }));
   res.json({ data: enriched });
 });
@@ -2567,6 +2710,697 @@ classifiedsRouter.delete("/:id", async (req, res) => {
   res.json({ data: { success: true } });
 });
 
+// server/src/routes/harambee.ts
+import { Router as Router17 } from "express";
+import { eq as eq15, desc as desc13, and as and14 } from "drizzle-orm";
+var harambeeRouter = Router17();
+harambeeRouter.use(requireAuth);
+harambeeRouter.get("/", async (_req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.json({ data: [] });
+    return;
+  }
+  const rows = await db.select().from(fundraisingCampaigns).where(eq15(fundraisingCampaigns.estateId, user.estateId)).orderBy(desc13(fundraisingCampaigns.createdAt));
+  res.json({ data: rows });
+});
+harambeeRouter.get("/:id/donations", async (req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.json({ data: [] });
+    return;
+  }
+  const [campaign] = await db.select().from(fundraisingCampaigns).where(
+    and14(
+      eq15(fundraisingCampaigns.id, req.params.id),
+      eq15(fundraisingCampaigns.estateId, user.estateId)
+    )
+  ).limit(1);
+  if (!campaign) {
+    res.status(404).json({ error: "Campaign not found" });
+    return;
+  }
+  const rows = await db.select({
+    id: donations.id,
+    campaignId: donations.campaignId,
+    donorId: donations.donorId,
+    amount: donations.amount,
+    mpesaRef: donations.mpesaRef,
+    anonymous: donations.anonymous,
+    createdAt: donations.createdAt,
+    donorName: users.name
+  }).from(donations).leftJoin(users, eq15(donations.donorId, users.id)).where(eq15(donations.campaignId, campaign.id)).orderBy(desc13(donations.createdAt));
+  const sanitized = rows.map((row) => ({
+    ...row,
+    donorName: row.anonymous ? null : row.donorName,
+    donorId: row.anonymous ? null : row.donorId
+  }));
+  res.json({ data: sanitized });
+});
+harambeeRouter.post("/", requireRole("admin"), async (req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate assigned" });
+    return;
+  }
+  const { title, description, goalAmount, deadline } = req.body;
+  if (!title?.trim()) {
+    res.status(400).json({ error: "title is required" });
+    return;
+  }
+  if (!goalAmount || Number(goalAmount) < 1) {
+    res.status(400).json({ error: "goalAmount is required and must be positive" });
+    return;
+  }
+  const [campaign] = await db.insert(fundraisingCampaigns).values({
+    id: newId(),
+    estateId: user.estateId,
+    createdById: user.id,
+    title: title.trim(),
+    description: description?.trim() ?? null,
+    goalAmount: String(goalAmount),
+    deadline: deadline ? new Date(deadline) : null,
+    status: "active"
+  }).returning();
+  res.status(201).json({ data: campaign });
+});
+harambeeRouter.patch("/:id", requireRole("admin"), async (req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate assigned" });
+    return;
+  }
+  const { status, title, description, goalAmount, deadline } = req.body;
+  const [campaign] = await db.select().from(fundraisingCampaigns).where(
+    and14(
+      eq15(fundraisingCampaigns.id, req.params.id),
+      eq15(fundraisingCampaigns.estateId, user.estateId)
+    )
+  ).limit(1);
+  if (!campaign) {
+    res.status(404).json({ error: "Campaign not found" });
+    return;
+  }
+  const updates = {
+    updatedAt: /* @__PURE__ */ new Date()
+  };
+  if (status) updates.status = status;
+  if (title?.trim()) updates.title = title.trim();
+  if (description !== void 0) updates.description = description?.trim() ?? null;
+  if (goalAmount !== void 0) updates.goalAmount = String(goalAmount);
+  if (deadline !== void 0) updates.deadline = deadline ? new Date(deadline) : null;
+  const [updated] = await db.update(fundraisingCampaigns).set(updates).where(eq15(fundraisingCampaigns.id, campaign.id)).returning();
+  res.json({ data: updated });
+});
+harambeeRouter.post("/:id/donate", async (req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate assigned" });
+    return;
+  }
+  const { amount, anonymous } = req.body;
+  if (!amount || Number(amount) < 1) {
+    res.status(400).json({ error: "amount is required and must be positive" });
+    return;
+  }
+  const [campaign] = await db.select().from(fundraisingCampaigns).where(
+    and14(
+      eq15(fundraisingCampaigns.id, req.params.id),
+      eq15(fundraisingCampaigns.estateId, user.estateId)
+    )
+  ).limit(1);
+  if (!campaign) {
+    res.status(404).json({ error: "Campaign not found" });
+    return;
+  }
+  if (campaign.status !== "active") {
+    res.status(400).json({ error: "Campaign is not accepting donations" });
+    return;
+  }
+  const [donation] = await db.insert(donations).values({
+    id: newId(),
+    campaignId: campaign.id,
+    donorId: user.id,
+    amount: String(amount),
+    anonymous: anonymous ?? false,
+    mpesaRef: "STUB"
+    // dev stub
+  }).returning();
+  await db.update(fundraisingCampaigns).set({
+    currentAmount: String(Number(campaign.currentAmount) + Number(amount)),
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq15(fundraisingCampaigns.id, campaign.id));
+  res.status(201).json({ data: donation });
+});
+
+// server/src/routes/carpool.ts
+import { Router as Router18 } from "express";
+import { eq as eq16, and as and15, gte as gte3 } from "drizzle-orm";
+var carpoolRouter = Router18();
+carpoolRouter.use(requireAuth);
+carpoolRouter.get("/", async (_req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.json({ data: [] });
+    return;
+  }
+  const now = /* @__PURE__ */ new Date();
+  const offers = await db.select({
+    id: carpoolOffers.id,
+    estateId: carpoolOffers.estateId,
+    driverId: carpoolOffers.driverId,
+    origin: carpoolOffers.origin,
+    destination: carpoolOffers.destination,
+    departureTime: carpoolOffers.departureTime,
+    seatsTotal: carpoolOffers.seatsTotal,
+    seatsAvailable: carpoolOffers.seatsAvailable,
+    fare: carpoolOffers.fare,
+    notes: carpoolOffers.notes,
+    status: carpoolOffers.status,
+    createdAt: carpoolOffers.createdAt,
+    updatedAt: carpoolOffers.updatedAt,
+    driverName: users.name,
+    driverUnit: users.unitNumber
+  }).from(carpoolOffers).leftJoin(users, eq16(carpoolOffers.driverId, users.id)).where(
+    and15(
+      eq16(carpoolOffers.estateId, user.estateId),
+      eq16(carpoolOffers.status, "active"),
+      gte3(carpoolOffers.departureTime, now)
+    )
+  ).orderBy(carpoolOffers.departureTime);
+  if (offers.length === 0) {
+    res.json({ data: [] });
+    return;
+  }
+  const offerIds = offers.map((o) => o.id);
+  const myBookings = await db.select().from(carpoolBookings).where(eq16(carpoolBookings.passengerId, user.id));
+  const myBookingsByOfferId = new Map(
+    myBookings.filter((b) => offerIds.includes(b.offerId) && b.status !== "cancelled").map((b) => [b.offerId, b])
+  );
+  const data = offers.map((offer) => ({
+    ...offer,
+    myBooking: myBookingsByOfferId.get(offer.id) ?? null
+  }));
+  res.json({ data });
+});
+carpoolRouter.post("/", async (req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate assigned" });
+    return;
+  }
+  const { origin, destination, departureTime, seatsTotal, fare, notes } = req.body;
+  if (!origin?.trim() || !destination?.trim() || !departureTime) {
+    res.status(400).json({ error: "origin, destination and departureTime are required" });
+    return;
+  }
+  const departure = new Date(departureTime);
+  if (isNaN(departure.getTime()) || departure <= /* @__PURE__ */ new Date()) {
+    res.status(400).json({ error: "departureTime must be a valid future date" });
+    return;
+  }
+  const seats = seatsTotal && seatsTotal > 0 ? seatsTotal : 3;
+  const [offer] = await db.insert(carpoolOffers).values({
+    id: newId(),
+    estateId: user.estateId,
+    driverId: user.id,
+    origin: origin.trim(),
+    destination: destination.trim(),
+    departureTime: departure,
+    seatsTotal: seats,
+    seatsAvailable: seats,
+    fare: fare != null ? String(fare) : null,
+    notes: notes?.trim() ?? null,
+    status: "active"
+  }).returning();
+  res.status(201).json({ data: offer });
+});
+carpoolRouter.delete("/:id", async (req, res) => {
+  const user = res.locals.user;
+  const [offer] = await db.select().from(carpoolOffers).where(eq16(carpoolOffers.id, req.params.id)).limit(1);
+  if (!offer || offer.estateId !== user.estateId) {
+    res.status(404).json({ error: "Offer not found" });
+    return;
+  }
+  if (offer.driverId !== user.id && user.role !== "admin") {
+    res.status(403).json({ error: "Only the driver can cancel this offer" });
+    return;
+  }
+  const [updated] = await db.update(carpoolOffers).set({ status: "cancelled", updatedAt: /* @__PURE__ */ new Date() }).where(eq16(carpoolOffers.id, offer.id)).returning();
+  res.json({ data: updated });
+});
+carpoolRouter.post("/:id/book", async (req, res) => {
+  const user = res.locals.user;
+  const [offer] = await db.select().from(carpoolOffers).where(eq16(carpoolOffers.id, req.params.id)).limit(1);
+  if (!offer || offer.estateId !== user.estateId) {
+    res.status(404).json({ error: "Offer not found" });
+    return;
+  }
+  if (offer.status !== "active") {
+    res.status(400).json({ error: "Offer is not available for booking" });
+    return;
+  }
+  if (offer.driverId === user.id) {
+    res.status(400).json({ error: "Driver cannot book their own offer" });
+    return;
+  }
+  if (offer.seatsAvailable < 1) {
+    res.status(400).json({ error: "No seats available" });
+    return;
+  }
+  const [existing] = await db.select().from(carpoolBookings).where(
+    and15(
+      eq16(carpoolBookings.offerId, offer.id),
+      eq16(carpoolBookings.passengerId, user.id)
+    )
+  ).limit(1);
+  if (existing && existing.status !== "cancelled") {
+    res.status(400).json({ error: "You already have a booking for this offer" });
+    return;
+  }
+  const [booking] = await db.insert(carpoolBookings).values({
+    id: newId(),
+    offerId: offer.id,
+    passengerId: user.id,
+    status: "confirmed"
+  }).returning();
+  const newSeatsAvailable = offer.seatsAvailable - 1;
+  await db.update(carpoolOffers).set({
+    seatsAvailable: newSeatsAvailable,
+    status: newSeatsAvailable === 0 ? "full" : "active",
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq16(carpoolOffers.id, offer.id));
+  res.status(201).json({ data: booking });
+});
+carpoolRouter.delete("/:id/book", async (req, res) => {
+  const user = res.locals.user;
+  const [offer] = await db.select().from(carpoolOffers).where(eq16(carpoolOffers.id, req.params.id)).limit(1);
+  if (!offer || offer.estateId !== user.estateId) {
+    res.status(404).json({ error: "Offer not found" });
+    return;
+  }
+  const [booking] = await db.select().from(carpoolBookings).where(
+    and15(
+      eq16(carpoolBookings.offerId, offer.id),
+      eq16(carpoolBookings.passengerId, user.id)
+    )
+  ).limit(1);
+  if (!booking || booking.status === "cancelled") {
+    res.status(404).json({ error: "Active booking not found" });
+    return;
+  }
+  await db.update(carpoolBookings).set({ status: "cancelled" }).where(eq16(carpoolBookings.id, booking.id));
+  const newSeatsAvailable = offer.seatsAvailable + 1;
+  await db.update(carpoolOffers).set({
+    seatsAvailable: newSeatsAvailable,
+    status: offer.status === "cancelled" ? "cancelled" : "active",
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq16(carpoolOffers.id, offer.id));
+  res.json({ data: { success: true } });
+});
+
+// server/src/routes/chama.ts
+import { Router as Router19 } from "express";
+import { eq as eq17, desc as desc15, and as and16, sql as sql2 } from "drizzle-orm";
+var chamaRouter = Router19();
+chamaRouter.use(requireAuth);
+chamaRouter.get("/", async (_req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.json({ data: [] });
+    return;
+  }
+  const rows = await db.select().from(chamas).where(eq17(chamas.estateId, user.estateId)).orderBy(desc15(chamas.createdAt));
+  if (rows.length === 0) {
+    res.json({ data: [] });
+    return;
+  }
+  const chamaIds = rows.map((c) => c.id);
+  const allMembers = await db.select().from(chamaMembers).where(sql2`${chamaMembers.chamaId} = ANY(${chamaIds})`);
+  const countByChamaId = /* @__PURE__ */ new Map();
+  const myMembershipByChamaId = /* @__PURE__ */ new Map();
+  for (const m of allMembers) {
+    countByChamaId.set(m.chamaId, (countByChamaId.get(m.chamaId) ?? 0) + 1);
+    if (m.userId === user.id) {
+      myMembershipByChamaId.set(m.chamaId, m);
+    }
+  }
+  const data = rows.map((chama) => ({
+    ...chama,
+    memberCount: countByChamaId.get(chama.id) ?? 0,
+    myMembership: myMembershipByChamaId.get(chama.id) ?? null
+  }));
+  res.json({ data });
+});
+chamaRouter.post("/", async (req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate assigned" });
+    return;
+  }
+  const { name, description, contributionAmount, frequency } = req.body;
+  if (!name?.trim()) {
+    res.status(400).json({ error: "name is required" });
+    return;
+  }
+  if (!contributionAmount || Number(contributionAmount) < 1) {
+    res.status(400).json({ error: "contributionAmount is required and must be positive" });
+    return;
+  }
+  const chamaId = newId();
+  const [chama] = await db.insert(chamas).values({
+    id: chamaId,
+    estateId: user.estateId,
+    adminId: user.id,
+    name: name.trim(),
+    description: description?.trim() ?? null,
+    contributionAmount: String(contributionAmount),
+    frequency: frequency ?? "monthly",
+    status: "active"
+  }).returning();
+  await db.insert(chamaMembers).values({
+    id: newId(),
+    chamaId,
+    userId: user.id,
+    role: "admin"
+  });
+  res.status(201).json({ data: chama });
+});
+chamaRouter.post("/:id/join", async (req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate assigned" });
+    return;
+  }
+  const [chama] = await db.select().from(chamas).where(
+    and16(
+      eq17(chamas.id, req.params.id),
+      eq17(chamas.estateId, user.estateId)
+    )
+  ).limit(1);
+  if (!chama) {
+    res.status(404).json({ error: "Chama not found" });
+    return;
+  }
+  if (chama.status !== "active") {
+    res.status(400).json({ error: "Chama is not accepting new members" });
+    return;
+  }
+  const [existing] = await db.select().from(chamaMembers).where(
+    and16(
+      eq17(chamaMembers.chamaId, chama.id),
+      eq17(chamaMembers.userId, user.id)
+    )
+  ).limit(1);
+  if (existing) {
+    res.status(400).json({ error: "Already a member of this chama" });
+    return;
+  }
+  const [member] = await db.insert(chamaMembers).values({
+    id: newId(),
+    chamaId: chama.id,
+    userId: user.id,
+    role: "member"
+  }).returning();
+  res.status(201).json({ data: member });
+});
+chamaRouter.post("/:id/contribute", async (req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate assigned" });
+    return;
+  }
+  const { amount, periodLabel } = req.body;
+  if (!amount || Number(amount) < 1) {
+    res.status(400).json({ error: "amount is required and must be positive" });
+    return;
+  }
+  if (!periodLabel?.trim()) {
+    res.status(400).json({ error: "periodLabel is required (e.g. '2025-05')" });
+    return;
+  }
+  const [chama] = await db.select().from(chamas).where(
+    and16(
+      eq17(chamas.id, req.params.id),
+      eq17(chamas.estateId, user.estateId)
+    )
+  ).limit(1);
+  if (!chama) {
+    res.status(404).json({ error: "Chama not found" });
+    return;
+  }
+  const [membership] = await db.select().from(chamaMembers).where(
+    and16(
+      eq17(chamaMembers.chamaId, chama.id),
+      eq17(chamaMembers.userId, user.id)
+    )
+  ).limit(1);
+  if (!membership) {
+    res.status(403).json({ error: "You are not a member of this chama" });
+    return;
+  }
+  const [contribution] = await db.insert(chamaContributions).values({
+    id: newId(),
+    chamaId: chama.id,
+    userId: user.id,
+    amount: String(amount),
+    periodLabel: periodLabel.trim(),
+    mpesaRef: "STUB",
+    // dev stub — replace with real M-PESA flow in production
+    paidAt: /* @__PURE__ */ new Date()
+  }).returning();
+  res.status(201).json({ data: contribution });
+});
+chamaRouter.get("/:id/contributions", async (req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.json({ data: [] });
+    return;
+  }
+  const [chama] = await db.select().from(chamas).where(
+    and16(
+      eq17(chamas.id, req.params.id),
+      eq17(chamas.estateId, user.estateId)
+    )
+  ).limit(1);
+  if (!chama) {
+    res.status(404).json({ error: "Chama not found" });
+    return;
+  }
+  const isEstateAdmin = user.role === "admin";
+  if (!isEstateAdmin) {
+    const [membership] = await db.select().from(chamaMembers).where(
+      and16(
+        eq17(chamaMembers.chamaId, chama.id),
+        eq17(chamaMembers.userId, user.id)
+      )
+    ).limit(1);
+    if (!membership) {
+      res.status(403).json({ error: "Access denied \u2014 members only" });
+      return;
+    }
+  }
+  const rows = await db.select({
+    id: chamaContributions.id,
+    chamaId: chamaContributions.chamaId,
+    userId: chamaContributions.userId,
+    amount: chamaContributions.amount,
+    periodLabel: chamaContributions.periodLabel,
+    mpesaRef: chamaContributions.mpesaRef,
+    paidAt: chamaContributions.paidAt,
+    createdAt: chamaContributions.createdAt,
+    contributorName: users.name,
+    contributorUnit: users.unitNumber
+  }).from(chamaContributions).leftJoin(users, eq17(chamaContributions.userId, users.id)).where(eq17(chamaContributions.chamaId, chama.id)).orderBy(desc15(chamaContributions.createdAt));
+  res.json({ data: rows });
+});
+chamaRouter.get("/:id/members", async (req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.json({ data: [] });
+    return;
+  }
+  const [chama] = await db.select().from(chamas).where(
+    and16(
+      eq17(chamas.id, req.params.id),
+      eq17(chamas.estateId, user.estateId)
+    )
+  ).limit(1);
+  if (!chama) {
+    res.status(404).json({ error: "Chama not found" });
+    return;
+  }
+  const rows = await db.select({
+    id: chamaMembers.id,
+    chamaId: chamaMembers.chamaId,
+    userId: chamaMembers.userId,
+    role: chamaMembers.role,
+    joinedAt: chamaMembers.joinedAt,
+    memberName: users.name,
+    memberUnit: users.unitNumber
+  }).from(chamaMembers).leftJoin(users, eq17(chamaMembers.userId, users.id)).where(eq17(chamaMembers.chamaId, chama.id)).orderBy(chamaMembers.joinedAt);
+  res.json({ data: rows });
+});
+
+// server/src/routes/analytics.ts
+import { Router as Router20 } from "express";
+import { eq as eq18, count as count3, and as and17, gte as gte4 } from "drizzle-orm";
+var analyticsRouter = Router20();
+analyticsRouter.use(requireAuth);
+analyticsRouter.use(requireRole("admin"));
+analyticsRouter.get("/", async (_req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate assigned" });
+    return;
+  }
+  const estateId = user.estateId;
+  const now = /* @__PURE__ */ new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const [
+    allUsers,
+    allPayments,
+    allTickets,
+    visitorTotal,
+    visitorThisMonth,
+    parcelAtGate,
+    parcelThisMonth,
+    emergencyActive,
+    emergencyThisMonth
+  ] = await Promise.all([
+    // All non-deleted users for this estate
+    db.select({ id: users.id, role: users.role }).from(users).where(and17(eq18(users.estateId, estateId))),
+    // Last 6 months of completed payments for grouping
+    db.select({
+      type: payments.type,
+      amount: payments.amount,
+      createdAt: payments.createdAt
+    }).from(payments).where(
+      and17(
+        eq18(payments.estateId, estateId),
+        eq18(payments.status, "completed"),
+        gte4(payments.createdAt, sixMonthsAgo)
+      )
+    ),
+    // All tickets
+    db.select({ status: maintenanceTickets.status, category: maintenanceTickets.category }).from(maintenanceTickets).where(eq18(maintenanceTickets.estateId, estateId)),
+    // Visitors total count
+    db.select({ value: count3() }).from(visitors).where(eq18(visitors.estateId, estateId)).then((r) => r[0]?.value ?? 0),
+    // Visitors this month
+    db.select({ value: count3() }).from(visitors).where(
+      and17(
+        eq18(visitors.estateId, estateId),
+        gte4(visitors.createdAt, startOfMonth)
+      )
+    ).then((r) => r[0]?.value ?? 0),
+    // Parcels currently at gate
+    db.select({ value: count3() }).from(parcels).where(
+      and17(
+        eq18(parcels.estateId, estateId),
+        eq18(parcels.status, "at_gate")
+      )
+    ).then((r) => r[0]?.value ?? 0),
+    // Parcels received this month
+    db.select({ value: count3() }).from(parcels).where(
+      and17(
+        eq18(parcels.estateId, estateId),
+        gte4(parcels.createdAt, startOfMonth)
+      )
+    ).then((r) => r[0]?.value ?? 0),
+    // Active emergency alerts
+    db.select({ value: count3() }).from(emergencyAlerts).where(
+      and17(
+        eq18(emergencyAlerts.estateId, estateId),
+        eq18(emergencyAlerts.status, "active")
+      )
+    ).then((r) => r[0]?.value ?? 0),
+    // Emergency alerts this month
+    db.select({ value: count3() }).from(emergencyAlerts).where(
+      and17(
+        eq18(emergencyAlerts.estateId, estateId),
+        gte4(emergencyAlerts.createdAt, startOfMonth)
+      )
+    ).then((r) => r[0]?.value ?? 0)
+  ]);
+  const byRole = {};
+  for (const u of allUsers) {
+    byRole[u.role] = (byRole[u.role] ?? 0) + 1;
+  }
+  const residents = {
+    total: allUsers.length,
+    byRole: {
+      resident: byRole["resident"] ?? 0,
+      security: byRole["security"] ?? 0,
+      vendor: byRole["vendor"] ?? 0,
+      admin: byRole["admin"] ?? 0
+    }
+  };
+  let totalCollected = 0;
+  const byType = {};
+  const monthMap = /* @__PURE__ */ new Map();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    monthMap.set(key, 0);
+  }
+  for (const p of allPayments) {
+    const amt = Number(p.amount);
+    totalCollected += amt;
+    byType[p.type] = (byType[p.type] ?? 0) + amt;
+    const d = new Date(p.createdAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (monthMap.has(key)) {
+      monthMap.set(key, (monthMap.get(key) ?? 0) + amt);
+    }
+  }
+  const monthlyTotals = Array.from(monthMap.entries()).map(([month, total]) => ({
+    month,
+    total: Math.round(total * 100) / 100
+  }));
+  const paymentsAnalytics = {
+    totalCollected: Math.round(totalCollected * 100) / 100,
+    monthlyTotals,
+    byType
+  };
+  let open = 0;
+  let inProgress = 0;
+  let resolved = 0;
+  const byCategory = {};
+  for (const t of allTickets) {
+    if (t.status === "open" || t.status === "assigned") open++;
+    else if (t.status === "in_progress") inProgress++;
+    else if (t.status === "resolved" || t.status === "closed") resolved++;
+    byCategory[t.category] = (byCategory[t.category] ?? 0) + 1;
+  }
+  const maintenance = {
+    total: allTickets.length,
+    open,
+    inProgress,
+    resolved,
+    byCategory
+  };
+  res.json({
+    data: {
+      residents,
+      payments: paymentsAnalytics,
+      maintenance,
+      visitors: {
+        total: Number(visitorTotal),
+        thisMonth: Number(visitorThisMonth)
+      },
+      parcels: {
+        atGate: Number(parcelAtGate),
+        thisMonth: Number(parcelThisMonth)
+      },
+      emergency: {
+        active: Number(emergencyActive),
+        thisMonth: Number(emergencyThisMonth)
+      }
+    }
+  });
+});
+
 // server/src/index.ts
 var __dirname = path2.dirname(fileURLToPath(import.meta.url));
 var isProd = process.env.NODE_ENV === "production";
@@ -2691,6 +3525,10 @@ app.use("/api/weather", weatherRouter);
 app.use("/api/traffic", trafficRouter);
 app.use("/api/parcels", parcelsRouter);
 app.use("/api/classifieds", classifiedsRouter);
+app.use("/api/harambee", harambeeRouter);
+app.use("/api/carpool", carpoolRouter);
+app.use("/api/chama", chamaRouter);
+app.use("/api/analytics", analyticsRouter);
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: (/* @__PURE__ */ new Date()).toISOString() });
 });

@@ -23,6 +23,10 @@ import { weatherRouter } from "./routes/weather.js";
 import { trafficRouter } from "./routes/traffic.js";
 import { parcelsRouter } from "./routes/parcels.js";
 import { classifiedsRouter } from "./routes/classifieds.js";
+import { harambeeRouter } from "./routes/harambee.js";
+import { carpoolRouter } from "./routes/carpool.js";
+import { chamaRouter } from "./routes/chama.js";
+import { analyticsRouter } from "./routes/analytics.js";
 import { createWsServer } from "./ws.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -172,6 +176,10 @@ app.use("/api/weather", weatherRouter);
 app.use("/api/traffic", trafficRouter);
 app.use("/api/parcels", parcelsRouter);
 app.use("/api/classifieds", classifiedsRouter);
+app.use("/api/harambee", harambeeRouter);
+app.use("/api/carpool", carpoolRouter);
+app.use("/api/chama", chamaRouter);
+app.use("/api/analytics", analyticsRouter);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get("/api/health", (_req, res) => {

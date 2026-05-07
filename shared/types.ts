@@ -308,3 +308,73 @@ export interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
 }
+
+// ─── Carpooling ───────────────────────────────────────────────────────────────
+
+export interface CarpoolOffer {
+  id: string;
+  estateId: string;
+  driverId: string;
+  origin: string;
+  destination: string;
+  departureTime: string;
+  seatsTotal: number;
+  seatsAvailable: number;
+  fare: string | null;
+  notes: string | null;
+  status: "active" | "full" | "cancelled" | "completed";
+  createdAt: string;
+  updatedAt: string;
+  driver?: { name: string; unitNumber: string | null };
+  myBooking?: { id: string; status: string } | null;
+}
+
+export interface CarpoolBooking {
+  id: string;
+  offerId: string;
+  passengerId: string;
+  status: "pending" | "confirmed" | "cancelled";
+  createdAt: string;
+  passenger?: { name: string; unitNumber: string | null };
+}
+
+// ─── Chama ────────────────────────────────────────────────────────────────────
+
+export interface Chama {
+  id: string;
+  estateId: string;
+  adminId: string;
+  name: string;
+  description: string | null;
+  contributionAmount: string;
+  frequency: "weekly" | "monthly";
+  status: "active" | "paused" | "dissolved";
+  createdAt: string;
+  updatedAt: string;
+  memberCount?: number;
+  myMembership?: { id: string; role: string } | null;
+  myContributions?: ChamaContribution[];
+}
+
+export interface ChamaContribution {
+  id: string;
+  chamaId: string;
+  userId: string;
+  amount: string;
+  periodLabel: string;
+  mpesaRef: string | null;
+  paidAt: string;
+  createdAt: string;
+  user?: { name: string; unitNumber: string | null };
+}
+
+// ─── Admin Analytics ──────────────────────────────────────────────────────────
+
+export interface EstateAnalytics {
+  residents: { total: number; byRole: Record<string, number> };
+  payments: { totalCollected: number; monthlyTotals: { month: string; total: number }[]; byType: Record<string, number> };
+  maintenance: { total: number; open: number; inProgress: number; resolved: number; byCategory: Record<string, number> };
+  visitors: { total: number; thisMonth: number };
+  parcels: { atGate: number; thisMonth: number };
+  emergency: { active: number; thisMonth: number };
+}

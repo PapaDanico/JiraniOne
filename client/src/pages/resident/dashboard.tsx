@@ -4,7 +4,7 @@ import {
   Wrench, ShieldAlert, CreditCard,
   CalendarDays, Store, Vote, BookOpen,
   Package, Tag, Users, Bell, PackageCheck,
-  Megaphone, ChevronRight, AlertCircle,
+  Megaphone, ChevronRight, AlertCircle, HandCoins, Car, Coins,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEstate } from "@/hooks/useEstate";
@@ -74,8 +74,11 @@ const MORE = [
   { href: "/visitors",     label: "Visitors",    icon: <Users className="h-5 w-5" />,        bg: "bg-indigo-100",    fg: "text-indigo-700" },
   { href: "/governance",   label: "Governance",  icon: <Vote className="h-5 w-5" />,         bg: "bg-purple-100",    fg: "text-purple-700" },
   { href: "/bookings",     label: "Bookings",    icon: <BookOpen className="h-5 w-5" />,     bg: "bg-pink-100",      fg: "text-pink-700" },
+  { href: "/harambee",     label: "Harambee",    icon: <HandCoins className="h-5 w-5" />,    bg: "bg-orange-100",    fg: "text-orange-700" },
+  { href: "/carpool",      label: "Carpool",     icon: <Car className="h-5 w-5" />,          bg: "bg-teal-100",      fg: "text-teal-700" },
+  { href: "/chama",        label: "Chama",       icon: <Coins className="h-5 w-5" />,        bg: "bg-yellow-100",    fg: "text-yellow-700" },
   { href: "/marketplace",  label: "Marketplace", icon: <Store className="h-5 w-5" />,        bg: "bg-amber-100",     fg: "text-amber-700" },
-  { href: "/notifications", label: "Alerts",      icon: <Bell className="h-5 w-5" />,        bg: "bg-rose-100",      fg: "text-rose-700" },
+  { href: "/notifications", label: "Alerts",     icon: <Bell className="h-5 w-5" />,         bg: "bg-rose-100",      fg: "text-rose-700" },
 ];
 
 const ANN_VARIANT: Record<string, "default" | "warning" | "urgent"> = {

@@ -660,6 +660,117 @@ export const classifieds = pgTable(
   }),
 );
 
+// ─── Carpooling ───────────────────────────────────────────────────────────────
+
+export const carpoolStatusEnum = pgEnum("carpool_status", [
+  "active", "full", "cancelled", "completed",
+]);
+
+export const carpoolBookingStatusEnum = pgEnum("carpool_booking_status", [
+  "pending", "confirmed", "cancelled",
+]);
+
+export const carpoolOffers = pgTable(
+  "carpool_offers",
+  {
+    id: text("id").primaryKey(),
+    estateId: text("estate_id").notNull().references(() => estates.id),
+    driverId: text("driver_id").notNull().references(() => users.id),
+    origin: varchar("origin", { length: 200 }).notNull(),
+    destination: varchar("destination", { length: 200 }).notNull(),
+    departureTime: timestamp("departure_time").notNull(),
+    seatsTotal: integer("seats_total").notNull().default(3),
+    seatsAvailable: integer("seats_available").notNull().default(3),
+    fare: decimal("fare", { precision: 10, scale: 2 }),
+    notes: text("notes"),
+    status: carpoolStatusEnum("status").notNull().default("active"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    estateIdIdx: index("carpool_estate_id_idx").on(t.estateId),
+    driverIdIdx: index("carpool_driver_id_idx").on(t.driverId),
+    departureIdx: index("carpool_departure_idx").on(t.departureTime),
+  }),
+);
+
+export const carpoolBookings = pgTable(
+  "carpool_bookings",
+  {
+    id: text("id").primaryKey(),
+    offerId: text("offer_id").notNull().references(() => carpoolOffers.id, { onDelete: "cascade" }),
+    passengerId: text("passenger_id").notNull().references(() => users.id),
+    status: carpoolBookingStatusEnum("booking_status").notNull().default("confirmed"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    offerIdIdx: index("carpool_bookings_offer_id_idx").on(t.offerId),
+    passengerIdIdx: index("carpool_bookings_passenger_id_idx").on(t.passengerId),
+  }),
+);
+
+// ─── Chama (Group Savings / Purchasing) ──────────────────────────────────────
+
+export const chamaStatusEnum = pgEnum("chama_status", [
+  "active", "paused", "dissolved",
+]);
+
+export const chamaFrequencyEnum = pgEnum("chama_frequency", [
+  "weekly", "monthly",
+]);
+
+export const chamas = pgTable(
+  "chamas",
+  {
+    id: text("id").primaryKey(),
+    estateId: text("estate_id").notNull().references(() => estates.id),
+    adminId: text("admin_id").notNull().references(() => users.id),
+    name: varchar("name", { length: 150 }).notNull(),
+    description: text("description"),
+    contributionAmount: decimal("contribution_amount", { precision: 12, scale: 2 }).notNull(),
+    frequency: chamaFrequencyEnum("frequency").notNull().default("monthly"),
+    status: chamaStatusEnum("status").notNull().default("active"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    estateIdIdx: index("chamas_estate_id_idx").on(t.estateId),
+  }),
+);
+
+export const chamaMembers = pgTable(
+  "chama_members",
+  {
+    id: text("id").primaryKey(),
+    chamaId: text("chama_id").notNull().references(() => chamas.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull().references(() => users.id),
+    role: varchar("role", { length: 20 }).notNull().default("member"),
+    joinedAt: timestamp("joined_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    chamaIdIdx: index("chama_members_chama_id_idx").on(t.chamaId),
+    userIdIdx: index("chama_members_user_id_idx").on(t.userId),
+  }),
+);
+
+export const chamaContributions = pgTable(
+  "chama_contributions",
+  {
+    id: text("id").primaryKey(),
+    chamaId: text("chama_id").notNull().references(() => chamas.id),
+    userId: text("user_id").notNull().references(() => users.id),
+    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+    periodLabel: varchar("period_label", { length: 20 }).notNull(),
+    mpesaRef: varchar("mpesa_ref", { length: 50 }),
+    paidAt: timestamp("paid_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    chamaIdIdx: index("chama_contributions_chama_id_idx").on(t.chamaId),
+    userIdIdx: index("chama_contributions_user_id_idx").on(t.userId),
+  }),
+);
+
 // ─── Relations ────────────────────────────────────────────────────────────────
 
 export const parcelsRelations = relations(parcels, ({ one }) => ({
@@ -731,4 +842,32 @@ export const ticketCommentsRelations = relations(ticketComments, ({ one }) => ({
     fields: [ticketComments.authorId],
     references: [users.id],
   }),
+}));
+
+export const carpoolOffersRelations = relations(carpoolOffers, ({ one, many }) => ({
+  driver: one(users, { fields: [carpoolOffers.driverId], references: [users.id] }),
+  estate: one(estates, { fields: [carpoolOffers.estateId], references: [estates.id] }),
+  bookings: many(carpoolBookings),
+}));
+
+export const carpoolBookingsRelations = relations(carpoolBookings, ({ one }) => ({
+  offer: one(carpoolOffers, { fields: [carpoolBookings.offerId], references: [carpoolOffers.id] }),
+  passenger: one(users, { fields: [carpoolBookings.passengerId], references: [users.id] }),
+}));
+
+export const chamasRelations = relations(chamas, ({ one, many }) => ({
+  admin: one(users, { fields: [chamas.adminId], references: [users.id] }),
+  estate: one(estates, { fields: [chamas.estateId], references: [estates.id] }),
+  members: many(chamaMembers),
+  contributions: many(chamaContributions),
+}));
+
+export const chamaMembersRelations = relations(chamaMembers, ({ one }) => ({
+  chama: one(chamas, { fields: [chamaMembers.chamaId], references: [chamas.id] }),
+  user: one(users, { fields: [chamaMembers.userId], references: [users.id] }),
+}));
+
+export const chamaContributionsRelations = relations(chamaContributions, ({ one }) => ({
+  chama: one(chamas, { fields: [chamaContributions.chamaId], references: [chamas.id] }),
+  user: one(users, { fields: [chamaContributions.userId], references: [users.id] }),
 }));
