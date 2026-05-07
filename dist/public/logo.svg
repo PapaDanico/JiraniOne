@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Outer circle background -->
+  <circle cx="50" cy="50" r="48" fill="#1B5E20"/>
+
+  <!-- Kenya flag stripe: black top band -->
+  <path d="M50 4 A46 46 0 0 1 96 50 L50 50 Z" fill="#212121"/>
+  <path d="M50 4 A46 46 0 0 0 4 50 L50 50 Z" fill="#212121"/>
+
+  <!-- Kenya flag stripe: red bottom band -->
+  <path d="M50 96 A46 46 0 0 0 4 50 L50 50 Z" fill="#B71C1C"/>
+  <path d="M50 96 A46 46 0 0 1 96 50 L50 50 Z" fill="#B71C1C"/>
+
+  <!-- Central green band (wide) -->
+  <rect x="4" y="38" width="92" height="24" fill="#1B5E20"/>
+
+  <!-- White thin stripes at band edges -->
+  <rect x="4" y="37" width="92" height="3" fill="#FFFFFF"/>
+  <rect x="4" y="60" width="92" height="3" fill="#FFFFFF"/>
+
+  <!-- Maasai shield (traditional oval shape) -->
+  <ellipse cx="50" cy="50" rx="18" ry="26" fill="#D4A017"/>
+  <ellipse cx="50" cy="50" rx="14" ry="22" fill="#212121"/>
+
+  <!-- Shield central stripe -->
+  <rect x="47" y="28" width="6" height="44" fill="#D4A017"/>
+
+  <!-- Shield cross stripe -->
+  <rect x="36" y="47" width="28" height="6" fill="#D4A017"/>
+
+  <!-- House / community icon on shield -->
+  <polygon points="50,34 57,41 57,48 43,48 43,41" fill="#FFFFFF"/>
+  <rect x="47" y="41" width="6" height="7" fill="#1B5E20"/>
+
+  <!-- Gold ring border -->
+  <circle cx="50" cy="50" r="48" fill="none" stroke="#D4A017" stroke-width="3"/>
+</svg>

@@ -11,7 +11,7 @@ export function PageLoader() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#F5F1E8] gap-4">
       <img
-        src="/logo.png"
+        src="/logo.svg"
         alt="JiraniHub"
         className="w-20 h-20 object-contain drop-shadow-md"
         onError={(e) => {

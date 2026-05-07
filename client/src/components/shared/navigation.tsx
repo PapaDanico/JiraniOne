@@ -96,7 +96,7 @@ export function TopBar({ title }: { title?: string }) {
           <div className="flex items-center gap-2.5">
             {/* Logo */}
             <img
-              src="/logo.png"
+              src="/logo.svg"
               alt="JiraniHub"
               className="h-8 w-8 object-contain"
               onError={(e) => {

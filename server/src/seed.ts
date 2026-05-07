@@ -43,7 +43,7 @@ async function seed() {
     {
       phone: "+254700000001",
       password: "admin123",
-      name: "Daniel Ng'ong'a",
+      name: "Wanjiku Maina",
       role: "admin" as const,
     },
     {

@@ -235,7 +235,8 @@ export default function AdminUsersPage() {
           ["admin", "security", "vendor", "resident"].map((role) => {
             const group = byRole[role];
             if (!group?.length) return null;
-            const cfg = ROLE_CONFIG[role];
+            const cfg = ROLE_CONFIG[role as keyof typeof ROLE_CONFIG];
+            if (!cfg) return null;
             return (
               <section key={role}>
                 <p className="section-label mb-2">

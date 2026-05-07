@@ -62,7 +62,7 @@ export default function RegisterPage() {
         <div className="text-center mb-6">
           <div className="flex justify-center mb-3">
             <img
-              src="/logo.png"
+              src="/logo.svg"
               alt="JiraniHub"
               className="h-20 w-20 object-contain drop-shadow-xl"
               onError={(e) => {

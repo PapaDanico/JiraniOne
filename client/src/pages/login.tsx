@@ -11,7 +11,7 @@ export default function LoginPage() {
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <img
-                src="/logo.png"
+                src="/logo.svg"
                 alt="JiraniHub"
                 className="h-24 w-24 object-contain drop-shadow-xl"
                 onError={(e) => {
