@@ -51,13 +51,13 @@ export default function LoginPage() {
             <div className="px-6 pt-6 pb-6">
               <div className="mb-5">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-[#6B5D45]">
-                  Karibu tena
+                  Sign in
                 </p>
                 <h2 className="text-2xl font-black text-[#212121] mt-0.5">
-                  Welcome back, jirani
+                  Welcome back
                 </h2>
                 <p className="text-sm text-[#6B5D45] mt-1.5">
-                  Sign in with your Kenyan phone number to continue.
+                  Use your Kenyan phone number to continue.
                 </p>
               </div>
 
