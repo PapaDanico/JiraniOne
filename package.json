@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -p \"[{name}]\" -n \"client,server\" -c \"cyan.bold,yellow.bold\" \"vite --config client/vite.config.ts\" \"tsx watch server/src/index.ts\"",
-    "build": "vite build --config client/vite.config.ts && esbuild server/src/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist/server",
+    "build": "vite build --config client/vite.config.ts && esbuild server/src/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist/server --alias:@shared=./shared",
     "start": "node dist/server/index.js",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
