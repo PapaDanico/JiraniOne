@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
-  Wrench, Megaphone, ShieldAlert, CreditCard,
+  Wrench, ShieldAlert, CreditCard,
   CalendarDays, Store, Vote, BookOpen,
   Package, Tag, Users, Bell, PackageCheck,
-  ChevronRight, AlertCircle,
+  Megaphone, ChevronRight, AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEstate } from "@/hooks/useEstate";
@@ -75,7 +75,7 @@ const MORE = [
   { href: "/governance",   label: "Governance",  icon: <Vote className="h-5 w-5" />,         bg: "bg-purple-100",    fg: "text-purple-700" },
   { href: "/bookings",     label: "Bookings",    icon: <BookOpen className="h-5 w-5" />,     bg: "bg-pink-100",      fg: "text-pink-700" },
   { href: "/marketplace",  label: "Marketplace", icon: <Store className="h-5 w-5" />,        bg: "bg-amber-100",     fg: "text-amber-700" },
-  { href: "/announcements",label: "Notices",     icon: <Megaphone className="h-5 w-5" />,   bg: "bg-rose-100",      fg: "text-rose-700" },
+  { href: "/notifications", label: "Alerts",      icon: <Bell className="h-5 w-5" />,        bg: "bg-rose-100",      fg: "text-rose-700" },
 ];
 
 const ANN_VARIANT: Record<string, "default" | "warning" | "urgent"> = {
