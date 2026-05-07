@@ -14,10 +14,10 @@ async function seed() {
     .insert(estates)
     .values({
       id: estateId,
-      name: "Sunrise Gardens",
-      location: "Karen, Nairobi",
+      name: "NHC Stoni Athi View",
+      location: "Athi River, Machakos County",
       subscriptionTier: "growth",
-      totalUnits: 48,
+      totalUnits: 120,
     })
     .onConflictDoNothing()
     .returning();
@@ -26,7 +26,7 @@ async function seed() {
     const [existing] = await db
       .select()
       .from(estates)
-      .where(eq(estates.name, "Sunrise Gardens"))
+      .where(eq(estates.name, "NHC Stoni Athi View"))
       .limit(1);
     if (!existing) throw new Error("Failed to seed estate");
     console.log("Estate already exists, skipping.");
@@ -35,7 +35,7 @@ async function seed() {
   }
 
   const finalEstateId = estate?.id ?? (
-    await db.select().from(estates).where(eq(estates.name, "Sunrise Gardens")).limit(1)
+    await db.select().from(estates).where(eq(estates.name, "NHC Stoni Athi View")).limit(1)
   )[0]!.id;
 
   // Seed accounts
@@ -104,7 +104,7 @@ async function seed() {
       .where(eq(estates.id, finalEstateId));
   }
 
-  console.log("\n✅ Seed complete. Estate: Sunrise Gardens, Karen");
+  console.log("\n✅ Seed complete. Estate: NHC Stoni Athi View, Athi River");
 }
 
 seed()

@@ -74,7 +74,7 @@ export function TicketForm({ open, onClose }: Props) {
       onClose();
     },
     onError: (err: unknown) => {
-      setServerError(err instanceof Error ? err.message : "Imeshindwa kutuma tiketi");
+      setServerError(err instanceof Error ? err.message : "Failed to submit ticket. Please try again.");
     },
   });
 

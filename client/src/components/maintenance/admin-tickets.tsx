@@ -100,7 +100,7 @@ function UpdateModal({ ticket, onClose }: UpdateModalProps) {
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Mwambie mkazi maendeleo ya tatizo..."
+              placeholder="Update the resident on progress or resolution..."
               rows={3}
             />
           </div>
