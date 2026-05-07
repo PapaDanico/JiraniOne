@@ -1,6 +1,6 @@
 # CLAUDE.md — JiraniHub Project Brief
 # Smart Estate Management Platform for Kenyan Communities
-# Version: 2.0 (Clean Build) | Owner: Wanjiku Maina
+# Version: 2.0 (Clean Build) | Owner: Capt. Daniel Moi Ng'ong'a
 
 ---
 
@@ -290,7 +290,7 @@ If referencing the Replit export for logic, SKIP these entirely:
 
 ## OWNER NOTES
 
-- Owner is Wanjiku Maina — Nairobi-based, tech entrepreneur
+- Owner is Capt. Daniel Ng'ong'a — Nairobi-based, aviation professional
 - Systems thinker: prioritise clean architecture over feature bloat
 - Commercial intent: this is a product to sell, not a portfolio demo
 - Kenyan context is non-negotiable: M-PESA, Safaricom, 0722 numbers, Swahili
