@@ -2574,11 +2574,33 @@ var PORT = Number(process.env.PORT ?? 5e3);
 var app = express();
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: isProd ? {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", "wss://jiranihub.onrender.com", "https://www.jiranihub.co.ke", "wss://www.jiranihub.co.ke"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        upgradeInsecureRequests: []
+      },
+      reportOnly: true
+      // audit mode — watch logs for violations, then enforce
+    } : false,
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: false
   })
 );
+app.use((_req, res, next) => {
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+  );
+  next();
+});
 var ALLOWED_ORIGINS = isProd ? [
   "https://www.jiranihub.co.ke",
   "https://jiranihub.co.ke",
@@ -2600,6 +2622,36 @@ app.use(
     max: 200,
     standardHeaders: true,
     legacyHeaders: false
+  })
+);
+app.use(
+  "/api/auth/login",
+  rateLimit({
+    windowMs: 15 * 60 * 1e3,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many login attempts. Please try again later." }
+  })
+);
+app.use(
+  "/api/auth/register",
+  rateLimit({
+    windowMs: 60 * 60 * 1e3,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many registration attempts. Please try again later." }
+  })
+);
+app.use(
+  "/api/payments/stk-push",
+  rateLimit({
+    windowMs: 15 * 60 * 1e3,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many payment requests. Please wait before retrying." }
   })
 );
 app.use(async (req, res, next) => {

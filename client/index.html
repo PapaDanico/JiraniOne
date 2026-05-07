@@ -2,10 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- P4 fix: removed maximum-scale and user-scalable to allow pinch-zoom (WCAG 1.4.4) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1A5C38" />
     <meta name="description" content="JiraniHub — Smart Estate Management for Kenyan Communities" />
+
+    <!-- Open Graph / WhatsApp previews -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.jiranihub.co.ke/" />
+    <meta property="og:title" content="JiraniHub — Smart Estate Management" />
+    <meta property="og:description" content="Manage your estate smarter. Visitors, maintenance, payments, parcels & more — built for Kenyan communities." />
+    <meta property="og:image" content="https://www.jiranihub.co.ke/og-image.png" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="JiraniHub — Smart Estate Management" />
+    <meta name="twitter:description" content="Manage your estate smarter. Built for Kenyan communities." />
+    <meta name="twitter:image" content="https://www.jiranihub.co.ke/og-image.png" />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet" />
@@ -13,6 +29,12 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="font-family:sans-serif;text-align:center;padding:60px 20px;color:#212121">
+        <h2>JavaScript is required</h2>
+        <p>Please enable JavaScript in your browser to use JiraniHub.</p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

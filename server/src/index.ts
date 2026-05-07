@@ -34,11 +34,36 @@ const app = express();
 // ─── Security ─────────────────────────────────────────────────────────────────
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: isProd
+      ? {
+          directives: {
+            defaultSrc:      ["'self'"],
+            scriptSrc:       ["'self'"],
+            styleSrc:        ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc:         ["https://fonts.gstatic.com"],
+            imgSrc:          ["'self'", "data:", "https:"],
+            connectSrc:      ["'self'", "wss://jiranihub.onrender.com", "https://www.jiranihub.co.ke", "wss://www.jiranihub.co.ke"],
+            frameAncestors:  ["'none'"],
+            baseUri:         ["'self'"],
+            formAction:      ["'self'"],
+            upgradeInsecureRequests: [],
+          },
+          reportOnly: true,   // audit mode — watch logs for violations, then enforce
+        }
+      : false,
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: false,
   }),
 );
+
+// Permissions-Policy header (camera, mic, geolocation, payment lockdown)
+app.use((_req, res, next) => {
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  );
+  next();
+});
 
 const ALLOWED_ORIGINS = isProd
   ? [
@@ -59,12 +84,47 @@ app.use(
   }),
 );
 
+// Global rate limit
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 200,
     standardHeaders: true,
     legacyHeaders: false,
+  }),
+);
+
+// Tight limit on auth — 10 attempts per 15 min per IP (P6)
+app.use(
+  "/api/auth/login",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many login attempts. Please try again later." },
+  }),
+);
+app.use(
+  "/api/auth/register",
+  rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many registration attempts. Please try again later." },
+  }),
+);
+
+// Tight limit on M-Pesa STK push — 5 per 15 min per IP
+app.use(
+  "/api/payments/stk-push",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many payment requests. Please wait before retrying." },
   }),
 );
 

@@ -1,0 +1,1 @@
+import{u as a,b as s,c as u}from"./index-CAxe9sY1.js";function r(){const{user:e}=a();return s({queryKey:["estate"],queryFn:()=>u.get("/api/auth/estate").then(t=>t.data),enabled:!!(e!=null&&e.estateId),staleTime:5*60*1e3})}export{r as u};
