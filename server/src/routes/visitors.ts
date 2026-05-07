@@ -7,7 +7,7 @@ import { createVisitorSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
-import { sendSms } from "../lib/sms.js";
+import { sendThrottledSms } from "../lib/sms.js";
 import { broadcastToEstate } from "../ws.js";
 
 export const visitorsRouter = Router();
@@ -108,18 +108,25 @@ visitorsRouter.post("/", async (req, res) => {
     })
     .returning();
 
-  // SMS visitor with QR link
-  const smsText = `You have a visitor pass for ${user.name}'s residence. Show this message at the gate. Pass ID: ${id.slice(0, 8).toUpperCase()}`;
-  const smsSent = await sendSms({ to: parsed.data.phone, message: smsText });
+  // SMS visitor with pass ID. user.name is user-controlled — sanitize so
+  // a malicious resident cannot turn the SMS into a smishing message
+  // (e.g. setting their name to "URGENT: send M-PESA to 0712...").
+  const safeHostName = user.name.replace(/[^\p{L}\p{N}\s'\-]/gu, "").slice(0, 40);
+  const smsText = `JiraniHub: You have a visitor pass to ${safeHostName}. Show this SMS at the gate. Pass ID: ${id.slice(0, 8).toUpperCase()}`;
+  const sms = await sendThrottledSms({
+    userId: user.id,
+    to: parsed.data.phone,
+    message: smsText,
+  });
 
-  if (smsSent) {
+  if (sms.ok) {
     await db
       .update(visitors)
       .set({ smsSent: true })
       .where(eq(visitors.id, id));
   }
 
-  res.status(201).json({ data: { ...visitor, smsSent } });
+  res.status(201).json({ data: { ...visitor, smsSent: sms.ok, smsBlockedReason: sms.reason } });
 });
 
 // Security: lookup visitor by QR payload or phone

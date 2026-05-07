@@ -1,10 +1,10 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import { randomInt } from "crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, count, eq, gt, isNull } from "drizzle-orm";
 import { db } from "../db.js";
 import { lucia } from "../auth.js";
-import { users, estates, passwordResetTokens } from "@shared/schema.js";
+import { users, estates, passwordResetTokens, loginAttempts } from "@shared/schema.js";
 import {
   loginSchema,
   registerSchema,
@@ -13,11 +13,15 @@ import {
 } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { newId } from "../lib/ids.js";
-import { sendSms } from "../lib/sms.js";
+import { sendThrottledSms } from "../lib/sms.js";
 import type { AuthUser } from "@shared/types.js";
 
 const OTP_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const OTP_MAX_ATTEMPTS = 5;
+const OTP_DAILY_PER_PHONE_CAP = 3;
+const LOGIN_LOCKOUT_THRESHOLD = 10;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+const BCRYPT_COST = 12;
 
 export const authRouter = Router();
 
@@ -32,7 +36,16 @@ authRouter.post("/register", async (req, res) => {
 
   const [existing] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
   if (existing) {
-    res.status(409).json({ error: "Phone number already registered" });
+    // Anti-enumeration: don't reveal whether the phone is taken. Return a
+    // success-shaped response so an attacker probing /register cannot map
+    // which numbers have accounts. Real registrations succeed below; the
+    // duplicate write would have collided on the UNIQUE phone column anyway.
+    res.status(202).json({
+      data: {
+        message: "If your phone number is eligible, we've started your registration. Check your SMS or sign in.",
+        deferred: true,
+      },
+    });
     return;
   }
 
@@ -45,7 +58,7 @@ authRouter.post("/register", async (req, res) => {
     }
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
   const inserted = await db.insert(users).values({
     id: newId(),
     phone,
@@ -87,10 +100,55 @@ authRouter.post("/login", async (req, res) => {
     return;
   }
 
+  // Per-account lockout. The IP-level limiter at index.ts caps brute-force
+  // from a single IP, but an attacker rotating IPs (botnet, residential
+  // proxies) can run unlimited guesses without this.
+  const [attemptRow] = await db
+    .select()
+    .from(loginAttempts)
+    .where(eq(loginAttempts.userId, user.id))
+    .limit(1);
+
+  if (attemptRow?.lockedUntil && attemptRow.lockedUntil > new Date()) {
+    res.status(429).json({
+      error: "Account temporarily locked due to repeated failed sign-ins. Try again later or use Forgot password.",
+    });
+    return;
+  }
+
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
+    const newCount = (attemptRow?.failedCount ?? 0) + 1;
+    const shouldLock = newCount >= LOGIN_LOCKOUT_THRESHOLD;
+    const lockedUntil = shouldLock ? new Date(Date.now() + LOGIN_LOCKOUT_MS) : null;
+
+    if (attemptRow) {
+      await db.update(loginAttempts)
+        .set({
+          failedCount: newCount,
+          lockedUntil,
+          lastFailedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(loginAttempts.userId, user.id));
+    } else {
+      await db.insert(loginAttempts).values({
+        userId: user.id,
+        failedCount: newCount,
+        lockedUntil,
+        lastFailedAt: new Date(),
+      });
+    }
+
     res.status(401).json({ error: "Invalid phone number or password" });
     return;
+  }
+
+  // Successful auth — reset the failed-attempt counter.
+  if (attemptRow && (attemptRow.failedCount > 0 || attemptRow.lockedUntil)) {
+    await db.update(loginAttempts)
+      .set({ failedCount: 0, lockedUntil: null, updatedAt: new Date() })
+      .where(eq(loginAttempts.userId, user.id));
   }
 
   const session = await lucia.createSession(user.id, {});
@@ -123,29 +181,45 @@ authRouter.post("/forgot-password", async (req, res) => {
   const [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
 
   if (user && !user.deletedAt) {
-    const otp = String(randomInt(0, 1_000_000)).padStart(6, "0");
-    const otpHash = await bcrypt.hash(otp, 10);
-
-    // Invalidate any prior unconsumed tokens for this user
-    await db
-      .update(passwordResetTokens)
-      .set({ consumedAt: new Date() })
+    // Per-phone daily cap: 3 OTP requests / 24h regardless of source IP.
+    // Prevents an attacker rotating IPs from blasting SMS (smishing /
+    // SMS-cost amplification) at any victim's number.
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const countRows = await db
+      .select({ value: count() })
+      .from(passwordResetTokens)
       .where(and(
         eq(passwordResetTokens.userId, user.id),
-        isNull(passwordResetTokens.consumedAt),
+        gt(passwordResetTokens.createdAt, since),
       ));
+    const recentCount = countRows[0]?.value ?? 0;
 
-    await db.insert(passwordResetTokens).values({
-      id: newId(),
-      userId: user.id,
-      otpHash,
-      expiresAt: new Date(Date.now() + OTP_TTL_MS),
-    });
+    if (recentCount < OTP_DAILY_PER_PHONE_CAP) {
+      const otp = String(randomInt(0, 1_000_000)).padStart(6, "0");
+      const otpHash = await bcrypt.hash(otp, BCRYPT_COST);
 
-    await sendSms({
-      to: phone,
-      message: `JiraniHub: Your password reset code is ${otp}. It expires in 15 minutes. If you did not request this, ignore this SMS.`,
-    });
+      // Invalidate any prior unconsumed tokens for this user
+      await db
+        .update(passwordResetTokens)
+        .set({ consumedAt: new Date() })
+        .where(and(
+          eq(passwordResetTokens.userId, user.id),
+          isNull(passwordResetTokens.consumedAt),
+        ));
+
+      await db.insert(passwordResetTokens).values({
+        id: newId(),
+        userId: user.id,
+        otpHash,
+        expiresAt: new Date(Date.now() + OTP_TTL_MS),
+      });
+
+      await sendThrottledSms({
+        userId: user.id,
+        to: phone,
+        message: `JiraniHub: Your password reset code is ${otp}. It expires in 15 minutes. If you did not request this, ignore this SMS.`,
+      });
+    }
   }
 
   res.json({
@@ -206,7 +280,7 @@ authRouter.post("/reset-password", async (req, res) => {
     return;
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
   await db
     .update(users)
     .set({ passwordHash, updatedAt: new Date() })
@@ -216,6 +290,11 @@ authRouter.post("/reset-password", async (req, res) => {
     .update(passwordResetTokens)
     .set({ consumedAt: new Date() })
     .where(eq(passwordResetTokens.id, token.id));
+
+  // Clear any lockout state on successful reset.
+  await db.update(loginAttempts)
+    .set({ failedCount: 0, lockedUntil: null, updatedAt: new Date() })
+    .where(eq(loginAttempts.userId, user.id));
 
   // Force re-login on every device
   await lucia.invalidateUserSessions(user.id);

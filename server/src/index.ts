@@ -145,6 +145,17 @@ app.use(
     message: { error: "Too many attempts. Please request a new code." },
   }),
 );
+// Public estate list — leaks customer estate names. Rate-limit aggressively
+// so it can't be scraped for competitive intelligence or attack targeting.
+app.use(
+  "/api/auth/estates",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+  }),
+);
 
 // Tight limit on M-Pesa STK push — 5 per 15 min per IP
 app.use(
@@ -157,6 +168,30 @@ app.use(
     message: { error: "Too many payment requests. Please wait before retrying." },
   }),
 );
+
+// ─── Origin check on mutating requests ────────────────────────────────────────
+// Layered defence on top of SameSite=lax. Rejects state-changing requests
+// whose Origin header is not in the CORS allowlist. The CORS middleware
+// catches browser-driven cross-origin requests, but server-to-server callers
+// can spoof Origin freely; this is a belt-and-braces guard against CSRF in
+// case a future GET endpoint accidentally mutates state.
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+app.use((req, res, next) => {
+  if (!MUTATING_METHODS.has(req.method)) return next();
+
+  // Allow public M-PESA callback (it has its own IP allowlist) and
+  // server-to-server callers without an Origin (curl, mobile native,
+  // Daraja). Browsers ALWAYS send Origin on mutating XHR/fetch.
+  if (req.path === "/api/payments/mpesa/callback") return next();
+  const origin = req.headers.origin;
+  if (!origin) return next();
+
+  if (isProd && !ALLOWED_ORIGINS.includes(origin)) {
+    res.status(403).json({ error: "Origin not allowed" });
+    return;
+  }
+  next();
+});
 
 // ─── Auth session middleware (Lucia) ──────────────────────────────────────────
 app.use(async (req, res, next) => {
@@ -173,6 +208,18 @@ app.use(async (req, res, next) => {
   if (!session) {
     res.appendHeader("Set-Cookie", lucia.createBlankSessionCookie().serialize());
   }
+
+  // Reject sessions for soft-deleted users — without this, a banned user's
+  // existing cookie keeps working until cookie expiry. Lucia's session
+  // model doesn't know about deletedAt; we have to filter here.
+  if (user && (user as { deletedAt?: Date | null }).deletedAt) {
+    if (session) await lucia.invalidateSession(session.id);
+    res.appendHeader("Set-Cookie", lucia.createBlankSessionCookie().serialize());
+    res.locals.session = null;
+    res.locals.user = null;
+    return next();
+  }
+
   res.locals.session = session;
   res.locals.user = user;
   next();
@@ -212,8 +259,21 @@ app.use("/api/chama", chamaRouter);
 app.use("/api/analytics", analyticsRouter);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+// Render's health probe hits this; returning OK without a DB ping means a
+// DB outage looks healthy. Run a cheap SELECT 1 and 503 if the DB is down.
+app.get("/api/health", async (_req, res) => {
+  try {
+    const { sql } = await import("drizzle-orm");
+    const { db } = await import("./db.js");
+    await db.execute(sql`SELECT 1`);
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.status(503).json({
+      status: "degraded",
+      timestamp: new Date().toISOString(),
+      error: err instanceof Error ? err.message : "db_unreachable",
+    });
+  }
 });
 
 // ─── Serve React in production ────────────────────────────────────────────────

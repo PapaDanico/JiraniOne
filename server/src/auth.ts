@@ -21,6 +21,7 @@ export const lucia = new Lucia(adapter, {
       estateId: attrs.estateId,
       unitNumber: attrs.unitNumber,
       avatarUrl: attrs.avatarUrl,
+      deletedAt: attrs.deletedAt,
     };
   },
 });
@@ -35,6 +36,7 @@ declare module "lucia" {
       estateId: string | null;
       unitNumber: string | null;
       avatarUrl: string | null;
+      deletedAt: Date | null;
     };
   }
 }

@@ -25,21 +25,63 @@ export const loginSchema = z.object({
 
 export const registerSchema = z.object({
   phone: kenyanPhone,
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128)
+    .refine((p) => /[A-Za-z]/.test(p) && /\d/.test(p), {
+      message: "Password must include at least one letter and one digit",
+    }),
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
   role: z.enum(["resident", "admin", "security", "vendor"]).default("resident"),
   estateId: z.string().optional(),
   unitNumber: z.string().max(20).optional(),
+  consent: z.boolean().refine((v) => v === true, {
+    message: "You must agree to the Privacy Policy and Terms",
+  }).optional(),
 });
 
 export const forgotPasswordSchema = z.object({
   phone: kenyanPhone,
 });
 
+// Password complexity: at least 8 chars, at least one letter and one digit.
+// Banned-password denylist deliberately omitted for now — extend later if
+// needed.
+const strongPassword = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(128, "Password too long")
+  .refine((p) => /[A-Za-z]/.test(p) && /\d/.test(p), {
+    message: "Password must include at least one letter and one digit",
+  });
+
 export const resetPasswordSchema = z.object({
   phone: kenyanPhone,
   otp: z.string().regex(/^\d{6}$/, "Enter the 6-digit code from SMS"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: strongPassword,
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password required"),
+  newPassword: strongPassword,
+});
+
+export const adminCreateUserSchema = z.object({
+  phone: kenyanPhone,
+  name: z.string().min(2).max(100),
+  role: z.enum(["resident", "admin", "security", "vendor"]).default("resident"),
+  unitNumber: z.string().max(20).optional(),
+});
+
+export const adminUpdateUserSchema = z.object({
+  name: z.string().min(2).max(100).optional(),
+  unitNumber: z.string().max(20).nullable().optional(),
+  role: z.enum(["resident", "admin", "security", "vendor"]).optional(),
+});
+
+export const updateProfileSchema = z.object({
+  name: z.string().min(2).max(100),
 });
 
 export const createVisitorSchema = z.object({
