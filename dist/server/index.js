@@ -2202,7 +2202,8 @@ app.use(
 var ALLOWED_ORIGINS = isProd ? [
   "https://www.jiranihub.co.ke",
   "https://jiranihub.co.ke",
-  process.env.CLIENT_URL
+  process.env.CLIENT_URL,
+  process.env.RENDER_EXTERNAL_URL
 ].filter(Boolean) : ["http://localhost:3000", "http://localhost:5173"];
 app.use(
   cors({

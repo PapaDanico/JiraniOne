@@ -42,6 +42,7 @@ const ALLOWED_ORIGINS = isProd
       "https://www.jiranihub.co.ke",
       "https://jiranihub.co.ke",
       process.env.CLIENT_URL,
+      process.env.RENDER_EXTERNAL_URL,
     ].filter(Boolean) as string[]
   : ["http://localhost:3000", "http://localhost:5173"];
 
