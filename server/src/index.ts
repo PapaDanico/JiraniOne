@@ -30,10 +30,9 @@ const app = express();
 // ─── Security ─────────────────────────────────────────────────────────────────
 app.use(
   helmet({
-    contentSecurityPolicy: isProd
-      ? undefined
-      : false,
+    contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: false,
   }),
 );
 

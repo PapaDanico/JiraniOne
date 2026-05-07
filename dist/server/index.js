@@ -2195,8 +2195,9 @@ var PORT = Number(process.env.PORT ?? 5e3);
 var app = express();
 app.use(
   helmet({
-    contentSecurityPolicy: isProd ? void 0 : false,
-    crossOriginEmbedderPolicy: false
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: false
   })
 );
 var ALLOWED_ORIGINS = isProd ? [
