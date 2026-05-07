@@ -5,6 +5,7 @@ services:
     region: fra  # Frankfurt — closest to Kenya
     plan: starter
     buildCommand: npm install --omit=dev
+    preDeployCommand: node migrate-password-reset.mjs
     startCommand: node dist/server/index.js
     healthCheckPath: /api/health
     envVars:
