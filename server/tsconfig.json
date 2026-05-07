@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "outDir": "../dist/server",
+    "rootDir": "../",
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    }
+  },
+  "include": ["src", "../shared"]
+}

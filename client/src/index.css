@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-green: #1A5C38;
+    --brand-amber: #D47A00;
+    --kenya-red: #BB0000;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-white text-gray-900;
+    min-height: 100dvh;
+  }
+
+  /* Ensure all interactive elements meet 44px touch target */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#1A5C38] text-white font-medium text-sm transition-colors hover:bg-[#0F3C24] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-700 font-medium text-sm transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium text-sm transition-colors hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
+  }
+
+  .card {
+    @apply bg-[#F8F7F5] rounded-xl border border-[#E8E6E3];
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1A5C38] focus:border-transparent min-h-[44px];
+  }
+
+  .page-header {
+    @apply font-['Plus_Jakarta_Sans'] font-bold text-2xl text-gray-900;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+}
+
+/* Mobile safe area for bottom nav */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
