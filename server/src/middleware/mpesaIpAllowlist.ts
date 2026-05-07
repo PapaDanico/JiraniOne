@@ -1,4 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
+import { logger } from "../lib/logger.js";
+
+const log = logger.child({ component: "mpesa_ip_allowlist" });
 
 // Safaricom Daraja egress IPs documented at:
 // https://developer.safaricom.co.ke/docs#m-pesa-callback-urls
@@ -46,12 +49,9 @@ export function mpesaIpAllowlist(
   if (!ip || !ALLOWLIST.has(ip)) {
     // Always 200 to Safaricom (they retry on non-2xx) but DO NOT process.
     // Log so we can spot probes / IP rotations.
-    console.warn(
-      JSON.stringify({
-        event: "mpesa_callback_ip_blocked",
-        ip,
-        ua: req.headers["user-agent"],
-      }),
+    log.warn(
+      { event: "callback_ip_blocked", ip, ua: req.headers["user-agent"] },
+      "rejected M-PESA callback from non-allowlisted IP",
     );
     res.json({ ResultCode: 0, ResultDesc: "Accepted" });
     return;

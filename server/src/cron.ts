@@ -10,6 +10,9 @@ import {
 } from "@shared/schema.js";
 import { lucia } from "./auth.js";
 import { stkPushStatus } from "./lib/mpesa.js";
+import { logger } from "./lib/logger.js";
+
+const log = logger.child({ component: "cron" });
 
 // Each job is wrapped in try/catch so one failing cron never crashes the
 // process. node-cron handles its own scheduling via setInterval; on a
@@ -62,12 +65,7 @@ export function registerCronJobs() {
         }
       }
     } catch (err) {
-      console.error(
-        JSON.stringify({
-          event: "cron_reconciliation_failed",
-          error: err instanceof Error ? err.message : String(err),
-        }),
-      );
+      log.error({ event: "reconciliation_failed", err }, "reconciliation cron failed");
     }
   });
 
@@ -108,12 +106,7 @@ export function registerCronJobs() {
           ),
         );
     } catch (err) {
-      console.error(
-        JSON.stringify({
-          event: "cron_daily_cleanup_failed",
-          error: err instanceof Error ? err.message : String(err),
-        }),
-      );
+      log.error({ event: "daily_cleanup_failed", err }, "daily cleanup cron failed");
     }
   });
 
@@ -138,19 +131,12 @@ export function registerCronJobs() {
           ),
         );
     } catch (err) {
-      console.error(
-        JSON.stringify({
-          event: "cron_visitor_purge_failed",
-          error: err instanceof Error ? err.message : String(err),
-        }),
-      );
+      log.error({ event: "visitor_purge_failed", err }, "visitor purge cron failed");
     }
   });
 
-  console.info(
-    JSON.stringify({
-      event: "cron_registered",
-      jobs: ["reconcile_payments_5min", "daily_cleanup", "visitor_purge_weekly"],
-    }),
+  log.info(
+    { jobs: ["reconcile_payments_5min", "daily_cleanup", "visitor_purge_weekly"] },
+    "cron jobs registered",
   );
 }

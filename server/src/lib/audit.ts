@@ -2,6 +2,9 @@ import type { Request } from "express";
 import { db } from "../db.js";
 import { auditLogs } from "@shared/schema.js";
 import { newId } from "./ids.js";
+import { logger } from "./logger.js";
+
+const log = logger.child({ component: "audit" });
 
 interface AuditEntry {
   action: string;
@@ -34,12 +37,6 @@ export async function writeAudit(
       ip: req.ip ?? null,
     });
   } catch (err) {
-    console.error(
-      JSON.stringify({
-        event: "audit_write_failed",
-        action: entry.action,
-        error: err instanceof Error ? err.message : String(err),
-      }),
-    );
+    log.error({ event: "audit_write_failed", action: entry.action, err }, "audit log write failed");
   }
 }

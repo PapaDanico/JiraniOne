@@ -29,6 +29,8 @@ import { chamaRouter } from "./routes/chama.js";
 import { analyticsRouter } from "./routes/analytics.js";
 import { createWsServer } from "./ws.js";
 import { registerCronJobs } from "./cron.js";
+import { logger } from "./lib/logger.js";
+import pinoHttp from "pino-http";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === "production";
@@ -40,6 +42,27 @@ const app = express();
 // req.ip resolves to the real client IP (used by the M-PESA IP allowlist
 // and rate limiters).
 app.set("trust proxy", 1);
+
+// Structured request logging — every request gets a per-request logger
+// with a generated request id, accessible as req.log.
+app.use(
+  pinoHttp({
+    logger,
+    customLogLevel: (_req, res, err) => {
+      if (err || res.statusCode >= 500) return "error";
+      if (res.statusCode >= 400) return "warn";
+      return "info";
+    },
+    serializers: {
+      req: (req) => ({
+        method: req.method,
+        url: req.url,
+        // Strip query strings of OTPs / passwords if accidentally appended
+        // to a GET via misconfiguration.
+      }),
+    },
+  }),
+);
 
 // ─── Security ─────────────────────────────────────────────────────────────────
 app.use(
@@ -304,5 +327,5 @@ createWsServer(httpServer);
 registerCronJobs();
 
 httpServer.listen(PORT, () => {
-  console.info(`JiraniHub server running on http://localhost:${PORT}`);
+  logger.info({ port: PORT, env: process.env.NODE_ENV ?? "development" }, "JiraniHub server started");
 });

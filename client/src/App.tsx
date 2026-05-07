@@ -8,6 +8,13 @@ import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { RoleGate } from "@/components/shared/role-gate";
 import { PageLoader } from "@/components/shared/loading";
 
+// CLAUDE.md cares about emergency and visitor flows on 3G. These two are
+// eagerly imported (NOT lazy()) so the panic button and gate scanner don't
+// pay a chunk-fetch tax on first use — multi-second latency in a literal
+// emergency would be unacceptable.
+import EmergencyPage from "@/pages/emergency/index";
+import VisitorsPage from "@/pages/visitor/index";
+
 // ─── Code-split every page into its own chunk (P3 fix) ───────────────────────
 // Each lazy() call creates a separate JS chunk — loaded only when that route
 // is first visited, cutting initial bundle from ~611 KB to ~80-120 KB.
@@ -16,15 +23,15 @@ const LandingPage        = lazy(() => import("@/pages/landing"));
 const LoginPage          = lazy(() => import("@/pages/login"));
 const RegisterPage       = lazy(() => import("@/pages/register"));
 const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
+const PrivacyPage        = lazy(() => import("@/pages/privacy"));
+const TermsPage          = lazy(() => import("@/pages/terms"));
 const ResidentDashboard  = lazy(() => import("@/pages/resident/dashboard"));
 const AdminDashboard     = lazy(() => import("@/pages/admin/dashboard"));
 const SecurityDashboard  = lazy(() => import("@/pages/security/dashboard"));
 const VendorDashboard    = lazy(() => import("@/pages/vendor/dashboard"));
-const VisitorsPage       = lazy(() => import("@/pages/visitor/index"));
 const MaintenancePage    = lazy(() => import("@/pages/maintenance/index"));
 const AnnouncementsPage  = lazy(() => import("@/pages/announcements/index"));
 const PaymentsPage       = lazy(() => import("@/pages/payments/index"));
-const EmergencyPage      = lazy(() => import("@/pages/emergency/index"));
 const EventsPage         = lazy(() => import("@/pages/events/index"));
 const GovernancePage     = lazy(() => import("@/pages/governance/index"));
 const BookingsPage       = lazy(() => import("@/pages/bookings/index"));
@@ -50,6 +57,8 @@ function AppRoutes() {
         <Route path="/login" component={LoginPage} />
         <Route path="/register" component={RegisterPage} />
         <Route path="/forgot-password" component={ForgotPasswordPage} />
+        <Route path="/privacy" component={PrivacyPage} />
+        <Route path="/terms" component={TermsPage} />
 
         <Route path="/dashboard/resident">
           <RoleGate roles={["resident"]}><ResidentDashboard /></RoleGate>
