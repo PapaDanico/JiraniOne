@@ -116,7 +116,7 @@ export default function ResidentDashboard() {
   // My parcels
   const { data: parcelsRes } = useQuery({
     queryKey: ["parcels", "my"],
-    queryFn: () => api.get<{ data: Parcel[] }>("/api/parcels/my").then((r) => r.data.data),
+    queryFn: () => api.get<Parcel[]>("/api/parcels/my").then((r) => r.data),
     staleTime: 2 * 60 * 1000,
   });
 
