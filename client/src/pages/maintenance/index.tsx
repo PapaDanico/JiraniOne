@@ -8,7 +8,7 @@ export default function MaintenancePage() {
 
   return (
     <div className="page-wrap">
-      <TopBar title="Matengenezo" />
+      <TopBar title="Maintenance" />
       <main className="max-w-lg mx-auto px-4 pt-4 page-content">
         {user?.role === "admin" ? <AdminTickets /> : <TicketList />}
       </main>
