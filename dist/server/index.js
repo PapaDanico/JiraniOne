@@ -29,6 +29,10 @@ __export(schema_exports, {
   announcements: () => announcements,
   bookingStatusEnum: () => bookingStatusEnum,
   bookings: () => bookings,
+  classifiedCategoryEnum: () => classifiedCategoryEnum,
+  classifiedStatusEnum: () => classifiedStatusEnum,
+  classifieds: () => classifieds,
+  classifiedsRelations: () => classifiedsRelations,
   documents: () => documents,
   donations: () => donations,
   emergencyAlerts: () => emergencyAlerts,
@@ -43,6 +47,9 @@ __export(schema_exports, {
   fundraisingStatusEnum: () => fundraisingStatusEnum,
   maintenanceTickets: () => maintenanceTickets,
   notifications: () => notifications,
+  parcelStatusEnum: () => parcelStatusEnum,
+  parcels: () => parcels,
+  parcelsRelations: () => parcelsRelations,
   payments: () => payments,
   pollOptions: () => pollOptions,
   polls: () => polls,
@@ -521,6 +528,78 @@ var votes = pgTable(
     userIdIdx: index("votes_user_id_idx").on(t.userId)
   })
 );
+var parcelStatusEnum = pgEnum("parcel_status", [
+  "expected",
+  "at_gate",
+  "collected",
+  "returned"
+]);
+var parcels = pgTable(
+  "parcels",
+  {
+    id: text("id").primaryKey(),
+    estateId: text("estate_id").notNull().references(() => estates.id),
+    residentId: text("resident_id").notNull().references(() => users.id),
+    description: varchar("description", { length: 200 }).notNull(),
+    trackingRef: varchar("tracking_ref", { length: 100 }),
+    sender: varchar("sender", { length: 100 }),
+    status: parcelStatusEnum("status").notNull().default("expected"),
+    receivedAt: timestamp("received_at"),
+    collectedAt: timestamp("collected_at"),
+    receivedById: text("received_by_id").references(() => users.id),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow()
+  },
+  (t) => ({
+    estateIdIdx: index("parcels_estate_id_idx").on(t.estateId),
+    residentIdIdx: index("parcels_resident_id_idx").on(t.residentId),
+    statusIdx: index("parcels_status_idx").on(t.status)
+  })
+);
+var classifiedCategoryEnum = pgEnum("classified_category", [
+  "sell",
+  "buy",
+  "give",
+  "service"
+]);
+var classifiedStatusEnum = pgEnum("classified_status", [
+  "active",
+  "sold",
+  "closed"
+]);
+var classifieds = pgTable(
+  "classifieds",
+  {
+    id: text("id").primaryKey(),
+    estateId: text("estate_id").notNull().references(() => estates.id),
+    userId: text("user_id").notNull().references(() => users.id),
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description").notNull(),
+    price: decimal("price", { precision: 10, scale: 2 }),
+    category: classifiedCategoryEnum("category").notNull().default("sell"),
+    status: classifiedStatusEnum("status").notNull().default("active"),
+    contactPhone: varchar("contact_phone", { length: 20 }),
+    imageUrl: text("image_url"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow()
+  },
+  (t) => ({
+    estateIdIdx: index("classifieds_estate_id_idx").on(t.estateId),
+    categoryIdx: index("classifieds_category_idx").on(t.category),
+    statusIdx: index("classifieds_status_idx").on(t.status),
+    createdAtIdx: index("classifieds_created_at_idx").on(t.createdAt)
+  })
+);
+var parcelsRelations = relations(parcels, ({ one }) => ({
+  resident: one(users, { fields: [parcels.residentId], references: [users.id] }),
+  receivedBy: one(users, { fields: [parcels.receivedById], references: [users.id] }),
+  estate: one(estates, { fields: [parcels.estateId], references: [estates.id] })
+}));
+var classifiedsRelations = relations(classifieds, ({ one }) => ({
+  user: one(users, { fields: [classifieds.userId], references: [users.id] }),
+  estate: one(estates, { fields: [classifieds.estateId], references: [estates.id] })
+}));
 var usersRelations = relations(users, ({ one, many }) => ({
   estate: one(estates, { fields: [users.estateId], references: [estates.id] }),
   sessions: many(sessions),
@@ -2188,6 +2267,306 @@ usersRouter.post("/me/password", async (req, res) => {
   res.json({ data: { success: true } });
 });
 
+// server/src/routes/weather.ts
+import { Router as Router13 } from "express";
+var weatherRouter = Router13();
+weatherRouter.use(requireAuth);
+var LAT = -1.4667;
+var LON = 36.9833;
+function describeCode(code) {
+  if (code === 0) return "Clear sky";
+  if (code <= 2) return "Partly cloudy";
+  if (code === 3) return "Overcast";
+  if (code <= 49) return "Foggy";
+  if (code <= 59) return "Drizzle";
+  if (code <= 69) return "Rain";
+  if (code <= 79) return "Snow / Sleet";
+  if (code <= 84) return "Rain showers";
+  if (code <= 99) return "Thunderstorm";
+  return "Unknown";
+}
+weatherRouter.get("/", async (_req, res) => {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Africa%2FNairobi&forecast_days=1`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("Weather API error");
+    const raw = await resp.json();
+    const data = {
+      temp: Math.round(raw.current.temperature_2m),
+      feelsLike: Math.round(raw.current.apparent_temperature),
+      humidity: raw.current.relative_humidity_2m,
+      windSpeed: Math.round(raw.current.wind_speed_10m),
+      code: raw.current.weather_code,
+      description: describeCode(raw.current.weather_code),
+      rainProb: raw.daily.precipitation_probability_max[0] ?? 0,
+      high: Math.round(raw.daily.temperature_2m_max[0] ?? raw.current.temperature_2m),
+      low: Math.round(raw.daily.temperature_2m_min[0] ?? raw.current.temperature_2m),
+      location: "Athi River, Machakos"
+    };
+    res.json({ data });
+  } catch {
+    res.status(503).json({ error: "Weather data temporarily unavailable" });
+  }
+});
+
+// server/src/routes/traffic.ts
+import { Router as Router14 } from "express";
+var trafficRouter = Router14();
+trafficRouter.use(requireAuth);
+var ORIGIN = "-1.467,36.983";
+var DEST = "-1.284,36.823";
+var NORMAL_MINS = 45;
+var DISTANCE_KM = 42;
+trafficRouter.get("/", async (_req, res) => {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    const data = {
+      durationMins: NORMAL_MINS,
+      normalMins: NORMAL_MINS,
+      distanceKm: DISTANCE_KM,
+      status: "clear",
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      noKey: true
+    };
+    res.json({ data });
+    return;
+  }
+  try {
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${ORIGIN}&destinations=${DEST}&mode=driving&departure_time=now&traffic_model=best_guess&key=${apiKey}`;
+    const resp = await fetch(url);
+    const raw = await resp.json();
+    const el = raw.rows[0]?.elements[0];
+    if (!el || el.status !== "OK") throw new Error("No route data");
+    const durationMins = Math.round(el.duration_in_traffic.value / 60);
+    const normalMins = Math.round(el.duration.value / 60);
+    const distanceKm = Math.round(el.distance.value / 1e3);
+    const ratio = durationMins / normalMins;
+    const status = ratio < 1.2 ? "clear" : ratio < 1.6 ? "moderate" : "heavy";
+    const data = {
+      durationMins,
+      normalMins,
+      distanceKm,
+      status,
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    res.json({ data });
+  } catch {
+    res.status(503).json({ error: "Traffic data temporarily unavailable" });
+  }
+});
+
+// server/src/routes/parcels.ts
+import { Router as Router15 } from "express";
+import { eq as eq13, and as and12, desc as desc11 } from "drizzle-orm";
+
+// server/src/lib/notify.ts
+async function createNotification(opts) {
+  await db.insert(notifications).values({
+    id: newId(),
+    userId: opts.userId,
+    title: opts.title,
+    body: opts.body,
+    type: opts.type,
+    linkTo: opts.linkTo ?? null
+  });
+}
+
+// server/src/routes/parcels.ts
+var parcelsRouter = Router15();
+parcelsRouter.use(requireAuth);
+parcelsRouter.get("/my", async (_req, res) => {
+  const user = res.locals.user;
+  const rows = await db.select().from(parcels).where(eq13(parcels.residentId, user.id)).orderBy(desc11(parcels.createdAt)).limit(50);
+  res.json({ data: rows });
+});
+parcelsRouter.get("/estate", requireRole("admin", "security"), async (_req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.json({ data: [] });
+    return;
+  }
+  const rows = await db.query.parcels.findMany({
+    where: eq13(parcels.estateId, user.estateId),
+    with: {
+      resident: { columns: { name: true, unitNumber: true } },
+      receivedBy: { columns: { name: true } }
+    },
+    orderBy: desc11(parcels.createdAt),
+    limit: 100
+  });
+  res.json({ data: rows });
+});
+parcelsRouter.post("/", async (req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate assigned" });
+    return;
+  }
+  const { description, trackingRef, sender } = req.body;
+  if (!description?.trim()) {
+    res.status(400).json({ error: "Description is required" });
+    return;
+  }
+  const [parcel] = await db.insert(parcels).values({
+    id: newId(),
+    estateId: user.estateId,
+    residentId: user.id,
+    description: description.trim(),
+    trackingRef: trackingRef?.trim() || null,
+    sender: sender?.trim() || null,
+    status: "expected"
+  }).returning();
+  res.status(201).json({ data: parcel });
+});
+parcelsRouter.patch("/:id/received", requireRole("admin", "security"), async (req, res) => {
+  const user = res.locals.user;
+  const { notes } = req.body;
+  const [parcel] = await db.select().from(parcels).where(and12(eq13(parcels.id, req.params.id), eq13(parcels.estateId, user.estateId))).limit(1);
+  if (!parcel) {
+    res.status(404).json({ error: "Parcel not found" });
+    return;
+  }
+  const [updated] = await db.update(parcels).set({
+    status: "at_gate",
+    receivedAt: /* @__PURE__ */ new Date(),
+    receivedById: user.id,
+    notes: notes?.trim() || null,
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq13(parcels.id, parcel.id)).returning();
+  const [resident] = await db.select({ name: users.name }).from(users).where(eq13(users.id, parcel.residentId)).limit(1);
+  await createNotification({
+    userId: parcel.residentId,
+    title: "\u{1F4E6} Parcel at Gate",
+    body: `Your parcel (${parcel.description}) has arrived at the gate. Please collect it.`,
+    type: "parcel",
+    linkTo: "/parcels"
+  });
+  broadcastToEstate(user.estateId, {
+    type: "notification:new",
+    payload: { userId: parcel.residentId },
+    estateId: user.estateId
+  });
+  res.json({ data: updated });
+});
+parcelsRouter.patch("/:id/collected", async (req, res) => {
+  const user = res.locals.user;
+  const [parcel] = await db.select().from(parcels).where(eq13(parcels.id, req.params.id)).limit(1);
+  if (!parcel || parcel.estateId !== user.estateId) {
+    res.status(404).json({ error: "Parcel not found" });
+    return;
+  }
+  const isOwner = parcel.residentId === user.id;
+  const isStaff = user.role === "admin" || user.role === "security";
+  if (!isOwner && !isStaff) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const [updated] = await db.update(parcels).set({ status: "collected", collectedAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq13(parcels.id, parcel.id)).returning();
+  res.json({ data: updated });
+});
+parcelsRouter.delete("/:id", async (req, res) => {
+  const user = res.locals.user;
+  await db.delete(parcels).where(and12(eq13(parcels.id, req.params.id), eq13(parcels.residentId, user.id)));
+  res.json({ data: { success: true } });
+});
+
+// server/src/routes/classifieds.ts
+import { Router as Router16 } from "express";
+import { eq as eq14, and as and13, desc as desc12, ne } from "drizzle-orm";
+var classifiedsRouter = Router16();
+classifiedsRouter.use(requireAuth);
+classifiedsRouter.get("/", async (_req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.json({ data: [] });
+    return;
+  }
+  const rows = await db.query.classifieds.findMany({
+    where: and13(
+      eq14(classifieds.estateId, user.estateId),
+      ne(classifieds.status, "closed")
+    ),
+    with: {
+      user: { columns: { name: true, unitNumber: true } }
+    },
+    orderBy: desc12(classifieds.createdAt),
+    limit: 100
+  });
+  res.json({ data: rows });
+});
+classifiedsRouter.get("/my", async (_req, res) => {
+  const user = res.locals.user;
+  const rows = await db.select().from(classifieds).where(eq14(classifieds.userId, user.id)).orderBy(desc12(classifieds.createdAt));
+  res.json({ data: rows });
+});
+classifiedsRouter.post("/", async (req, res) => {
+  const user = res.locals.user;
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate assigned" });
+    return;
+  }
+  const { title, description, price, category, contactPhone } = req.body;
+  if (!title?.trim() || !description?.trim()) {
+    res.status(400).json({ error: "Title and description are required" });
+    return;
+  }
+  const validCategories = ["sell", "buy", "give", "service"];
+  if (!validCategories.includes(category)) {
+    res.status(400).json({ error: "Invalid category" });
+    return;
+  }
+  const [listing] = await db.insert(classifieds).values({
+    id: newId(),
+    estateId: user.estateId,
+    userId: user.id,
+    title: title.trim(),
+    description: description.trim(),
+    price: price ? String(parseFloat(price)) : null,
+    category,
+    contactPhone: contactPhone?.trim() || null,
+    status: "active"
+  }).returning();
+  res.status(201).json({ data: listing });
+});
+classifiedsRouter.patch("/:id", async (req, res) => {
+  const user = res.locals.user;
+  const { status, title, description, price } = req.body;
+  const [listing] = await db.select().from(classifieds).where(eq14(classifieds.id, req.params.id)).limit(1);
+  if (!listing) {
+    res.status(404).json({ error: "Listing not found" });
+    return;
+  }
+  const isOwner = listing.userId === user.id;
+  const isAdmin = user.role === "admin";
+  if (!isOwner && !isAdmin) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const updates = { updatedAt: /* @__PURE__ */ new Date() };
+  if (status && ["active", "sold", "closed"].includes(status)) updates.status = status;
+  if (title?.trim()) updates.title = title.trim();
+  if (description?.trim()) updates.description = description.trim();
+  if (price !== void 0) updates.price = price ? String(parseFloat(price)) : null;
+  const [updated] = await db.update(classifieds).set(updates).where(eq14(classifieds.id, listing.id)).returning();
+  res.json({ data: updated });
+});
+classifiedsRouter.delete("/:id", async (req, res) => {
+  const user = res.locals.user;
+  const [listing] = await db.select().from(classifieds).where(eq14(classifieds.id, req.params.id)).limit(1);
+  if (!listing) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const isOwner = listing.userId === user.id;
+  const isAdmin = user.role === "admin";
+  if (!isOwner && !isAdmin) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  await db.delete(classifieds).where(eq14(classifieds.id, listing.id));
+  res.json({ data: { success: true } });
+});
+
 // server/src/index.ts
 var __dirname = path2.dirname(fileURLToPath(import.meta.url));
 var isProd = process.env.NODE_ENV === "production";
@@ -2256,6 +2635,10 @@ app.use("/api/polls", pollsRouter);
 app.use("/api/facilities", facilitiesRouter);
 app.use("/api/services", servicesRouter);
 app.use("/api/users", usersRouter);
+app.use("/api/weather", weatherRouter);
+app.use("/api/traffic", trafficRouter);
+app.use("/api/parcels", parcelsRouter);
+app.use("/api/classifieds", classifiedsRouter);
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: (/* @__PURE__ */ new Date()).toISOString() });
 });

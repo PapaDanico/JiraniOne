@@ -3,12 +3,13 @@ import { Link } from "wouter";
 import {
   Users, Wrench, Megaphone, AlertCircle, Clock, CheckCircle,
   CreditCard, CalendarDays, Vote, BookOpen, Store, ShieldAlert, UserCog,
-  TrendingUp,
+  TrendingUp, Package, Tag,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEstate } from "@/hooks/useEstate";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Card, CardContent } from "@/components/ui/card";
+import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
 import { api } from "@/lib/api";
 import { SectionLoader } from "@/components/shared/loading";
 
@@ -21,6 +22,8 @@ const modules = [
   { href: "/payments",      label: "Payments",      icon: <CreditCard className="h-5 w-5" />,  bg: "bg-[#D4A017]/15",  fg: "text-[#9A6E00]" },
   { href: "/emergency",     label: "Emergency",     icon: <ShieldAlert className="h-5 w-5" />, bg: "bg-[#B71C1C]/10",  fg: "text-[#B71C1C]" },
   { href: "/events",        label: "Events",        icon: <CalendarDays className="h-5 w-5" />,bg: "bg-cyan-100",      fg: "text-cyan-700" },
+  { href: "/parcels",       label: "Parcels",       icon: <Package className="h-5 w-5" />,     bg: "bg-sky-100",       fg: "text-sky-700" },
+  { href: "/classifieds",   label: "Noticeboard",   icon: <Tag className="h-5 w-5" />,         bg: "bg-[#1B5E20]/10",  fg: "text-[#1B5E20]" },
   { href: "/governance",    label: "Governance",    icon: <Vote className="h-5 w-5" />,        bg: "bg-indigo-100",    fg: "text-indigo-700" },
   { href: "/bookings",      label: "Bookings",      icon: <BookOpen className="h-5 w-5" />,    bg: "bg-pink-100",      fg: "text-pink-700" },
   { href: "/marketplace",   label: "Marketplace",   icon: <Store className="h-5 w-5" />,       bg: "bg-amber-100",     fg: "text-amber-700" },
@@ -52,6 +55,12 @@ export default function AdminDashboard() {
           <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center shrink-0">
             <TrendingUp className="h-5 w-5 text-[#D4A017]" />
           </div>
+        </div>
+
+        {/* Weather & Traffic */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <WeatherWidget />
+          <TrafficWidget />
         </div>
 
         {/* Maintenance stats */}

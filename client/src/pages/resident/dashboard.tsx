@@ -3,12 +3,14 @@ import { Link } from "wouter";
 import {
   Users, Wrench, Megaphone, ShieldAlert, CreditCard,
   CalendarDays, Store, Vote, BookOpen, ChevronRight, Bell,
+  Package, Tag,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEstate } from "@/hooks/useEstate";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
 import { api } from "@/lib/api";
 import { SectionLoader } from "@/components/shared/loading";
 import { formatRelative } from "@/lib/utils";
@@ -21,6 +23,8 @@ const modules = [
   { href: "/emergency",   label: "Emergency",     icon: <ShieldAlert className="h-6 w-6" />, bg: "bg-[#B71C1C]/10",   fg: "text-[#B71C1C]" },
   { href: "/payments",    label: "Payments",      icon: <CreditCard className="h-6 w-6" />,  bg: "bg-[#D4A017]/15",   fg: "text-[#9A6E00]" },
   { href: "/events",      label: "Events",        icon: <CalendarDays className="h-6 w-6" />,bg: "bg-cyan-100",       fg: "text-cyan-700" },
+  { href: "/parcels",     label: "Parcels",       icon: <Package className="h-6 w-6" />,     bg: "bg-sky-100",        fg: "text-sky-700" },
+  { href: "/classifieds", label: "Noticeboard",   icon: <Tag className="h-6 w-6" />,         bg: "bg-[#1B5E20]/10",   fg: "text-[#1B5E20]" },
   { href: "/marketplace", label: "Marketplace",   icon: <Store className="h-6 w-6" />,       bg: "bg-amber-100",      fg: "text-amber-700" },
   { href: "/governance",  label: "Governance",    icon: <Vote className="h-6 w-6" />,        bg: "bg-indigo-100",     fg: "text-indigo-700" },
   { href: "/bookings",    label: "Bookings",      icon: <BookOpen className="h-6 w-6" />,    bg: "bg-pink-100",       fg: "text-pink-700" },
@@ -75,6 +79,12 @@ export default function ResidentDashboard() {
                 : "Welcome to JiraniHub"}
             </p>
           </div>
+        </div>
+
+        {/* Weather & Traffic */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <WeatherWidget />
+          <TrafficWidget />
         </div>
 
         {/* Notification banner */}

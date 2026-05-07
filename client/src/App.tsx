@@ -26,6 +26,8 @@ import MarketplacePage from "@/pages/marketplace/index";
 import RegisterPage from "@/pages/register";
 import NotificationsPage from "@/pages/notifications/index";
 import AdminUsersPage from "@/pages/admin/users";
+import ParcelsPage from "@/pages/parcels/index";
+import ClassifiedsPage from "@/pages/classifieds/index";
 
 function AppRoutes() {
   const { user, isLoading } = useAuth();
@@ -84,6 +86,12 @@ function AppRoutes() {
       </Route>
       <Route path="/admin/users">
         <RoleGate roles={["admin"]}><AdminUsersPage /></RoleGate>
+      </Route>
+      <Route path="/parcels">
+        <RoleGate roles={["resident", "admin", "security"]}><ParcelsPage /></RoleGate>
+      </Route>
+      <Route path="/classifieds">
+        <RoleGate roles={["resident", "admin", "vendor"]}><ClassifiedsPage /></RoleGate>
       </Route>
 
       <Route>

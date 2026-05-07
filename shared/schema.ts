@@ -588,7 +588,90 @@ export const votes = pgTable(
   }),
 );
 
+// ─── Parcels / Gate Delivery Tracking ────────────────────────────────────────
+
+export const parcelStatusEnum = pgEnum("parcel_status", [
+  "expected",
+  "at_gate",
+  "collected",
+  "returned",
+]);
+
+export const parcels = pgTable(
+  "parcels",
+  {
+    id: text("id").primaryKey(),
+    estateId: text("estate_id").notNull().references(() => estates.id),
+    residentId: text("resident_id").notNull().references(() => users.id),
+    description: varchar("description", { length: 200 }).notNull(),
+    trackingRef: varchar("tracking_ref", { length: 100 }),
+    sender: varchar("sender", { length: 100 }),
+    status: parcelStatusEnum("status").notNull().default("expected"),
+    receivedAt: timestamp("received_at"),
+    collectedAt: timestamp("collected_at"),
+    receivedById: text("received_by_id").references(() => users.id),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    estateIdIdx: index("parcels_estate_id_idx").on(t.estateId),
+    residentIdIdx: index("parcels_resident_id_idx").on(t.residentId),
+    statusIdx: index("parcels_status_idx").on(t.status),
+  }),
+);
+
+// ─── Estate Classifieds / Noticeboard ────────────────────────────────────────
+
+export const classifiedCategoryEnum = pgEnum("classified_category", [
+  "sell",
+  "buy",
+  "give",
+  "service",
+]);
+
+export const classifiedStatusEnum = pgEnum("classified_status", [
+  "active",
+  "sold",
+  "closed",
+]);
+
+export const classifieds = pgTable(
+  "classifieds",
+  {
+    id: text("id").primaryKey(),
+    estateId: text("estate_id").notNull().references(() => estates.id),
+    userId: text("user_id").notNull().references(() => users.id),
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description").notNull(),
+    price: decimal("price", { precision: 10, scale: 2 }),
+    category: classifiedCategoryEnum("category").notNull().default("sell"),
+    status: classifiedStatusEnum("status").notNull().default("active"),
+    contactPhone: varchar("contact_phone", { length: 20 }),
+    imageUrl: text("image_url"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    estateIdIdx: index("classifieds_estate_id_idx").on(t.estateId),
+    categoryIdx: index("classifieds_category_idx").on(t.category),
+    statusIdx: index("classifieds_status_idx").on(t.status),
+    createdAtIdx: index("classifieds_created_at_idx").on(t.createdAt),
+  }),
+);
+
 // ─── Relations ────────────────────────────────────────────────────────────────
+
+export const parcelsRelations = relations(parcels, ({ one }) => ({
+  resident: one(users, { fields: [parcels.residentId], references: [users.id] }),
+  receivedBy: one(users, { fields: [parcels.receivedById], references: [users.id] }),
+  estate: one(estates, { fields: [parcels.estateId], references: [estates.id] }),
+}));
+
+export const classifiedsRelations = relations(classifieds, ({ one }) => ({
+  user: one(users, { fields: [classifieds.userId], references: [users.id] }),
+  estate: one(estates, { fields: [classifieds.estateId], references: [estates.id] }),
+}));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   estate: one(estates, { fields: [users.estateId], references: [estates.id] }),

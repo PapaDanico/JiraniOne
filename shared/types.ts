@@ -215,6 +215,64 @@ export interface ServiceProvider {
   updatedAt: string;
 }
 
+export type ParcelStatus = "expected" | "at_gate" | "collected" | "returned";
+export type ClassifiedCategory = "sell" | "buy" | "give" | "service";
+
+export interface Parcel {
+  id: string;
+  estateId: string;
+  residentId: string;
+  description: string;
+  trackingRef: string | null;
+  sender: string | null;
+  status: ParcelStatus;
+  receivedAt: string | null;
+  collectedAt: string | null;
+  receivedById: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  resident?: { name: string; unitNumber: string | null };
+  receivedBy?: { name: string } | null;
+}
+
+export interface Classified {
+  id: string;
+  estateId: string;
+  userId: string;
+  title: string;
+  description: string;
+  price: string | null;
+  category: ClassifiedCategory;
+  status: "active" | "sold" | "closed";
+  contactPhone: string | null;
+  imageUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user?: { name: string; unitNumber: string | null };
+}
+
+export interface WeatherData {
+  temp: number;
+  feelsLike: number;
+  humidity: number;
+  description: string;
+  code: number;
+  windSpeed: number;
+  rainProb: number;
+  high: number;
+  low: number;
+  location: string;
+}
+
+export interface TrafficData {
+  durationMins: number;
+  normalMins: number;
+  distanceKm: number;
+  status: "clear" | "moderate" | "heavy";
+  updatedAt: string;
+}
+
 // WebSocket event types
 export type WsEventType =
   | "visitor:checked_in"

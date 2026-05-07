@@ -1,7 +1,8 @@
 import { Link } from "wouter";
-import { QrCode, Search, ClipboardList, ShieldAlert } from "lucide-react";
+import { QrCode, Search, ClipboardList, ShieldAlert, Package } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
+import { TrafficWidget } from "@/components/shared/weather-traffic";
 
 const actions = [
   {
@@ -35,6 +36,14 @@ const actions = [
     icon: <ShieldAlert className="h-9 w-9" />,
     bg: "bg-[#B71C1C]",
     accent: "border-[#B71C1C]/30",
+  },
+  {
+    href: "/parcels",
+    label: "Parcels",
+    desc: "Log & track deliveries",
+    icon: <Package className="h-9 w-9" />,
+    bg: "bg-sky-600",
+    accent: "border-sky-400/30",
   },
 ];
 
@@ -70,6 +79,11 @@ export default function SecurityDashboard() {
               </div>
             </Link>
           ))}
+        </div>
+
+        {/* Traffic */}
+        <div className="mt-6">
+          <TrafficWidget />
         </div>
 
         {/* Tip */}

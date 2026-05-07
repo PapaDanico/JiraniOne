@@ -32,3 +32,5 @@ services:
         sync: false
       - key: SMS_USERNAME
         sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false          # optional — enables live Mombasa Road traffic times

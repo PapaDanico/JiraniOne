@@ -19,6 +19,10 @@ import { pollsRouter } from "./routes/polls.js";
 import { facilitiesRouter } from "./routes/facilities.js";
 import { servicesRouter } from "./routes/services.js";
 import { usersRouter } from "./routes/users.js";
+import { weatherRouter } from "./routes/weather.js";
+import { trafficRouter } from "./routes/traffic.js";
+import { parcelsRouter } from "./routes/parcels.js";
+import { classifiedsRouter } from "./routes/classifieds.js";
 import { createWsServer } from "./ws.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -104,6 +108,10 @@ app.use("/api/polls", pollsRouter);
 app.use("/api/facilities", facilitiesRouter);
 app.use("/api/services", servicesRouter);
 app.use("/api/users", usersRouter);
+app.use("/api/weather", weatherRouter);
+app.use("/api/traffic", trafficRouter);
+app.use("/api/parcels", parcelsRouter);
+app.use("/api/classifieds", classifiedsRouter);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get("/api/health", (_req, res) => {
