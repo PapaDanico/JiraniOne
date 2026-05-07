@@ -62,7 +62,7 @@ weatherRouter.get("/", async (_req, res) => {
       location: "Athi River, Machakos",
     };
 
-    res.json({ data });
+    res.json(data);
   } catch {
     res.status(503).json({ error: "Weather data temporarily unavailable" });
   }

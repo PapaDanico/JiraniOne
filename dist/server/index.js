@@ -2303,7 +2303,7 @@ weatherRouter.get("/", async (_req, res) => {
       low: Math.round(raw.daily.temperature_2m_min[0] ?? raw.current.temperature_2m),
       location: "Athi River, Machakos"
     };
-    res.json({ data });
+    res.json(data);
   } catch {
     res.status(503).json({ error: "Weather data temporarily unavailable" });
   }
@@ -2328,7 +2328,7 @@ trafficRouter.get("/", async (_req, res) => {
       updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
       noKey: true
     };
-    res.json({ data });
+    res.json(data);
     return;
   }
   try {
@@ -2349,7 +2349,7 @@ trafficRouter.get("/", async (_req, res) => {
       status,
       updatedAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    res.json({ data });
+    res.json(data);
   } catch {
     res.status(503).json({ error: "Traffic data temporarily unavailable" });
   }

@@ -27,7 +27,7 @@ trafficRouter.get("/", async (_req, res) => {
       updatedAt:    new Date().toISOString(),
       noKey:        true,
     };
-    res.json({ data });
+    res.json(data);
     return;
   }
 
@@ -67,7 +67,7 @@ trafficRouter.get("/", async (_req, res) => {
       status,
       updatedAt: new Date().toISOString(),
     };
-    res.json({ data });
+    res.json(data);
   } catch {
     res.status(503).json({ error: "Traffic data temporarily unavailable" });
   }
