@@ -119,6 +119,26 @@ app.use(
     message: { error: "Too many registration attempts. Please try again later." },
   }),
 );
+app.use(
+  "/api/auth/forgot-password",
+  rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many reset requests. Please try again later." },
+  }),
+);
+app.use(
+  "/api/auth/reset-password",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many attempts. Please request a new code." },
+  }),
+);
 
 // Tight limit on M-Pesa STK push — 5 per 15 min per IP
 app.use(

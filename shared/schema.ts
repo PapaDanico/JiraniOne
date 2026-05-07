@@ -154,6 +154,26 @@ export const sessions = pgTable(
   }),
 );
 
+// SMS-OTP password reset tokens (15-min expiry, single-use, hashed)
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    otpHash: text("otp_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at").notNull(),
+    consumedAt: timestamp("consumed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    userIdIdx: index("password_reset_user_id_idx").on(t.userId),
+    expiresAtIdx: index("password_reset_expires_at_idx").on(t.expiresAt),
+  }),
+);
+
 // ─── Visitor Management ───────────────────────────────────────────────────────
 
 export const visitors = pgTable(

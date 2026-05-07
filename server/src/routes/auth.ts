@@ -1,13 +1,23 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
-import { eq } from "drizzle-orm";
+import { randomInt } from "crypto";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "../db.js";
 import { lucia } from "../auth.js";
-import { users, estates } from "@shared/schema.js";
-import { loginSchema, registerSchema } from "@shared/validators.js";
+import { users, estates, passwordResetTokens } from "@shared/schema.js";
+import {
+  loginSchema,
+  registerSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { newId } from "../lib/ids.js";
+import { sendSms } from "../lib/sms.js";
 import type { AuthUser } from "@shared/types.js";
+
+const OTP_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const OTP_MAX_ATTEMPTS = 5;
 
 export const authRouter = Router();
 
@@ -98,6 +108,123 @@ authRouter.post("/login", async (req, res) => {
   };
 
   res.json({ data: authUser });
+});
+
+// ─── Forgot password: request OTP via SMS ─────────────────────────────────────
+// Always returns 200 so attackers cannot enumerate registered phone numbers.
+authRouter.post("/forgot-password", async (req, res) => {
+  const parsed = forgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Enter a valid Kenyan phone number" });
+    return;
+  }
+
+  const { phone } = parsed.data;
+  const [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
+
+  if (user && !user.deletedAt) {
+    const otp = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    // Invalidate any prior unconsumed tokens for this user
+    await db
+      .update(passwordResetTokens)
+      .set({ consumedAt: new Date() })
+      .where(and(
+        eq(passwordResetTokens.userId, user.id),
+        isNull(passwordResetTokens.consumedAt),
+      ));
+
+    await db.insert(passwordResetTokens).values({
+      id: newId(),
+      userId: user.id,
+      otpHash,
+      expiresAt: new Date(Date.now() + OTP_TTL_MS),
+    });
+
+    await sendSms({
+      to: phone,
+      message: `JiraniHub: Your password reset code is ${otp}. It expires in 15 minutes. If you did not request this, ignore this SMS.`,
+    });
+  }
+
+  res.json({
+    data: {
+      message:
+        "If that number is registered, we've sent a 6-digit code by SMS. Check your phone.",
+    },
+  });
+});
+
+// ─── Reset password: verify OTP and set new password ──────────────────────────
+authRouter.post("/reset-password", async (req, res) => {
+  const parsed = resetPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+
+  const { phone, otp, password } = parsed.data;
+  const [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
+  if (!user || user.deletedAt) {
+    res.status(400).json({ error: "Invalid or expired reset code" });
+    return;
+  }
+
+  const [token] = await db
+    .select()
+    .from(passwordResetTokens)
+    .where(and(
+      eq(passwordResetTokens.userId, user.id),
+      isNull(passwordResetTokens.consumedAt),
+      gt(passwordResetTokens.expiresAt, new Date()),
+    ))
+    .orderBy(passwordResetTokens.createdAt)
+    .limit(1);
+
+  if (!token) {
+    res.status(400).json({ error: "Invalid or expired reset code" });
+    return;
+  }
+
+  if (token.attempts >= OTP_MAX_ATTEMPTS) {
+    await db
+      .update(passwordResetTokens)
+      .set({ consumedAt: new Date() })
+      .where(eq(passwordResetTokens.id, token.id));
+    res.status(429).json({ error: "Too many attempts. Request a new code." });
+    return;
+  }
+
+  const valid = await bcrypt.compare(otp, token.otpHash);
+  if (!valid) {
+    await db
+      .update(passwordResetTokens)
+      .set({ attempts: token.attempts + 1 })
+      .where(eq(passwordResetTokens.id, token.id));
+    res.status(400).json({ error: "Invalid or expired reset code" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  await db
+    .update(users)
+    .set({ passwordHash, updatedAt: new Date() })
+    .where(eq(users.id, user.id));
+
+  await db
+    .update(passwordResetTokens)
+    .set({ consumedAt: new Date() })
+    .where(eq(passwordResetTokens.id, token.id));
+
+  // Force re-login on every device
+  await lucia.invalidateUserSessions(user.id);
+
+  res.json({
+    data: {
+      message: "Password reset successful. Sign in with your new password.",
+    },
+  });
 });
 
 authRouter.post("/logout", requireAuth, async (_req, res) => {

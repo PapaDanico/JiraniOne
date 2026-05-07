@@ -15,6 +15,7 @@ import { PageLoader } from "@/components/shared/loading";
 const LandingPage        = lazy(() => import("@/pages/landing"));
 const LoginPage          = lazy(() => import("@/pages/login"));
 const RegisterPage       = lazy(() => import("@/pages/register"));
+const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
 const ResidentDashboard  = lazy(() => import("@/pages/resident/dashboard"));
 const AdminDashboard     = lazy(() => import("@/pages/admin/dashboard"));
 const SecurityDashboard  = lazy(() => import("@/pages/security/dashboard"));
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Route path="/" component={LandingPage} />
         <Route path="/login" component={LoginPage} />
         <Route path="/register" component={RegisterPage} />
+        <Route path="/forgot-password" component={ForgotPasswordPage} />
 
         <Route path="/dashboard/resident">
           <RoleGate roles={["resident"]}><ResidentDashboard /></RoleGate>

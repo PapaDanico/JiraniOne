@@ -32,6 +32,16 @@ export const registerSchema = z.object({
   unitNumber: z.string().max(20).optional(),
 });
 
+export const forgotPasswordSchema = z.object({
+  phone: kenyanPhone,
+});
+
+export const resetPasswordSchema = z.object({
+  phone: kenyanPhone,
+  otp: z.string().regex(/^\d{6}$/, "Enter the 6-digit code from SMS"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 export const createVisitorSchema = z.object({
   name: z.string().min(2).max(100),
   phone: kenyanPhone,
@@ -135,6 +145,8 @@ export const createServiceSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type CreateVisitorInput = z.infer<typeof createVisitorSchema>;
 export type CreateTicketInput = z.infer<typeof createTicketSchema>;
 export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;

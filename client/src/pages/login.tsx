@@ -1,7 +1,14 @@
 import { Link } from "wouter";
-import { ShieldCheck, Wifi, Smartphone } from "lucide-react";
+import { Briefcase, Home, Shield, ShieldCheck, Smartphone, Store, Wifi } from "lucide-react";
 import { AuthGate } from "@/components/shared/role-gate";
 import { LoginForm } from "@/components/auth/login-form";
+
+const ROLE_PILLS = [
+  { label: "Resident", Icon: Home },
+  { label: "Admin", Icon: Briefcase },
+  { label: "Security", Icon: Shield },
+  { label: "Vendor", Icon: Store },
+];
 
 export default function LoginPage() {
   return (
@@ -52,6 +59,21 @@ export default function LoginPage() {
                 <p className="text-sm text-[#6B5D45] mt-1.5">
                   Sign in with your Kenyan phone number to continue.
                 </p>
+              </div>
+
+              <div className="mb-5 flex flex-wrap items-center gap-1.5">
+                {ROLE_PILLS.map(({ label, Icon }) => (
+                  <span
+                    key={label}
+                    className="inline-flex items-center gap-1 rounded-full border border-[#D4C9A8] bg-white/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#6B5D45]"
+                  >
+                    <Icon className="h-3 w-3 text-[#1B5E20]" />
+                    {label}
+                  </span>
+                ))}
+                <span className="text-[10px] font-semibold text-[#B0A080] ml-0.5">
+                  one login
+                </span>
               </div>
 
               <LoginForm />

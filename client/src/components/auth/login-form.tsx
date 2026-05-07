@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Link } from "wouter";
 import { Eye, EyeOff, Lock, Phone, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { loginSchema, type LoginInput } from "@shared/validators";
@@ -77,12 +78,12 @@ export function LoginForm() {
           <Label htmlFor="password" className="text-[#212121] font-semibold text-sm">
             Password
           </Label>
-          <a
+          <Link
             href="/forgot-password"
             className="text-xs font-semibold text-[#1B5E20] hover:underline"
           >
             Forgot?
-          </a>
+          </Link>
         </div>
         <div className="relative mt-1.5">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-[#6B5D45] pointer-events-none">
