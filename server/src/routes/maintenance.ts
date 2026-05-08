@@ -14,6 +14,7 @@ import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
 import { broadcastToEstate } from "../ws.js";
 import { processUploadedImages } from "../lib/imageUpload.js";
+import { writeAudit } from "../lib/audit.js";
 
 export const maintenanceRouter = Router();
 maintenanceRouter.use(requireAuth);
@@ -200,6 +201,13 @@ maintenanceRouter.post(
       estateId: user.estateId,
     });
 
+    void writeAudit(req, {
+      action: "ticket.created",
+      targetType: "maintenance_ticket",
+      targetId: ticket!.id,
+      metadata: { category: ticket!.category, priority: ticket!.priority },
+    });
+
     res.status(201).json({ data: ticket });
   },
 );
@@ -251,6 +259,17 @@ maintenanceRouter.patch(
       type: "ticket:updated",
       payload: updated,
       estateId: user.estateId!,
+    });
+
+    void writeAudit(req, {
+      action: "ticket.updated",
+      targetType: "maintenance_ticket",
+      targetId: updated!.id,
+      metadata: {
+        previousStatus: existing.status,
+        newStatus: updated!.status,
+        assignedToId: updated!.assignedToId ?? undefined,
+      },
     });
 
     res.json({ data: updated });

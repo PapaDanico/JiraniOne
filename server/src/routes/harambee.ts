@@ -10,6 +10,7 @@ import {
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
+import { writeAudit } from "../lib/audit.js";
 
 export const harambeeRouter = Router();
 harambeeRouter.use(requireAuth);
@@ -104,6 +105,13 @@ harambeeRouter.post("/", requireRole("admin"), async (req, res) => {
     })
     .returning();
 
+  void writeAudit(req, {
+    action: "harambee.created",
+    targetType: "fundraising_campaign",
+    targetId: campaign!.id,
+    metadata: { title: campaign!.title, goalAmount },
+  });
+
   res.status(201).json({ data: campaign });
 });
 
@@ -152,6 +160,13 @@ harambeeRouter.patch("/:id", requireRole("admin"), async (req, res) => {
     .set(updates)
     .where(eq(fundraisingCampaigns.id, campaign.id))
     .returning();
+
+  void writeAudit(req, {
+    action: "harambee.updated",
+    targetType: "fundraising_campaign",
+    targetId: campaign.id,
+    metadata: { previousStatus: campaign.status, newStatus: updated!.status },
+  });
 
   res.json({ data: updated });
 });
@@ -218,6 +233,13 @@ harambeeRouter.post("/:id/donate", async (req, res) => {
       .where(eq(fundraisingCampaigns.id, campaign.id));
 
     return d;
+  });
+
+  void writeAudit(req, {
+    action: "harambee.donated",
+    targetType: "fundraising_campaign",
+    targetId: campaign.id,
+    metadata: { amount, anonymous, donationId: donation!.id },
   });
 
   res.status(201).json({ data: donation });

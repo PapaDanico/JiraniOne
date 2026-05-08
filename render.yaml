@@ -37,3 +37,13 @@ services:
         sync: false
       - key: GOOGLE_MAPS_API_KEY
         sync: false          # optional — enables live Mombasa Road traffic times
+      - key: SENTRY_DSN
+        sync: false          # optional — enables Sentry error reporting (no DSN = no-op)
+      - key: SENTRY_TRACE_SAMPLE_RATE
+        value: "0.1"
+      - key: SMS_PER_USER_DAILY_CAP
+        value: "30"
+      - key: SMS_GLOBAL_DAILY_CAP
+        value: "5000"
+      - key: MPESA_CALLBACK_ALLOWED_IPS
+        sync: false          # optional override — comma-separated Safaricom egress IPs

@@ -15,10 +15,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "outDir": "dist",
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["client/src/*"],
-      "@shared/*": ["shared/*"]
+      "@/*": ["./client/src/*"],
+      "@shared/*": ["./shared/*"]
     }
   },
   "include": ["client/src", "server/src", "shared", "drizzle.config.ts"],

@@ -29,8 +29,9 @@ import { chamaRouter } from "./routes/chama.js";
 import { analyticsRouter } from "./routes/analytics.js";
 import { createWsServer } from "./ws.js";
 import { registerCronJobs } from "./cron.js";
-import { logger } from "./lib/logger.js";
+import { logger, captureException } from "./lib/logger.js";
 import pinoHttp from "pino-http";
+import * as Sentry from "@sentry/node";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === "production";
@@ -320,6 +321,33 @@ if (isProd) {
     res.sendFile(path.join(staticPath, "index.html"));
   });
 }
+
+// ─── Sentry error handler (must come AFTER all routes) ────────────────────────
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
+// Last-resort express error handler. Logs the error and returns a generic
+// 500 — we never want stack traces escaping to clients.
+app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  logger.error({ err, path: req.path, method: req.method }, "unhandled error");
+  captureException(err, { path: req.path, method: req.method });
+  if (!res.headersSent) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── Process-level guards ─────────────────────────────────────────────────────
+process.on("unhandledRejection", (reason) => {
+  logger.error({ reason }, "unhandledRejection");
+  captureException(reason);
+});
+process.on("uncaughtException", (err) => {
+  logger.fatal({ err }, "uncaughtException");
+  captureException(err);
+  // Crash deliberately — let Render restart the worker on a clean slate.
+  process.exit(1);
+});
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 const httpServer = createServer(app);

@@ -6,6 +6,7 @@ import { createClassifiedSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
+import { writeAudit } from "../lib/audit.js";
 
 export const classifiedsRouter = Router();
 classifiedsRouter.use(requireAuth);
@@ -68,6 +69,13 @@ classifiedsRouter.post("/", async (req, res) => {
     })
     .returning();
 
+  void writeAudit(req, {
+    action: "classified.created",
+    targetType: "classified",
+    targetId: listing!.id,
+    metadata: { category: listing!.category, title: listing!.title },
+  });
+
   res.status(201).json({ data: listing });
 });
 
@@ -105,6 +113,13 @@ classifiedsRouter.patch("/:id", async (req, res) => {
     .where(eq(classifieds.id, listing.id))
     .returning();
 
+  void writeAudit(req, {
+    action: "classified.updated",
+    targetType: "classified",
+    targetId: listing.id,
+    metadata: { previousStatus: listing.status, newStatus: updated!.status },
+  });
+
   res.json({ data: updated });
 });
 
@@ -125,5 +140,13 @@ classifiedsRouter.delete("/:id", async (req, res) => {
   if (!isOwner && !isAdmin) { res.status(403).json({ error: "Forbidden" }); return; }
 
   await db.delete(classifieds).where(eq(classifieds.id, listing.id));
+
+  void writeAudit(req, {
+    action: "classified.deleted",
+    targetType: "classified",
+    targetId: listing.id,
+    metadata: { title: listing.title, deletedByRole: user.role },
+  });
+
   res.json({ data: { success: true } });
 });

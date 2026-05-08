@@ -13,6 +13,7 @@ import { mpesaIpAllowlist } from "../middleware/mpesaIpAllowlist.js";
 import { newId } from "../lib/ids.js";
 import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
 import { broadcastToEstate } from "../ws.js";
+import { writeAudit } from "../lib/audit.js";
 
 // ─── Public M-PESA callback router ───────────────────────────────────────────
 // Mounted at /api/payments/mpesa/callback BEFORE requireAuth — Safaricom does
@@ -160,6 +161,12 @@ paymentsRouter.post("/stk-push", async (req, res) => {
       .set({ status: "completed", mpesaRef: "DEV_STUB", updatedAt: new Date() })
       .where(eq(payments.id, id))
       .returning();
+    void writeAudit(req, {
+      action: "payment.initiated",
+      targetType: "payment",
+      targetId: id,
+      metadata: { amount, type, stub: true },
+    });
     res.json({ data: updated, stub: true });
     return;
   }
@@ -175,6 +182,12 @@ paymentsRouter.post("/stk-push", async (req, res) => {
       .update(payments)
       .set({ checkoutRequestId: result.CheckoutRequestID, updatedAt: new Date() })
       .where(eq(payments.id, id));
+    void writeAudit(req, {
+      action: "payment.initiated",
+      targetType: "payment",
+      targetId: id,
+      metadata: { amount, type },
+    });
     res.json({ data: payment, message: result.CustomerMessage });
   } catch (err) {
     console.error(
@@ -255,6 +268,12 @@ paymentsRouter.post("/campaigns", requireRole("admin"), async (req, res) => {
       deadline: deadline ? new Date(deadline) : null,
     })
     .returning();
+  void writeAudit(req, {
+    action: "campaign.created",
+    targetType: "fundraising_campaign",
+    targetId: row!.id,
+    metadata: { title, goalAmount },
+  });
   res.status(201).json({ data: row });
 });
 
@@ -315,6 +334,13 @@ paymentsRouter.post("/campaigns/:id/donate", async (req, res) => {
       .where(eq(fundraisingCampaigns.id, campaign.id));
 
     return d;
+  });
+
+  void writeAudit(req, {
+    action: "campaign.donated",
+    targetType: "fundraising_campaign",
+    targetId: campaign.id,
+    metadata: { amount, anonymous, donationId: donation!.id },
   });
 
   res.status(201).json({ data: donation });

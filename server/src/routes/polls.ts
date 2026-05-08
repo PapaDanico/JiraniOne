@@ -14,6 +14,7 @@ import {
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
+import { writeAudit } from "../lib/audit.js";
 
 export const pollsRouter = Router();
 pollsRouter.use(requireAuth);
@@ -93,6 +94,13 @@ pollsRouter.post("/", requireRole("admin"), async (req, res) => {
   }));
   const insertedOptions = await db.insert(pollOptions).values(optionInserts).returning();
 
+  void writeAudit(req, {
+    action: "poll.created",
+    targetType: "poll",
+    targetId: poll!.id,
+    metadata: { title, anonymous, optionCount: options.length },
+  });
+
   res.status(201).json({ data: { ...poll, options: insertedOptions } });
 });
 
@@ -157,6 +165,14 @@ pollsRouter.post("/:id/vote", async (req, res) => {
     }
     throw err;
   }
+
+  void writeAudit(req, {
+    action: "poll.voted",
+    targetType: "poll",
+    targetId: poll.id,
+    // Never store optionId for anonymous polls — preserves anonymity.
+    metadata: poll.anonymous ? {} : { optionId },
+  });
 
   res.status(201).json({ data: { success: true } });
 });

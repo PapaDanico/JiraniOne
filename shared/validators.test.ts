@@ -236,6 +236,62 @@ describe("createChamaSchema", () => {
   });
 });
 
+describe("createParcelSchema does NOT accept residentId in body", async () => {
+  // Regression test: an earlier draft of the schema accepted residentId from
+  // the request body, which would have let any logged-in user register
+  // parcels for someone else. The route should always derive residentId
+  // from the session, not the body.
+  const { createParcelSchema } = await import("./validators.js");
+  it("strips residentId silently if sent (zod object default = strip)", () => {
+    const r = createParcelSchema.parse({
+      residentId: "victim-id",
+      description: "Box from Jumia",
+    } as never);
+    expect((r as Record<string, unknown>).residentId).toBeUndefined();
+  });
+});
+
+describe("eventRsvpSchema requires explicit attending boolean", () => {
+  it("rejects missing field — no defaulting to true", async () => {
+    const { eventRsvpSchema } = await import("./validators.js");
+    expect(() => eventRsvpSchema.parse({})).toThrow();
+    expect(eventRsvpSchema.parse({ attending: false }).attending).toBe(false);
+    expect(eventRsvpSchema.parse({ attending: true }).attending).toBe(true);
+  });
+});
+
+describe("castVoteSchema", () => {
+  it("requires optionId", async () => {
+    const { castVoteSchema } = await import("./validators.js");
+    expect(() => castVoteSchema.parse({})).toThrow();
+    expect(() => castVoteSchema.parse({ optionId: "" })).toThrow();
+    expect(castVoteSchema.parse({ optionId: "opt-123" }).optionId).toBe("opt-123");
+  });
+});
+
+describe("adminCreateUserSchema enforces role enum", () => {
+  it("rejects unknown role", async () => {
+    const { adminCreateUserSchema } = await import("./validators.js");
+    expect(() =>
+      adminCreateUserSchema.parse({
+        phone: "0722123456",
+        name: "Jane",
+        role: "superadmin", // not in the enum
+      } as never),
+    ).toThrow();
+  });
+
+  it("defaults role to resident", async () => {
+    const { adminCreateUserSchema } = await import("./validators.js");
+    expect(
+      adminCreateUserSchema.parse({
+        phone: "0722123456",
+        name: "Jane",
+      }).role,
+    ).toBe("resident");
+  });
+});
+
 describe("createPollSchema", () => {
   it("requires at least 2 options", () => {
     expect(() =>
