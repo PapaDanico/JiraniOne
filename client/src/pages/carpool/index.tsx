@@ -78,7 +78,7 @@ export default function CarpoolPage() {
     createOffer.mutate({
       origin: form.origin,
       destination: form.destination,
-      departureTime: new Date(form.departureTime).toISOString(),
+      departureTime: form.departureTime,
       seatsTotal: form.seatsTotal,
       ...(form.fare ? { fare: form.fare } : {}),
       ...(form.notes ? { notes: form.notes } : {}),

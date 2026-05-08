@@ -11,11 +11,20 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { UserPlus } from "lucide-react";
+import { AlertCircle, UserPlus } from "lucide-react";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+}
+
+// Compute the local-time minimum for datetime-local inputs (now, rounded down
+// to the minute). getTimezoneOffset() returns minutes west of UTC; subtracting
+// it converts the UTC epoch to local time before slicing.
+function localNow() {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
 }
 
 export function CreateVisitorPass({ open, onClose }: Props) {
@@ -39,17 +48,26 @@ export function CreateVisitorPass({ open, onClose }: Props) {
       onClose();
     },
     onError: (err: unknown) => {
-      setServerError(err instanceof Error ? err.message : "Failed to create visitor pass");
+      const msg =
+        (err as { response?: { data?: { error?: string } } }).response?.data?.error
+        ?? (err instanceof Error ? err.message : "Failed to create visitor pass");
+      setServerError(msg);
     },
   });
 
-  const onSubmit = async (data: CreateVisitorInput) => {
+  const onSubmit = (data: CreateVisitorInput) => {
     setServerError(null);
     mutation.mutate(data);
   };
 
+  const handleClose = () => {
+    reset();
+    setServerError(null);
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); setServerError(null); onClose(); } }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-3 mt-2">
@@ -65,31 +83,49 @@ export function CreateVisitorPass({ open, onClose }: Props) {
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="px-6 pb-2 space-y-4">
+        {/*
+          The form wraps both the fields AND the footer so that the submit
+          button is always part of the form — pressing Enter in any field
+          triggers submission, and type="submit" on the button works correctly.
+        */}
+        <form
+          id="visitor-pass-form"
+          onSubmit={handleSubmit(onSubmit)}
+          className="px-6 pb-2 space-y-4"
+        >
           <div>
-            <Label htmlFor="vname" className="text-[#212121] font-semibold">Visitor's Name</Label>
+            <Label htmlFor="vname" className="text-[#212121] font-semibold">
+              Visitor's Name
+            </Label>
             <Input
               id="vname"
               placeholder="e.g. John Kamau"
+              autoComplete="off"
               {...register("name")}
               error={errors.name?.message}
             />
           </div>
 
           <div>
-            <Label htmlFor="vphone" className="text-[#212121] font-semibold">Phone Number</Label>
+            <Label htmlFor="vphone" className="text-[#212121] font-semibold">
+              Phone Number
+            </Label>
             <Input
               id="vphone"
               type="tel"
               placeholder="0722 123 456"
               inputMode="tel"
+              autoComplete="off"
               {...register("phone")}
               error={errors.phone?.message}
             />
           </div>
 
           <div>
-            <Label htmlFor="vpurpose" className="text-[#212121] font-semibold">Purpose of Visit (optional)</Label>
+            <Label htmlFor="vpurpose" className="text-[#212121] font-semibold">
+              Purpose of Visit{" "}
+              <span className="font-normal text-[#9C8A6A] text-xs">(optional)</span>
+            </Label>
             <Input
               id="vpurpose"
               placeholder="e.g. Home visit, delivery"
@@ -99,33 +135,46 @@ export function CreateVisitorPass({ open, onClose }: Props) {
           </div>
 
           <div>
-            <Label htmlFor="vexpected" className="text-[#212121] font-semibold">Expected Arrival Time (optional)</Label>
+            <Label htmlFor="vexpected" className="text-[#212121] font-semibold">
+              Expected Arrival{" "}
+              <span className="font-normal text-[#9C8A6A] text-xs">(optional)</span>
+            </Label>
             <Input
               id="vexpected"
               type="datetime-local"
+              min={localNow()}
               {...register("expectedAt")}
               error={errors.expectedAt?.message}
+              className="[color-scheme:light]"
             />
+            <p className="mt-1 text-xs text-[#9C8A6A]">
+              Leave blank if the visitor is coming any time today.
+            </p>
           </div>
 
           {serverError && (
-            <div className="rounded-xl bg-[#B71C1C]/10 border border-[#B71C1C]/20 px-3 py-2.5 text-sm text-[#B71C1C]">
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-xl bg-[#B71C1C]/10 border border-[#B71C1C]/20 px-3 py-2.5 text-sm text-[#B71C1C]"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               {serverError}
             </div>
           )}
-        </form>
 
-        <DialogFooter>
-          <Button variant="secondary" onClick={() => { reset(); setServerError(null); onClose(); }}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit(onSubmit)}
-            loading={isSubmitting || mutation.isPending}
-          >
-            Create Pass
-          </Button>
-        </DialogFooter>
+          {/* Footer is inside the form so type="submit" works and Enter submits */}
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="secondary" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              loading={isSubmitting || mutation.isPending}
+            >
+              Create Pass
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

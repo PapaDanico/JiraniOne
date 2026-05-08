@@ -1,5 +1,34 @@
 import { z } from "zod";
 
+// Accepts browser datetime-local format ("2024-05-08T10:00"), date-only
+// ("2024-05-08"), or a full ISO 8601 string. All are normalised to a full
+// ISO string ("2024-05-08T07:00:00.000Z") so downstream code sees one format.
+// This is the correct fix for <input type="datetime-local"> + Zod: the browser
+// never emits the timezone suffix that z.string().datetime() requires.
+const localDatetime = z
+  .string()
+  .min(1, "Date/time is required")
+  .refine((v) => !isNaN(Date.parse(v)), { message: "Invalid date/time" })
+  .transform((v) => new Date(v).toISOString());
+
+const localDatetimeOpt = z
+  .string()
+  .optional()
+  .refine((v) => v == null || v === "" || !isNaN(Date.parse(v)), {
+    message: "Invalid date/time",
+  })
+  .transform((v) => (!v ? undefined : new Date(v).toISOString()));
+
+const localDatetimeNullOpt = z
+  .string()
+  .nullable()
+  .optional()
+  .refine(
+    (v) => v == null || v === "" || !isNaN(Date.parse(v)),
+    { message: "Invalid date/time" },
+  )
+  .transform((v) => (v == null || v === "" ? null : new Date(v).toISOString()));
+
 // Phone number: accepts 07XXXXXXXX, +2547XXXXXXXX, 2547XXXXXXXX
 // Normalizes to +254XXXXXXXXX
 export const kenyanPhone = z
@@ -88,7 +117,7 @@ export const createVisitorSchema = z.object({
   name: z.string().min(2).max(100),
   phone: kenyanPhone,
   purpose: z.string().max(200).optional(),
-  expectedAt: z.string().datetime().optional(),
+  expectedAt: localDatetimeOpt,
 });
 
 export const createTicketSchema = z.object({
@@ -130,8 +159,8 @@ export const createEventSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().optional(),
   location: z.string().max(200).optional(),
-  startTime: z.string().datetime(),
-  endTime: z.string().datetime(),
+  startTime: localDatetime,
+  endTime: localDatetime,
   recurring: z.boolean().default(false),
 });
 
@@ -155,7 +184,7 @@ export const createCampaignSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().optional(),
   goalAmount: z.number().int().min(100).max(100_000_000),
-  deadline: z.string().datetime().optional(),
+  deadline: localDatetimeOpt,
 });
 
 export const donateSchema = z.object({
@@ -167,7 +196,7 @@ export const createHarambeeSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().max(2000).optional(),
   goalAmount: z.number().int().min(1).max(100_000_000),
-  deadline: z.string().datetime().optional(),
+  deadline: localDatetimeOpt,
 });
 
 export const updateHarambeeSchema = z.object({
@@ -175,7 +204,7 @@ export const updateHarambeeSchema = z.object({
   title: z.string().min(3).max(200).optional(),
   description: z.string().max(2000).nullable().optional(),
   goalAmount: z.number().int().min(1).max(100_000_000).optional(),
-  deadline: z.string().datetime().nullable().optional(),
+  deadline: localDatetimeNullOpt,
 });
 
 export const createChamaSchema = z.object({
@@ -225,7 +254,7 @@ export const createClassifiedSchema = z.object({
 export const createCarpoolOfferSchema = z.object({
   origin: z.string().min(2).max(200),
   destination: z.string().min(2).max(200),
-  departureTime: z.string().datetime(),
+  departureTime: localDatetime,
   seatsTotal: z.number().int().min(1).max(20),
   fare: z.number().int().min(0).max(100_000).optional(),
   notes: z.string().max(500).optional(),
@@ -246,14 +275,14 @@ export const createPollSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().optional(),
   options: z.array(z.string().min(1).max(200)).min(2).max(10),
-  closesAt: z.string().datetime().optional(),
+  closesAt: localDatetimeOpt,
   anonymous: z.boolean().default(false),
 });
 
 export const createBookingSchema = z.object({
   facilityId: z.string(),
-  startTime: z.string().datetime(),
-  endTime: z.string().datetime(),
+  startTime: localDatetime,
+  endTime: localDatetime,
   notes: z.string().max(500).optional(),
 });
 
