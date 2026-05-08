@@ -20,6 +20,7 @@ export default function RegisterPage() {
     name: "", phone: "", password: "", confirm: "",
     estateId: "", unitNumber: "",
   });
+  const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -40,6 +41,14 @@ export default function RegisterPage() {
     setError("");
     if (form.password !== form.confirm) { setError("Passwords do not match"); return; }
     if (form.password.length < 8) { setError("Password must be at least 8 characters"); return; }
+    if (!/[A-Za-z]/.test(form.password) || !/\d/.test(form.password)) {
+      setError("Password must include at least one letter and one digit");
+      return;
+    }
+    if (!consent) {
+      setError("Please agree to the Privacy Policy and Terms to continue.");
+      return;
+    }
     setLoading(true);
     try {
       await register({
@@ -135,13 +144,34 @@ export default function RegisterPage() {
               placeholder="Repeat your password" required />
           </div>
 
+          <label className="flex items-start gap-2 text-xs text-[#6B5D45] cursor-pointer select-none pt-1">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => setConsent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[#1B5E20]"
+              required
+            />
+            <span>
+              I agree to the{" "}
+              <a href="/privacy" target="_blank" rel="noreferrer" className="text-[#1B5E20] font-bold underline">
+                Privacy Policy
+              </a>{" "}
+              and{" "}
+              <a href="/terms" target="_blank" rel="noreferrer" className="text-[#1B5E20] font-bold underline">
+                Terms of Service
+              </a>
+              . I consent to JiraniHub processing my data under the Kenya Data Protection Act, 2019.
+            </span>
+          </label>
+
           {error && (
             <div className="bg-[#B71C1C]/10 border border-[#B71C1C]/20 rounded-xl px-3 py-2.5 text-sm text-[#B71C1C]">
               {error}
             </div>
           )}
 
-          <Button type="submit" className="w-full" loading={loading}>
+          <Button type="submit" className="w-full" loading={loading} disabled={!consent}>
             Create Account
           </Button>
 

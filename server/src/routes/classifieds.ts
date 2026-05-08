@@ -2,9 +2,11 @@ import { Router } from "express";
 import { eq, and, desc, ne } from "drizzle-orm";
 import { db } from "../db.js";
 import { classifieds } from "@shared/schema.js";
+import { createClassifiedSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
+import { writeAudit } from "../lib/audit.js";
 
 export const classifiedsRouter = Router();
 classifiedsRouter.use(requireAuth);
@@ -44,24 +46,12 @@ classifiedsRouter.post("/", async (req, res) => {
   const user = res.locals.user!;
   if (!user.estateId) { res.status(400).json({ error: "No estate assigned" }); return; }
 
-  const { title, description, price, category, contactPhone } = req.body as {
-    title: string;
-    description: string;
-    price?: string;
-    category: string;
-    contactPhone?: string;
-  };
-
-  if (!title?.trim() || !description?.trim()) {
-    res.status(400).json({ error: "Title and description are required" });
+  const parsed = createClassifiedSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
-
-  const validCategories = ["sell", "buy", "give", "service"];
-  if (!validCategories.includes(category)) {
-    res.status(400).json({ error: "Invalid category" });
-    return;
-  }
+  const { title, description, price, category, contactPhone, imageUrl } = parsed.data;
 
   const [listing] = await db
     .insert(classifieds)
@@ -71,12 +61,20 @@ classifiedsRouter.post("/", async (req, res) => {
       userId: user.id,
       title: title.trim(),
       description: description.trim(),
-      price: price ? String(parseFloat(price)) : null,
-      category: category as "sell" | "buy" | "give" | "service",
-      contactPhone: contactPhone?.trim() || null,
+      price: price !== undefined ? String(price) : null,
+      category,
+      contactPhone: contactPhone ?? null,
+      imageUrl: imageUrl ?? null,
       status: "active",
     })
     .returning();
+
+  void writeAudit(req, {
+    action: "classified.created",
+    targetType: "classified",
+    targetId: listing!.id,
+    metadata: { category: listing!.category, title: listing!.title },
+  });
 
   res.status(201).json({ data: listing });
 });
@@ -115,6 +113,13 @@ classifiedsRouter.patch("/:id", async (req, res) => {
     .where(eq(classifieds.id, listing.id))
     .returning();
 
+  void writeAudit(req, {
+    action: "classified.updated",
+    targetType: "classified",
+    targetId: listing.id,
+    metadata: { previousStatus: listing.status, newStatus: updated!.status },
+  });
+
   res.json({ data: updated });
 });
 
@@ -135,5 +140,13 @@ classifiedsRouter.delete("/:id", async (req, res) => {
   if (!isOwner && !isAdmin) { res.status(403).json({ error: "Forbidden" }); return; }
 
   await db.delete(classifieds).where(eq(classifieds.id, listing.id));
+
+  void writeAudit(req, {
+    action: "classified.deleted",
+    targetType: "classified",
+    targetId: listing.id,
+    metadata: { title: listing.title, deletedByRole: user.role },
+  });
+
   res.json({ data: { success: true } });
 });

@@ -21,11 +21,7 @@ function CreateEventDialog({ onClose }: { onClose: () => void }) {
   });
 
   const mutation = useMutation({
-    mutationFn: () => api.post("/api/events", {
-      ...form,
-      startTime: new Date(form.startTime).toISOString(),
-      endTime: new Date(form.endTime).toISOString(),
-    }),
+    mutationFn: () => api.post("/api/events", form),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); onClose(); },
   });
 

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and } from "drizzle-orm";
 import { db } from "../db.js";
 import { serviceProviders } from "@shared/schema.js";
+import { createServiceProviderSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
@@ -24,13 +25,12 @@ servicesRouter.post("/", requireRole("admin", "vendor"), async (req, res) => {
   const user = res.locals.user!;
   if (!user.estateId) { res.status(400).json({ error: "No estate assigned" }); return; }
 
-  const { name, category, phone, description } = req.body as {
-    name: string; category: string; phone: string; description?: string;
-  };
-  if (!name || !category || !phone) {
-    res.status(400).json({ error: "name, category, phone required" });
+  const parsed = createServiceProviderSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
+  const { name, category, phone, description } = parsed.data;
 
   const [row] = await db.insert(serviceProviders).values({
     id: newId(),

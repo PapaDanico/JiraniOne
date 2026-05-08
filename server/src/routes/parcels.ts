@@ -2,6 +2,10 @@ import { Router } from "express";
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "../db.js";
 import { parcels, users } from "@shared/schema.js";
+import {
+  createParcelSchema,
+  updateParcelSchema,
+} from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
@@ -45,16 +49,12 @@ parcelsRouter.post("/", async (req, res) => {
   const user = res.locals.user!;
   if (!user.estateId) { res.status(400).json({ error: "No estate assigned" }); return; }
 
-  const { description, trackingRef, sender } = req.body as {
-    description: string;
-    trackingRef?: string;
-    sender?: string;
-  };
-
-  if (!description?.trim()) {
-    res.status(400).json({ error: "Description is required" });
+  const parsed = createParcelSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
+  const { description, trackingRef, sender } = parsed.data;
 
   const [parcel] = await db
     .insert(parcels)
@@ -75,7 +75,12 @@ parcelsRouter.post("/", async (req, res) => {
 // Security: mark parcel received at gate
 parcelsRouter.patch("/:id/received", requireRole("admin", "security"), async (req, res) => {
   const user = res.locals.user!;
-  const { notes } = req.body as { notes?: string };
+  const parsed = updateParcelSchema.pick({ notes: true }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { notes } = parsed.data;
 
   const [parcel] = await db
     .select()

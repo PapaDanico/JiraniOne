@@ -1,10 +1,20 @@
 import { Router } from "express";
-import { eq, desc, and } from "drizzle-orm";
-import { db } from "../db.js";
-import { fundraisingCampaigns, donations, users } from "@shared/schema.js";
+import { eq, desc, and, sql } from "drizzle-orm";
+import { db, dbTx } from "../db.js";
+import { fundraisingCampaigns, donations, payments, users } from "@shared/schema.js";
+import {
+  createHarambeeSchema,
+  updateHarambeeSchema,
+  donateSchema,
+} from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
+import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
+import { writeAudit } from "../lib/audit.js";
+import { logger } from "../lib/logger.js";
+
+const log = logger.child({ component: "harambee" });
 
 export const harambeeRouter = Router();
 harambeeRouter.use(requireAuth);
@@ -78,21 +88,12 @@ harambeeRouter.post("/", requireRole("admin"), async (req, res) => {
     return;
   }
 
-  const { title, description, goalAmount, deadline } = req.body as {
-    title: string;
-    description?: string;
-    goalAmount: number;
-    deadline?: string;
-  };
-
-  if (!title?.trim()) {
-    res.status(400).json({ error: "title is required" });
+  const parsed = createHarambeeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
-  if (!goalAmount || Number(goalAmount) < 1) {
-    res.status(400).json({ error: "goalAmount is required and must be positive" });
-    return;
-  }
+  const { title, description, goalAmount, deadline } = parsed.data;
 
   const [campaign] = await db
     .insert(fundraisingCampaigns)
@@ -108,6 +109,13 @@ harambeeRouter.post("/", requireRole("admin"), async (req, res) => {
     })
     .returning();
 
+  void writeAudit(req, {
+    action: "harambee.created",
+    targetType: "fundraising_campaign",
+    targetId: campaign!.id,
+    metadata: { title: campaign!.title, goalAmount },
+  });
+
   res.status(201).json({ data: campaign });
 });
 
@@ -119,13 +127,12 @@ harambeeRouter.patch("/:id", requireRole("admin"), async (req, res) => {
     return;
   }
 
-  const { status, title, description, goalAmount, deadline } = req.body as {
-    status?: "active" | "completed" | "cancelled";
-    title?: string;
-    description?: string;
-    goalAmount?: number;
-    deadline?: string;
-  };
+  const parsed = updateHarambeeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { status, title, description, goalAmount, deadline } = parsed.data;
 
   const [campaign] = await db
     .select()
@@ -147,7 +154,7 @@ harambeeRouter.patch("/:id", requireRole("admin"), async (req, res) => {
     updatedAt: new Date(),
   };
   if (status) updates.status = status;
-  if (title?.trim()) updates.title = title.trim();
+  if (title !== undefined && title.trim()) updates.title = title.trim();
   if (description !== undefined) updates.description = description?.trim() ?? null;
   if (goalAmount !== undefined) updates.goalAmount = String(goalAmount);
   if (deadline !== undefined) updates.deadline = deadline ? new Date(deadline) : null;
@@ -158,10 +165,20 @@ harambeeRouter.patch("/:id", requireRole("admin"), async (req, res) => {
     .where(eq(fundraisingCampaigns.id, campaign.id))
     .returning();
 
+  void writeAudit(req, {
+    action: "harambee.updated",
+    targetType: "fundraising_campaign",
+    targetId: campaign.id,
+    metadata: { previousStatus: campaign.status, newStatus: updated!.status },
+  });
+
   res.json({ data: updated });
 });
 
-// POST /:id/donate — any user donates
+// POST /:id/donate — initiate M-PESA STK Push. The donation record is created
+// only when the callback returns ResultCode === 0, preventing phantom donations
+// for cancelled/failed pushes. In dev (no M-PESA config) a DEV_STUB payment
+// is created and the donation credited immediately.
 harambeeRouter.post("/:id/donate", async (req, res) => {
   const user = res.locals.user!;
   if (!user.estateId) {
@@ -169,15 +186,12 @@ harambeeRouter.post("/:id/donate", async (req, res) => {
     return;
   }
 
-  const { amount, anonymous } = req.body as {
-    amount: number;
-    anonymous?: boolean;
-  };
-
-  if (!amount || Number(amount) < 1) {
-    res.status(400).json({ error: "amount is required and must be positive" });
+  const parsed = donateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
+  const { amount, anonymous } = parsed.data;
 
   const [campaign] = await db
     .select()
@@ -199,26 +213,91 @@ harambeeRouter.post("/:id/donate", async (req, res) => {
     return;
   }
 
-  const [donation] = await db
-    .insert(donations)
+  const paymentId = newId();
+  const [payment] = await db
+    .insert(payments)
     .values({
-      id: newId(),
-      campaignId: campaign.id,
-      donorId: user.id,
+      id: paymentId,
+      userId: user.id,
+      estateId: user.estateId,
       amount: String(amount),
-      anonymous: anonymous ?? false,
-      mpesaRef: "STUB", // dev stub
+      phoneUsed: user.phone,
+      type: "harambee_donation",
+      status: "pending",
+      description: `Harambee: ${campaign.title}`,
+      metadata: { campaignId: campaign.id, anonymous },
     })
     .returning();
 
-  // Update currentAmount on campaign
-  await db
-    .update(fundraisingCampaigns)
-    .set({
-      currentAmount: String(Number(campaign.currentAmount) + Number(amount)),
-      updatedAt: new Date(),
-    })
-    .where(eq(fundraisingCampaigns.id, campaign.id));
+  if (!isMpesaConfigured()) {
+    // Dev stub: credit immediately without waiting for a real callback.
+    await db
+      .update(payments)
+      .set({ status: "completed", mpesaRef: "DEV_STUB", updatedAt: new Date() })
+      .where(eq(payments.id, paymentId));
 
-  res.status(201).json({ data: donation });
+    const donation = await dbTx.transaction(async (tx) => {
+      const [d] = await tx
+        .insert(donations)
+        .values({
+          id: newId(),
+          campaignId: campaign.id,
+          donorId: user.id,
+          amount: String(amount),
+          anonymous,
+          mpesaRef: "DEV_STUB",
+        })
+        .returning();
+      await tx
+        .update(fundraisingCampaigns)
+        .set({
+          currentAmount: sql`${fundraisingCampaigns.currentAmount} + ${amount}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(fundraisingCampaigns.id, campaign.id));
+      return d;
+    });
+
+    void writeAudit(req, {
+      action: "harambee.donated",
+      targetType: "fundraising_campaign",
+      targetId: campaign.id,
+      metadata: { amount, anonymous, donationId: donation!.id, stub: true },
+    });
+
+    res.status(201).json({ data: { payment: payment!, donation, stub: true } });
+    return;
+  }
+
+  try {
+    const result = await stkPush({
+      phone: user.phone,
+      amount,
+      accountRef: campaign.id.slice(0, 12),
+      description: `Harambee donation`,
+    });
+    await db
+      .update(payments)
+      .set({ checkoutRequestId: result.CheckoutRequestID, updatedAt: new Date() })
+      .where(eq(payments.id, paymentId));
+
+    void writeAudit(req, {
+      action: "harambee.donate_initiated",
+      targetType: "fundraising_campaign",
+      targetId: campaign.id,
+      metadata: { amount, anonymous, paymentId },
+    });
+
+    res.json({ data: { payment: payment!, message: result.CustomerMessage } });
+  } catch (err) {
+    log.error(
+      { event: "harambee_stk_push_failed", paymentId, campaignId: campaign.id, err },
+      "STK push failed for harambee donation",
+    );
+    await db
+      .update(payments)
+      .set({ status: "failed", updatedAt: new Date() })
+      .where(eq(payments.id, paymentId));
+    res.status(502).json({ error: "STK Push failed — please try again" });
+  }
 });

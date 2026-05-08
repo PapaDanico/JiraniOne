@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, desc, and, gte } from "drizzle-orm";
 import { db } from "../db.js";
 import { carpoolOffers, carpoolBookings, users } from "@shared/schema.js";
+import { createCarpoolOfferSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { newId } from "../lib/ids.js";
 
@@ -81,28 +82,19 @@ carpoolRouter.post("/", async (req, res) => {
     return;
   }
 
-  const { origin, destination, departureTime, seatsTotal, fare, notes } =
-    req.body as {
-      origin: string;
-      destination: string;
-      departureTime: string;
-      seatsTotal?: number;
-      fare?: number;
-      notes?: string;
-    };
-
-  if (!origin?.trim() || !destination?.trim() || !departureTime) {
-    res.status(400).json({ error: "origin, destination and departureTime are required" });
+  const parsed = createCarpoolOfferSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
+  const { origin, destination, departureTime, seatsTotal, fare, notes } = parsed.data;
 
   const departure = new Date(departureTime);
-  if (isNaN(departure.getTime()) || departure <= new Date()) {
-    res.status(400).json({ error: "departureTime must be a valid future date" });
+  if (departure <= new Date()) {
+    res.status(400).json({ error: "departureTime must be in the future" });
     return;
   }
-
-  const seats = seatsTotal && seatsTotal > 0 ? seatsTotal : 3;
+  const seats = seatsTotal;
 
   const [offer] = await db
     .insert(carpoolOffers)

@@ -154,6 +154,78 @@ export const sessions = pgTable(
   }),
 );
 
+// SMS-OTP password reset tokens (15-min expiry, single-use, hashed)
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    otpHash: text("otp_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at").notNull(),
+    consumedAt: timestamp("consumed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    userIdIdx: index("password_reset_user_id_idx").on(t.userId),
+    expiresAtIdx: index("password_reset_expires_at_idx").on(t.expiresAt),
+    createdAtIdx: index("password_reset_created_at_idx").on(t.createdAt),
+  }),
+);
+
+// Audit trail for admin/security-sensitive actions
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: text("id").primaryKey(),
+    actorId: text("actor_id").references(() => users.id, { onDelete: "set null" }),
+    actorRole: varchar("actor_role", { length: 20 }),
+    action: varchar("action", { length: 80 }).notNull(),
+    targetType: varchar("target_type", { length: 40 }),
+    targetId: text("target_id"),
+    estateId: text("estate_id").references(() => estates.id, { onDelete: "set null" }),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    ip: varchar("ip", { length: 64 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    actorIdIdx: index("audit_logs_actor_id_idx").on(t.actorId),
+    targetIdIdx: index("audit_logs_target_id_idx").on(t.targetId),
+    estateIdIdx: index("audit_logs_estate_id_idx").on(t.estateId),
+    createdAtIdx: index("audit_logs_created_at_idx").on(t.createdAt),
+  }),
+);
+
+// Per-user daily SMS counter (budget control)
+export const smsQuotas = pgTable("sms_quotas", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  day: timestamp("day", { mode: "date" }).notNull(),
+  sentCount: integer("sent_count").notNull().default(0),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Global daily SMS counter (circuit breaker)
+export const smsGlobalQuota = pgTable("sms_global_quota", {
+  day: timestamp("day", { mode: "date" }).primaryKey(),
+  sentCount: integer("sent_count").notNull().default(0),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Per-user failed-login tracking for account lockout
+export const loginAttempts = pgTable("login_attempts", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  failedCount: integer("failed_count").notNull().default(0),
+  lockedUntil: timestamp("locked_until"),
+  lastFailedAt: timestamp("last_failed_at"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // ─── Visitor Management ───────────────────────────────────────────────────────
 
 export const visitors = pgTable(
@@ -306,6 +378,7 @@ export const payments = pgTable(
     status: varchar("status", { length: 20 }).notNull().default("pending"),
     checkoutRequestId: text("checkout_request_id"),
     description: text("description"),
+    metadata: jsonb("metadata"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -567,6 +640,11 @@ export const pollOptions = pgTable(
   }),
 );
 
+// votes.userId is nullable: NULL means the vote was cast on an anonymous poll
+// and the voter's identity is intentionally not recorded here. Eligibility
+// (who-voted, for double-vote prevention) lives in vote_eligibility instead,
+// so an admin running SELECT * FROM votes cannot deanonymize an anonymous
+// poll.
 export const votes = pgTable(
   "votes",
   {
@@ -577,14 +655,33 @@ export const votes = pgTable(
     optionId: text("option_id")
       .notNull()
       .references(() => pollOptions.id),
+    userId: text("user_id").references(() => users.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    pollIdIdx: index("votes_poll_id_idx").on(t.pollId),
+    userIdIdx: index("votes_user_id_idx").on(t.userId),
+  }),
+);
+
+// Tracks WHO voted (for double-vote prevention) without revealing WHAT they
+// voted for. Always populated, even for anonymous polls.
+export const voteEligibility = pgTable(
+  "vote_eligibility",
+  {
+    id: text("id").primaryKey(),
+    pollId: text("poll_id")
+      .notNull()
+      .references(() => polls.id, { onDelete: "cascade" }),
     userId: text("user_id")
       .notNull()
       .references(() => users.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
-    pollIdIdx: index("votes_poll_id_idx").on(t.pollId),
-    userIdIdx: index("votes_user_id_idx").on(t.userId),
+    pollIdIdx: index("vote_eligibility_poll_id_idx").on(t.pollId),
+    userIdIdx: index("vote_eligibility_user_id_idx").on(t.userId),
+    pollUserUq: index("vote_eligibility_poll_user_uq").on(t.pollId, t.userId),
   }),
 );
 
@@ -768,6 +865,28 @@ export const chamaContributions = pgTable(
   (t) => ({
     chamaIdIdx: index("chama_contributions_chama_id_idx").on(t.chamaId),
     userIdIdx: index("chama_contributions_user_id_idx").on(t.userId),
+  }),
+);
+
+// One-time setup links: admin creates user → tokenHash stored here →
+// link e-mailed/shared with new resident → /setup/:token page lets them set
+// their own password. Token is 32 random bytes (base64url, ~192 bits).
+// Expires in 7 days. Consumed on first use.
+export const userSetupTokens = pgTable(
+  "user_setup_tokens",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at").notNull(),
+    consumedAt: timestamp("consumed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    userIdIdx: index("user_setup_tokens_user_id_idx").on(t.userId),
+    expiresAtIdx: index("user_setup_tokens_expires_at_idx").on(t.expiresAt),
   }),
 );
 

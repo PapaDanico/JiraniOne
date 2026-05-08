@@ -46,8 +46,8 @@ function BookDialog({ facility, onClose }: { facility: Facility; onClose: () => 
   const mutation = useMutation({
     mutationFn: () => api.post("/api/facilities/bookings", {
       facilityId: facility.id,
-      startTime: new Date(startTime).toISOString(),
-      endTime: new Date(endTime).toISOString(),
+      startTime,
+      endTime,
       notes: notes || undefined,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["bookings"] }); onClose(); },

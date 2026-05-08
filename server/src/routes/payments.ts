@@ -1,50 +1,214 @@
 import { Router } from "express";
-import { eq, desc, and } from "drizzle-orm";
-import { db } from "../db.js";
-import { payments, fundraisingCampaigns, donations } from "@shared/schema.js";
+import { eq, desc, and, sql } from "drizzle-orm";
+import { db, dbTx } from "../db.js";
+import { payments, fundraisingCampaigns, donations, chamaContributions } from "@shared/schema.js";
+import {
+  initiatePaymentSchema,
+  createCampaignSchema,
+  donateSchema,
+} from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
+import { mpesaIpAllowlist } from "../middleware/mpesaIpAllowlist.js";
 import { newId } from "../lib/ids.js";
 import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
 import { broadcastToEstate } from "../ws.js";
+import { writeAudit } from "../lib/audit.js";
 
+// ─── Public M-PESA callback router ───────────────────────────────────────────
+// Mounted at /api/payments/mpesa/callback BEFORE requireAuth — Safaricom does
+// not authenticate when calling us back. IP-allowlisted to Safaricom egress.
+// Idempotent: a duplicate callback for the same CheckoutRequestID is a no-op.
+export const mpesaCallbackRouter = Router();
+
+mpesaCallbackRouter.post(
+  "/mpesa/callback",
+  mpesaIpAllowlist,
+  async (req, res) => {
+    // Always answer 200 within ~10s — Safaricom retries otherwise.
+    // Do the heavy lifting in a transaction below.
+    const callback = req.body?.Body?.stkCallback;
+    if (!callback) {
+      res.json({ ResultCode: 0 });
+      return;
+    }
+
+    const { CheckoutRequestID, ResultCode, CallbackMetadata } = callback as {
+      CheckoutRequestID: string;
+      ResultCode: number;
+      CallbackMetadata?: { Item: { Name: string; Value: unknown }[] };
+    };
+
+    try {
+      const result = await dbTx.transaction(async (tx) => {
+        // Lock the payment row for the duration of this transaction so
+        // concurrent retries from Safaricom serialize on it.
+        const rows = await tx.execute<{
+          id: string;
+          estate_id: string;
+          user_id: string;
+          amount: string;
+          type: string;
+          status: string;
+          metadata: Record<string, unknown> | null;
+        }>(sql`
+          SELECT id, estate_id, user_id, amount, type, status, metadata
+            FROM payments
+           WHERE checkout_request_id = ${CheckoutRequestID}
+           FOR UPDATE
+        `);
+        const payment = rows.rows[0];
+        if (!payment) return { skipped: "unknown" as const };
+
+        // Idempotency guard: if the payment already settled, do nothing.
+        if (payment.status !== "pending") {
+          return { skipped: "already_settled" as const, estateId: payment.estate_id };
+        }
+
+        if (ResultCode !== 0) {
+          await tx
+            .update(payments)
+            .set({ status: "failed", updatedAt: new Date() })
+            .where(eq(payments.id, payment.id));
+          return { settled: "failed" as const, estateId: payment.estate_id };
+        }
+
+        const items = CallbackMetadata?.Item ?? [];
+        const get = (name: string) =>
+          items.find((i) => i.Name === name)?.Value;
+        const mpesaRef = String(get("MpesaReceiptNumber") ?? "");
+
+        await tx
+          .update(payments)
+          .set({ status: "completed", mpesaRef, updatedAt: new Date() })
+          .where(eq(payments.id, payment.id));
+
+        // Create downstream records for harambee donations and chama contributions.
+        if (payment.type === "harambee_donation") {
+          const meta = payment.metadata ?? {};
+          const campaignId = meta.campaignId as string | undefined;
+          const anonymous = Boolean(meta.anonymous);
+          if (campaignId) {
+            await tx.insert(donations).values({
+              id: newId(),
+              campaignId,
+              donorId: payment.user_id,
+              amount: payment.amount,
+              anonymous,
+              mpesaRef,
+            });
+            await tx.execute(sql`
+              UPDATE fundraising_campaigns
+                 SET current_amount = current_amount + ${payment.amount}::numeric,
+                     updated_at = NOW()
+               WHERE id = ${campaignId}
+            `);
+          }
+        } else if (payment.type === "chama_contribution") {
+          const meta = payment.metadata ?? {};
+          const chamaId = meta.chamaId as string | undefined;
+          const periodLabel = String(meta.periodLabel ?? "");
+          if (chamaId) {
+            await tx.insert(chamaContributions).values({
+              id: newId(),
+              chamaId,
+              userId: payment.user_id,
+              amount: payment.amount,
+              periodLabel,
+              mpesaRef,
+              paidAt: new Date(),
+            });
+          }
+        }
+
+        return {
+          settled: "completed" as const,
+          estateId: payment.estate_id,
+          paymentId: payment.id,
+          mpesaRef,
+        };
+      });
+
+      if (result && "settled" in result && result.settled === "completed") {
+        broadcastToEstate(result.estateId, {
+          type: "payment:confirmed",
+          payload: {
+            id: result.paymentId,
+            status: "completed",
+            mpesaRef: result.mpesaRef,
+          },
+          estateId: result.estateId,
+        });
+      }
+    } catch (err) {
+      // A unique-violation here means a concurrent callback already settled.
+      // That is the desired idempotent outcome — log and ack.
+      console.warn(
+        JSON.stringify({
+          event: "mpesa_callback_handler_error",
+          checkoutRequestId: CheckoutRequestID,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+
+    // Always ack so Safaricom does not retry indefinitely.
+    res.json({ ResultCode: 0 });
+  },
+);
+
+// ─── Authenticated payments router ───────────────────────────────────────────
 export const paymentsRouter = Router();
 paymentsRouter.use(requireAuth);
 
 // Resident: initiate M-PESA STK Push
 paymentsRouter.post("/stk-push", async (req, res) => {
   const user = res.locals.user!;
-  if (!user.estateId) { res.status(400).json({ error: "No estate assigned" }); return; }
-
-  const { amount, type, description, phone } = req.body as {
-    amount: number; type: string; description?: string; phone?: string;
-  };
-
-  if (!amount || amount < 1 || !type) {
-    res.status(400).json({ error: "amount and type are required" });
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate assigned" });
     return;
   }
+
+  const parsed = initiatePaymentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res
+      .status(400)
+      .json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { amount, type, description, phone } = parsed.data;
 
   const payPhone = phone ?? user.phone;
   const id = newId();
 
-  const [payment] = await db.insert(payments).values({
-    id,
-    userId: user.id,
-    estateId: user.estateId,
-    amount: String(amount),
-    phoneUsed: payPhone,
-    type,
-    status: "pending",
-    description: description ?? null,
-  }).returning();
+  const [payment] = await db
+    .insert(payments)
+    .values({
+      id,
+      userId: user.id,
+      estateId: user.estateId,
+      amount: String(amount),
+      phoneUsed: payPhone,
+      type,
+      status: "pending",
+      description: description ?? null,
+    })
+    .returning();
 
   if (!isMpesaConfigured()) {
-    // Dev stub: mark as completed immediately
-    const [updated] = await db.update(payments)
+    // Dev stub: leave mpesaRef NULL (the partial unique index ignores nulls)
+    // and mark completed immediately so dev flows continue to work.
+    const [updated] = await db
+      .update(payments)
       .set({ status: "completed", mpesaRef: "DEV_STUB", updatedAt: new Date() })
       .where(eq(payments.id, id))
       .returning();
+    void writeAudit(req, {
+      action: "payment.initiated",
+      targetType: "payment",
+      targetId: id,
+      metadata: { amount, type, stub: true },
+    });
     res.json({ data: updated, stub: true });
     return;
   }
@@ -56,56 +220,39 @@ paymentsRouter.post("/stk-push", async (req, res) => {
       accountRef: user.estateId.slice(0, 12),
       description: description ?? type,
     });
-    await db.update(payments)
+    await db
+      .update(payments)
       .set({ checkoutRequestId: result.CheckoutRequestID, updatedAt: new Date() })
       .where(eq(payments.id, id));
+    void writeAudit(req, {
+      action: "payment.initiated",
+      targetType: "payment",
+      targetId: id,
+      metadata: { amount, type },
+    });
     res.json({ data: payment, message: result.CustomerMessage });
-  } catch {
-    await db.update(payments).set({ status: "failed", updatedAt: new Date() }).where(eq(payments.id, id));
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        event: "stk_push_failed",
+        paymentId: id,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+    await db
+      .update(payments)
+      .set({ status: "failed", updatedAt: new Date() })
+      .where(eq(payments.id, id));
     res.status(502).json({ error: "STK Push failed — please try again" });
   }
-});
-
-// M-PESA callback (no auth — called by Safaricom)
-paymentsRouter.post("/mpesa/callback", async (req, res) => {
-  const callback = req.body?.Body?.stkCallback;
-  if (!callback) { res.json({ ResultCode: 0 }); return; }
-
-  const { CheckoutRequestID, ResultCode, CallbackMetadata } = callback as {
-    CheckoutRequestID: string;
-    ResultCode: number;
-    CallbackMetadata?: { Item: { Name: string; Value: unknown }[] };
-  };
-
-  const [payment] = await db.select().from(payments)
-    .where(eq(payments.checkoutRequestId, CheckoutRequestID)).limit(1);
-
-  if (!payment) { res.json({ ResultCode: 0 }); return; }
-
-  if (ResultCode !== 0) {
-    await db.update(payments).set({ status: "failed", updatedAt: new Date() })
-      .where(eq(payments.id, payment.id));
-  } else {
-    const items = CallbackMetadata?.Item ?? [];
-    const get = (name: string) => items.find((i) => i.Name === name)?.Value;
-    const mpesaRef = String(get("MpesaReceiptNumber") ?? "");
-    await db.update(payments)
-      .set({ status: "completed", mpesaRef, updatedAt: new Date() })
-      .where(eq(payments.id, payment.id));
-    broadcastToEstate(payment.estateId, {
-      type: "payment:confirmed",
-      payload: { ...payment, status: "completed", mpesaRef },
-      estateId: payment.estateId,
-    });
-  }
-
-  res.json({ ResultCode: 0 });
 });
 
 // Resident: my payment history
 paymentsRouter.get("/my", async (_req, res) => {
   const user = res.locals.user!;
-  const rows = await db.select().from(payments)
+  const rows = await db
+    .select()
+    .from(payments)
     .where(eq(payments.userId, user.id))
     .orderBy(desc(payments.createdAt))
     .limit(50);
@@ -115,18 +262,25 @@ paymentsRouter.get("/my", async (_req, res) => {
 // Admin: all estate payments
 paymentsRouter.get("/estate", requireRole("admin"), async (_req, res) => {
   const user = res.locals.user!;
-  const rows = await db.select().from(payments)
+  const rows = await db
+    .select()
+    .from(payments)
     .where(eq(payments.estateId, user.estateId!))
     .orderBy(desc(payments.createdAt))
     .limit(200);
   res.json({ data: rows });
 });
 
-// Admin: list fundraising campaigns
+// List fundraising campaigns
 paymentsRouter.get("/campaigns", async (_req, res) => {
   const user = res.locals.user!;
-  if (!user.estateId) { res.json({ data: [] }); return; }
-  const rows = await db.select().from(fundraisingCampaigns)
+  if (!user.estateId) {
+    res.json({ data: [] });
+    return;
+  }
+  const rows = await db
+    .select()
+    .from(fundraisingCampaigns)
     .where(eq(fundraisingCampaigns.estateId, user.estateId))
     .orderBy(desc(fundraisingCampaigns.createdAt));
   res.json({ data: rows });
@@ -135,54 +289,101 @@ paymentsRouter.get("/campaigns", async (_req, res) => {
 // Admin: create campaign
 paymentsRouter.post("/campaigns", requireRole("admin"), async (req, res) => {
   const user = res.locals.user!;
-  const { title, description, goalAmount, deadline } = req.body as {
-    title: string; description?: string; goalAmount: number; deadline?: string;
-  };
-  if (!title || !goalAmount) { res.status(400).json({ error: "title and goalAmount required" }); return; }
+  const parsed = createCampaignSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res
+      .status(400)
+      .json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { title, description, goalAmount, deadline } = parsed.data;
 
-  const [row] = await db.insert(fundraisingCampaigns).values({
-    id: newId(),
-    estateId: user.estateId!,
-    createdById: user.id,
-    title,
-    description: description ?? null,
-    goalAmount: String(goalAmount),
-    deadline: deadline ? new Date(deadline) : null,
-  }).returning();
+  const [row] = await db
+    .insert(fundraisingCampaigns)
+    .values({
+      id: newId(),
+      estateId: user.estateId!,
+      createdById: user.id,
+      title,
+      description: description ?? null,
+      goalAmount: String(goalAmount),
+      deadline: deadline ? new Date(deadline) : null,
+    })
+    .returning();
+  void writeAudit(req, {
+    action: "campaign.created",
+    targetType: "fundraising_campaign",
+    targetId: row!.id,
+    metadata: { title, goalAmount },
+  });
   res.status(201).json({ data: row });
 });
 
-// Any authenticated: donate to campaign
+// Donate to campaign — atomic insert + increment in a single transaction.
+// NOTE: still stub-credits the balance pending real M-PESA STK Push wiring
+// (tracked in the readiness audit as a P1).
 paymentsRouter.post("/campaigns/:id/donate", async (req, res) => {
   const user = res.locals.user!;
-  if (!user.estateId) { res.status(400).json({ error: "No estate assigned" }); return; }
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate assigned" });
+    return;
+  }
 
-  const { amount, anonymous } = req.body as { amount: number; anonymous?: boolean };
-  if (!amount || amount < 1) { res.status(400).json({ error: "amount required" }); return; }
+  const parsed = donateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res
+      .status(400)
+      .json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { amount, anonymous } = parsed.data;
 
-  const [campaign] = await db.select().from(fundraisingCampaigns)
-    .where(and(
-      eq(fundraisingCampaigns.id, req.params['id']!),
-      eq(fundraisingCampaigns.estateId, user.estateId),
-    )).limit(1);
+  const [campaign] = await db
+    .select()
+    .from(fundraisingCampaigns)
+    .where(
+      and(
+        eq(fundraisingCampaigns.id, req.params["id"]!),
+        eq(fundraisingCampaigns.estateId, user.estateId),
+      ),
+    )
+    .limit(1);
 
-  if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
+  if (!campaign) {
+    res.status(404).json({ error: "Campaign not found" });
+    return;
+  }
 
-  const [donation] = await db.insert(donations).values({
-    id: newId(),
-    campaignId: campaign.id,
-    donorId: user.id,
-    amount: String(amount),
-    anonymous: anonymous ?? false,
-  }).returning();
+  const donation = await dbTx.transaction(async (tx) => {
+    const [d] = await tx
+      .insert(donations)
+      .values({
+        id: newId(),
+        campaignId: campaign.id,
+        donorId: user.id,
+        amount: String(amount),
+        anonymous,
+      })
+      .returning();
 
-  // Update campaign total
-  await db.update(fundraisingCampaigns)
-    .set({
-      currentAmount: String(Number(campaign.currentAmount) + amount),
-      updatedAt: new Date(),
-    })
-    .where(eq(fundraisingCampaigns.id, campaign.id));
+    // SQL-side increment — no read-modify-write race.
+    await tx
+      .update(fundraisingCampaigns)
+      .set({
+        currentAmount: sql`${fundraisingCampaigns.currentAmount} + ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(fundraisingCampaigns.id, campaign.id));
+
+    return d;
+  });
+
+  void writeAudit(req, {
+    action: "campaign.donated",
+    targetType: "fundraising_campaign",
+    targetId: campaign.id,
+    metadata: { amount, anonymous, donationId: donation!.id },
+  });
 
   res.status(201).json({ data: donation });
 });

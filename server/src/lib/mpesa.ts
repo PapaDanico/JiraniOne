@@ -72,3 +72,46 @@ export function isMpesaConfigured(): boolean {
     process.env.MPESA_CALLBACK_URL
   );
 }
+
+export interface StkPushStatus {
+  // ResultCode: 0 = success, others = various failure reasons.
+  // 1032 = user cancelled, 1037 = timeout, 2001 = wrong PIN, etc.
+  ResultCode: number;
+  ResultDesc: string;
+  ResponseCode?: string;
+}
+
+// Reconciliation lookup for the final state of an STK Push when the
+// callback never arrived (network drop, timeout). Returns null if Daraja
+// is unreachable or the request is malformed.
+export async function stkPushStatus(
+  checkoutRequestId: string,
+): Promise<StkPushStatus | null> {
+  if (!isMpesaConfigured()) return null;
+
+  const shortcode = process.env.MPESA_SHORTCODE!;
+  const passkey = process.env.MPESA_PASSKEY!;
+  const ts = new Date().toISOString().replace(/[-T:.Z]/g, "").slice(0, 14);
+  const password = Buffer.from(`${shortcode}${passkey}${ts}`).toString("base64");
+
+  try {
+    const token = await getToken();
+    const res = await fetch(`${BASE}/mpesa/stkpushquery/v1/query`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        BusinessShortCode: shortcode,
+        Password: password,
+        Timestamp: ts,
+        CheckoutRequestID: checkoutRequestId,
+      }),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as StkPushStatus;
+  } catch {
+    return null;
+  }
+}

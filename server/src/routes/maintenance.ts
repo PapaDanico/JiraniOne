@@ -13,6 +13,8 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
 import { broadcastToEstate } from "../ws.js";
+import { processUploadedImages } from "../lib/imageUpload.js";
+import { writeAudit } from "../lib/audit.js";
 
 export const maintenanceRouter = Router();
 maintenanceRouter.use(requireAuth);
@@ -168,8 +170,15 @@ maintenanceRouter.post(
       return;
     }
 
-    const files = req.files as Express.Multer.File[];
-    const photoUrls = files?.map((f) => `/uploads/${f.filename}`) ?? [];
+    let photoUrls: string[] = [];
+    try {
+      photoUrls = await processUploadedImages(req.files as Express.Multer.File[]);
+    } catch (err) {
+      res.status(400).json({
+        error: err instanceof Error ? err.message : "Photo processing failed",
+      });
+      return;
+    }
 
     const [ticket] = await db
       .insert(maintenanceTickets)
@@ -190,6 +199,13 @@ maintenanceRouter.post(
       type: "ticket:created",
       payload: ticket,
       estateId: user.estateId,
+    });
+
+    void writeAudit(req, {
+      action: "ticket.created",
+      targetType: "maintenance_ticket",
+      targetId: ticket!.id,
+      metadata: { category: ticket!.category, priority: ticket!.priority },
     });
 
     res.status(201).json({ data: ticket });
@@ -243,6 +259,17 @@ maintenanceRouter.patch(
       type: "ticket:updated",
       payload: updated,
       estateId: user.estateId!,
+    });
+
+    void writeAudit(req, {
+      action: "ticket.updated",
+      targetType: "maintenance_ticket",
+      targetId: updated!.id,
+      metadata: {
+        previousStatus: existing.status,
+        newStatus: updated!.status,
+        assignedToId: updated!.assignedToId ?? undefined,
+      },
     });
 
     res.json({ data: updated });

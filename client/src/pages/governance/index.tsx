@@ -25,7 +25,7 @@ function CreatePollDialog({ onClose }: { onClose: () => void }) {
     mutationFn: () => api.post("/api/polls", {
       title, description: description || undefined,
       options: options.filter(Boolean),
-      closesAt: closesAt ? new Date(closesAt).toISOString() : undefined,
+      closesAt: closesAt || undefined,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["polls"] }); onClose(); },
   });

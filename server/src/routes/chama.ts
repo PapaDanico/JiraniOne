@@ -1,9 +1,17 @@
 import { Router } from "express";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { db } from "../db.js";
-import { chamas, chamaMembers, chamaContributions, users } from "@shared/schema.js";
+import { chamas, chamaMembers, chamaContributions, payments, users } from "@shared/schema.js";
+import {
+  createChamaSchema,
+  chamaContributeSchema,
+} from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { newId } from "../lib/ids.js";
+import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
+import { logger } from "../lib/logger.js";
+
+const log = logger.child({ component: "chama" });
 
 export const chamaRouter = Router();
 chamaRouter.use(requireAuth);
@@ -59,21 +67,12 @@ chamaRouter.post("/", async (req, res) => {
     return;
   }
 
-  const { name, description, contributionAmount, frequency } = req.body as {
-    name: string;
-    description?: string;
-    contributionAmount: number;
-    frequency?: "weekly" | "monthly";
-  };
-
-  if (!name?.trim()) {
-    res.status(400).json({ error: "name is required" });
+  const parsed = createChamaSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
-  if (!contributionAmount || Number(contributionAmount) < 1) {
-    res.status(400).json({ error: "contributionAmount is required and must be positive" });
-    return;
-  }
+  const { name, description, contributionAmount, frequency } = parsed.data;
 
   const chamaId = newId();
 
@@ -86,7 +85,7 @@ chamaRouter.post("/", async (req, res) => {
       name: name.trim(),
       description: description?.trim() ?? null,
       contributionAmount: String(contributionAmount),
-      frequency: frequency ?? "monthly",
+      frequency,
       status: "active",
     })
     .returning();
@@ -168,19 +167,12 @@ chamaRouter.post("/:id/contribute", async (req, res) => {
     return;
   }
 
-  const { amount, periodLabel } = req.body as {
-    amount: number;
-    periodLabel: string;
-  };
-
-  if (!amount || Number(amount) < 1) {
-    res.status(400).json({ error: "amount is required and must be positive" });
+  const parsed = chamaContributeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
-  if (!periodLabel?.trim()) {
-    res.status(400).json({ error: "periodLabel is required (e.g. '2025-05')" });
-    return;
-  }
+  const { amount, periodLabel } = parsed.data;
 
   const [chama] = await db
     .select()
@@ -215,20 +207,70 @@ chamaRouter.post("/:id/contribute", async (req, res) => {
     return;
   }
 
-  const [contribution] = await db
-    .insert(chamaContributions)
+  const paymentId = newId();
+  const [payment] = await db
+    .insert(payments)
     .values({
-      id: newId(),
-      chamaId: chama.id,
+      id: paymentId,
       userId: user.id,
+      estateId: user.estateId!,
       amount: String(amount),
-      periodLabel: periodLabel.trim(),
-      mpesaRef: "STUB", // dev stub — replace with real M-PESA flow in production
-      paidAt: new Date(),
+      phoneUsed: user.phone,
+      type: "chama_contribution",
+      status: "pending",
+      description: `Chama: ${chama.name}`,
+      metadata: { chamaId: chama.id, periodLabel: periodLabel.trim() },
     })
     .returning();
 
-  res.status(201).json({ data: contribution });
+  if (!isMpesaConfigured()) {
+    // Dev stub: record contribution immediately.
+    await db
+      .update(payments)
+      .set({ status: "completed", mpesaRef: "DEV_STUB", updatedAt: new Date() })
+      .where(eq(payments.id, paymentId));
+
+    const [contribution] = await db
+      .insert(chamaContributions)
+      .values({
+        id: newId(),
+        chamaId: chama.id,
+        userId: user.id,
+        amount: String(amount),
+        periodLabel: periodLabel.trim(),
+        mpesaRef: "DEV_STUB",
+        paidAt: new Date(),
+      })
+      .returning();
+
+    res.status(201).json({ data: { payment: payment!, contribution, stub: true } });
+    return;
+  }
+
+  try {
+    const result = await stkPush({
+      phone: user.phone,
+      amount,
+      accountRef: chama.id.slice(0, 12),
+      description: `Chama contribution`,
+    });
+    await db
+      .update(payments)
+      .set({ checkoutRequestId: result.CheckoutRequestID, updatedAt: new Date() })
+      .where(eq(payments.id, paymentId));
+
+    res.json({ data: { payment: payment!, message: result.CustomerMessage } });
+  } catch (err) {
+    log.error(
+      { event: "chama_stk_push_failed", paymentId, chamaId: chama.id, err },
+      "STK push failed for chama contribution",
+    );
+    await db
+      .update(payments)
+      .set({ status: "failed", updatedAt: new Date() })
+      .where(eq(payments.id, paymentId));
+    res.status(502).json({ error: "STK Push failed — please try again" });
+  }
 });
 
 // GET /:id/contributions — list contributions for a chama (admin or member only)

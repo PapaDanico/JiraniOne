@@ -1,11 +1,23 @@
 import "dotenv/config";
 import bcrypt from "bcrypt";
+import { randomBytes } from "crypto";
 import { db } from "./db.js";
 import { estates, users } from "@shared/schema.js";
 import { newId } from "./lib/ids.js";
 import { eq } from "drizzle-orm";
 
 async function seed() {
+  // HARD GUARD against ever running this in production. The audit flagged
+  // hardcoded admin credentials (+254700000001 / admin123) as a P2 — if
+  // anyone ran `npm run db:seed` against the production Neon DB they would
+  // create a known-credential admin account. Refuse loudly.
+  if (process.env.NODE_ENV === "production" && !process.env.ALLOW_PROD_SEED) {
+    console.error(
+      "REFUSING to seed in production. Set ALLOW_PROD_SEED=1 if you really mean it.",
+    );
+    process.exit(1);
+  }
+
   console.log("🌱 Seeding JiraniHub...");
 
   // Estate
@@ -38,30 +50,33 @@ async function seed() {
     await db.select().from(estates).where(eq(estates.name, "NHC Stoni Athi View")).limit(1)
   )[0]!.id;
 
-  // Seed accounts
+  // Seed accounts. Passwords are randomly generated each run and printed to
+  // stdout once — copy them somewhere if you need to log in. NEVER hard-code
+  // passwords here again.
+  const randomPass = () => randomBytes(9).toString("base64url");
   const seedUsers = [
     {
       phone: "+254700000001",
-      password: "admin123",
+      password: randomPass(),
       name: "Daniel Ng'ong'a",
       role: "admin" as const,
     },
     {
       phone: "+254700000002",
-      password: "pass123",
+      password: randomPass(),
       name: "Aisha Kamau",
       role: "resident" as const,
       unitNumber: "A4",
     },
     {
       phone: "+254700000003",
-      password: "pass123",
+      password: randomPass(),
       name: "James Otieno",
       role: "security" as const,
     },
     {
       phone: "+254700000004",
-      password: "pass123",
+      password: randomPass(),
       name: "Grace Wanjiku Electricals",
       role: "vendor" as const,
     },

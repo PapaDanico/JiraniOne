@@ -2,7 +2,7 @@ import { Router } from "express";
 import { eq, desc, and, gte, count } from "drizzle-orm";
 import { db } from "../db.js";
 import { events, eventRsvps } from "@shared/schema.js";
-import { createEventSchema } from "@shared/validators.js";
+import { createEventSchema, eventRsvpSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
@@ -73,7 +73,12 @@ eventsRouter.delete("/:id", requireRole("admin"), async (req, res) => {
 // Resident: RSVP
 eventsRouter.post("/:id/rsvp", async (req, res) => {
   const user = res.locals.user!;
-  const { attending } = req.body as { attending?: boolean };
+  const parsed = eventRsvpSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { attending } = parsed.data;
 
   const [event] = await db.select().from(events)
     .where(and(eq(events.id, req.params['id']!), eq(events.estateId, user.estateId!))).limit(1);
@@ -84,7 +89,7 @@ eventsRouter.post("/:id/rsvp", async (req, res) => {
 
   if (existing) {
     const [updated] = await db.update(eventRsvps)
-      .set({ attending: attending ?? true })
+      .set({ attending })
       .where(eq(eventRsvps.id, existing.id))
       .returning();
     res.json({ data: updated });
@@ -93,7 +98,7 @@ eventsRouter.post("/:id/rsvp", async (req, res) => {
       id: newId(),
       eventId: req.params['id']!,
       userId: user.id,
-      attending: attending ?? true,
+      attending,
     }).returning();
     res.status(201).json({ data: row });
   }

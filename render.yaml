@@ -4,7 +4,10 @@ services:
     runtime: node
     region: fra  # Frankfurt — closest to Kenya
     plan: starter
-    buildCommand: npm install --omit=dev
+    # Build needs devDeps (vite, esbuild, drizzle-kit) — do not pass --omit=dev.
+    buildCommand: npm install && npm run build
+    # All scripts use IF NOT EXISTS and are safe to re-run on every deploy.
+    preDeployCommand: node migrate-new-features.mjs && node migrate-password-reset.mjs && node migrate-payment-integrity.mjs && node migrate-anonymous-polls.mjs && node migrate-setup-links.mjs && node migrate-payment-metadata.mjs
     startCommand: node dist/server/index.js
     healthCheckPath: /api/health
     envVars:
@@ -34,3 +37,13 @@ services:
         sync: false
       - key: GOOGLE_MAPS_API_KEY
         sync: false          # optional — enables live Mombasa Road traffic times
+      - key: SENTRY_DSN
+        sync: false          # optional — enables Sentry error reporting (no DSN = no-op)
+      - key: SENTRY_TRACE_SAMPLE_RATE
+        value: "0.1"
+      - key: SMS_PER_USER_DAILY_CAP
+        value: "30"
+      - key: SMS_GLOBAL_DAILY_CAP
+        value: "5000"
+      - key: MPESA_CALLBACK_ALLOWED_IPS
+        sync: false          # optional override — comma-separated Safaricom egress IPs
