@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { db, dbTx } from "../db.js";
-import { payments, fundraisingCampaigns, donations } from "@shared/schema.js";
+import { payments, fundraisingCampaigns, donations, chamaContributions } from "@shared/schema.js";
 import {
   initiatePaymentSchema,
   createCampaignSchema,
@@ -46,9 +46,13 @@ mpesaCallbackRouter.post(
         const rows = await tx.execute<{
           id: string;
           estate_id: string;
+          user_id: string;
+          amount: string;
+          type: string;
           status: string;
+          metadata: Record<string, unknown> | null;
         }>(sql`
-          SELECT id, estate_id, status
+          SELECT id, estate_id, user_id, amount, type, status, metadata
             FROM payments
            WHERE checkout_request_id = ${CheckoutRequestID}
            FOR UPDATE
@@ -78,6 +82,44 @@ mpesaCallbackRouter.post(
           .update(payments)
           .set({ status: "completed", mpesaRef, updatedAt: new Date() })
           .where(eq(payments.id, payment.id));
+
+        // Create downstream records for harambee donations and chama contributions.
+        if (payment.type === "harambee_donation") {
+          const meta = payment.metadata ?? {};
+          const campaignId = meta.campaignId as string | undefined;
+          const anonymous = Boolean(meta.anonymous);
+          if (campaignId) {
+            await tx.insert(donations).values({
+              id: newId(),
+              campaignId,
+              donorId: payment.user_id,
+              amount: payment.amount,
+              anonymous,
+              mpesaRef,
+            });
+            await tx.execute(sql`
+              UPDATE fundraising_campaigns
+                 SET current_amount = current_amount + ${payment.amount}::numeric,
+                     updated_at = NOW()
+               WHERE id = ${campaignId}
+            `);
+          }
+        } else if (payment.type === "chama_contribution") {
+          const meta = payment.metadata ?? {};
+          const chamaId = meta.chamaId as string | undefined;
+          const periodLabel = String(meta.periodLabel ?? "");
+          if (chamaId) {
+            await tx.insert(chamaContributions).values({
+              id: newId(),
+              chamaId,
+              userId: payment.user_id,
+              amount: payment.amount,
+              periodLabel,
+              mpesaRef,
+              paidAt: new Date(),
+            });
+          }
+        }
 
         return {
           settled: "completed" as const,

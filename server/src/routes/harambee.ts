@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { db, dbTx } from "../db.js";
-import { fundraisingCampaigns, donations, users } from "@shared/schema.js";
+import { fundraisingCampaigns, donations, payments, users } from "@shared/schema.js";
 import {
   createHarambeeSchema,
   updateHarambeeSchema,
@@ -10,7 +10,11 @@ import {
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
+import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
 import { writeAudit } from "../lib/audit.js";
+import { logger } from "../lib/logger.js";
+
+const log = logger.child({ component: "harambee" });
 
 export const harambeeRouter = Router();
 harambeeRouter.use(requireAuth);
@@ -171,11 +175,10 @@ harambeeRouter.patch("/:id", requireRole("admin"), async (req, res) => {
   res.json({ data: updated });
 });
 
-// POST /:id/donate — atomic insert + increment in a transaction.
-// NOTE: still stub-credits the balance pending real M-PESA STK Push wiring
-// (tracked in the readiness audit as a P1 follow-up — full integration
-// will route through paymentsRouter.post('/stk-push') first and credit
-// the balance only in the M-PESA callback after ResultCode === 0).
+// POST /:id/donate — initiate M-PESA STK Push. The donation record is created
+// only when the callback returns ResultCode === 0, preventing phantom donations
+// for cancelled/failed pushes. In dev (no M-PESA config) a DEV_STUB payment
+// is created and the donation credited immediately.
 harambeeRouter.post("/:id/donate", async (req, res) => {
   const user = res.locals.user!;
   if (!user.estateId) {
@@ -210,37 +213,91 @@ harambeeRouter.post("/:id/donate", async (req, res) => {
     return;
   }
 
-  const donation = await dbTx.transaction(async (tx) => {
-    const [d] = await tx
-      .insert(donations)
-      .values({
-        id: newId(),
-        campaignId: campaign.id,
-        donorId: user.id,
-        amount: String(amount),
-        anonymous,
-        mpesaRef: "STUB",
-      })
-      .returning();
+  const paymentId = newId();
+  const [payment] = await db
+    .insert(payments)
+    .values({
+      id: paymentId,
+      userId: user.id,
+      estateId: user.estateId,
+      amount: String(amount),
+      phoneUsed: user.phone,
+      type: "harambee_donation",
+      status: "pending",
+      description: `Harambee: ${campaign.title}`,
+      metadata: { campaignId: campaign.id, anonymous },
+    })
+    .returning();
 
-    // SQL-side increment — no read-modify-write race.
-    await tx
-      .update(fundraisingCampaigns)
-      .set({
-        currentAmount: sql`${fundraisingCampaigns.currentAmount} + ${amount}`,
-        updatedAt: new Date(),
-      })
-      .where(eq(fundraisingCampaigns.id, campaign.id));
+  if (!isMpesaConfigured()) {
+    // Dev stub: credit immediately without waiting for a real callback.
+    await db
+      .update(payments)
+      .set({ status: "completed", mpesaRef: "DEV_STUB", updatedAt: new Date() })
+      .where(eq(payments.id, paymentId));
 
-    return d;
-  });
+    const donation = await dbTx.transaction(async (tx) => {
+      const [d] = await tx
+        .insert(donations)
+        .values({
+          id: newId(),
+          campaignId: campaign.id,
+          donorId: user.id,
+          amount: String(amount),
+          anonymous,
+          mpesaRef: "DEV_STUB",
+        })
+        .returning();
+      await tx
+        .update(fundraisingCampaigns)
+        .set({
+          currentAmount: sql`${fundraisingCampaigns.currentAmount} + ${amount}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(fundraisingCampaigns.id, campaign.id));
+      return d;
+    });
 
-  void writeAudit(req, {
-    action: "harambee.donated",
-    targetType: "fundraising_campaign",
-    targetId: campaign.id,
-    metadata: { amount, anonymous, donationId: donation!.id },
-  });
+    void writeAudit(req, {
+      action: "harambee.donated",
+      targetType: "fundraising_campaign",
+      targetId: campaign.id,
+      metadata: { amount, anonymous, donationId: donation!.id, stub: true },
+    });
 
-  res.status(201).json({ data: donation });
+    res.status(201).json({ data: { payment: payment!, donation, stub: true } });
+    return;
+  }
+
+  try {
+    const result = await stkPush({
+      phone: user.phone,
+      amount,
+      accountRef: campaign.id.slice(0, 12),
+      description: `Harambee donation`,
+    });
+    await db
+      .update(payments)
+      .set({ checkoutRequestId: result.CheckoutRequestID, updatedAt: new Date() })
+      .where(eq(payments.id, paymentId));
+
+    void writeAudit(req, {
+      action: "harambee.donate_initiated",
+      targetType: "fundraising_campaign",
+      targetId: campaign.id,
+      metadata: { amount, anonymous, paymentId },
+    });
+
+    res.json({ data: { payment: payment!, message: result.CustomerMessage } });
+  } catch (err) {
+    log.error(
+      { event: "harambee_stk_push_failed", paymentId, campaignId: campaign.id, err },
+      "STK push failed for harambee donation",
+    );
+    await db
+      .update(payments)
+      .set({ status: "failed", updatedAt: new Date() })
+      .where(eq(payments.id, paymentId));
+    res.status(502).json({ error: "STK Push failed — please try again" });
+  }
 });

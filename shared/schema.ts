@@ -378,6 +378,7 @@ export const payments = pgTable(
     status: varchar("status", { length: 20 }).notNull().default("pending"),
     checkoutRequestId: text("checkout_request_id"),
     description: text("description"),
+    metadata: jsonb("metadata"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
