@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import { randomBytes } from "crypto";
 import { eq, and, isNull } from "drizzle-orm";
 import { db } from "../db.js";
-import { users } from "@shared/schema.js";
+import { users, userSetupTokens } from "@shared/schema.js";
 import {
   adminCreateUserSchema,
   adminUpdateUserSchema,
@@ -14,8 +14,10 @@ import { lucia } from "../auth.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
-import { sendThrottledSms } from "../lib/sms.js";
 import { writeAudit } from "../lib/audit.js";
+import { logger } from "../lib/logger.js";
+
+const log = logger.child({ component: "users" });
 
 // Bcrypt cost factor — kept in sync with auth.ts. OWASP 2026 recommendation
 // is 12 rounds.
@@ -45,12 +47,11 @@ usersRouter.get("/", requireRole("admin"), async (_req, res) => {
   res.json({ data: rows });
 });
 
-// Admin: create estate user. Generates a strong temporary password using
-// crypto.randomBytes (NOT Math.random, which is predictable from process
-// entropy). The temp password is returned to the admin and SMS'd to the new
-// user with instructions to change on first login. A future iteration should
-// replace this with a one-time signed setup link so the password never
-// traverses SMS provider logs (tracked as P1 follow-up).
+// Admin: create estate user. Issues a one-time setup link (valid 7 days)
+// instead of a temp password over SMS. The admin copies the link and shares
+// it with the new user via any channel. The link hits /setup/:token where the
+// user sets their own password. The token is a 32-byte random value; only its
+// SHA-256 hash is stored in the DB.
 usersRouter.post("/", requireRole("admin"), async (req, res) => {
   const admin = res.locals.user!;
   const parsed = adminCreateUserSchema.safeParse(req.body);
@@ -66,9 +67,8 @@ usersRouter.post("/", requireRole("admin"), async (req, res) => {
     return;
   }
 
-  // Cryptographically strong temp password: 12 base64url chars (~71 bits).
-  const tempPassword = randomBytes(9).toString("base64url");
-  const passwordHash = await bcrypt.hash(tempPassword, BCRYPT_COST);
+  // Placeholder hash — user has no password until they consume the setup link.
+  const passwordHash = await bcrypt.hash(randomBytes(32).toString("hex"), BCRYPT_COST);
 
   const insertedRows = await db.insert(users).values({
     id: newId(),
@@ -81,26 +81,40 @@ usersRouter.post("/", requireRole("admin"), async (req, res) => {
   }).returning();
   const newUser = insertedRows[0]!;
 
-  // SMS the temp password. Counts against the admin's daily SMS quota.
-  await sendThrottledSms({
-    userId: admin.id,
-    to: phone,
-    message: `Welcome to JiraniHub. Sign in at https://www.jiranihub.co.ke with phone ${phone} and temporary password: ${tempPassword}. Change it after sign-in.`,
+  // 32-byte token (~192 bits). Store only the SHA-256 hash.
+  const { createHash } = await import("crypto");
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  await db.insert(userSetupTokens).values({
+    id: newId(),
+    userId: newUser.id,
+    tokenHash,
+    expiresAt,
   });
+
+  log.info(
+    { event: "setup_link_issued", userId: newUser.id, adminId: admin.id },
+    "account setup link created",
+  );
 
   await writeAudit(req, {
     action: "user.create",
     targetType: "user",
     targetId: newUser.id,
-    metadata: { role: newUser.role, unitNumber: newUser.unitNumber },
+    metadata: { role: newUser.role, unitNumber: newUser.unitNumber, setupLinkIssued: true },
   });
+
+  const clientUrl = process.env.CLIENT_URL ?? "https://www.jiranihub.co.ke";
 
   res.status(201).json({
     data: {
       id: newUser.id, phone: newUser.phone, name: newUser.name,
       role: newUser.role, unitNumber: newUser.unitNumber,
     },
-    tempPassword,
+    setupLink: `${clientUrl}/setup/${token}`,
+    setupLinkExpiresAt: expiresAt.toISOString(),
   });
 });
 

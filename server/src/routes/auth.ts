@@ -1,15 +1,16 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
-import { randomInt } from "crypto";
+import { randomInt, createHash } from "crypto";
 import { and, count, eq, gt, isNull } from "drizzle-orm";
 import { db } from "../db.js";
 import { lucia } from "../auth.js";
-import { users, estates, passwordResetTokens, loginAttempts } from "@shared/schema.js";
+import { users, estates, passwordResetTokens, loginAttempts, userSetupTokens } from "@shared/schema.js";
 import {
   loginSchema,
   registerSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  claimSetupSchema,
 } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { newId } from "../lib/ids.js";
@@ -337,4 +338,85 @@ authRouter.get("/estates", async (_req, res) => {
     location: estates.location,
   }).from(estates).orderBy(estates.name);
   res.json({ data: rows });
+});
+
+// Validate a setup token — returns the pre-filled phone number for the form.
+// Does NOT reveal whether the token is invalid vs expired to limit oracle attacks
+// (both return 404 with the same message).
+authRouter.get("/setup/:token", async (req, res) => {
+  const raw = req.params["token"];
+  if (!raw || raw.length < 32) {
+    res.status(404).json({ error: "Invalid setup link" });
+    return;
+  }
+
+  const tokenHash = createHash("sha256").update(raw).digest("hex");
+
+  const [record] = await db
+    .select()
+    .from(userSetupTokens)
+    .where(eq(userSetupTokens.tokenHash, tokenHash))
+    .limit(1);
+
+  if (!record || record.consumedAt || record.expiresAt < new Date()) {
+    res.status(404).json({ error: "Invalid or expired setup link" });
+    return;
+  }
+
+  const [user] = await db
+    .select({ phone: users.phone, name: users.name })
+    .from(users)
+    .where(eq(users.id, record.userId))
+    .limit(1);
+
+  if (!user) {
+    res.status(404).json({ error: "Invalid or expired setup link" });
+    return;
+  }
+
+  res.json({ data: { phone: user.phone, name: user.name } });
+});
+
+// Claim account: validate token, set password, create session, invalidate token.
+authRouter.post("/setup", async (req, res) => {
+  const parsed = claimSetupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { token, password } = parsed.data;
+
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+
+  const [record] = await db
+    .select()
+    .from(userSetupTokens)
+    .where(eq(userSetupTokens.tokenHash, tokenHash))
+    .limit(1);
+
+  if (!record || record.consumedAt || record.expiresAt < new Date()) {
+    res.status(404).json({ error: "Invalid or expired setup link" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
+
+  // Mark token consumed BEFORE setting the password to prevent replay if the
+  // DB write succeeds but the response is retried.
+  await db
+    .update(userSetupTokens)
+    .set({ consumedAt: new Date() })
+    .where(eq(userSetupTokens.tokenHash, tokenHash));
+
+  await db
+    .update(users)
+    .set({ passwordHash, updatedAt: new Date() })
+    .where(eq(users.id, record.userId));
+
+  // Create a session so the user is logged in immediately after setup.
+  const session = await lucia.createSession(record.userId, {});
+  res
+    .appendHeader("Set-Cookie", lucia.createSessionCookie(session.id).serialize())
+    .status(201)
+    .json({ data: { message: "Account set up. You are now signed in." } });
 });

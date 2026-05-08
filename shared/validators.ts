@@ -264,6 +264,12 @@ export const createServiceSchema = z.object({
   description: z.string().max(500).optional(),
 });
 
+// Setup-link: resident claims their account via a one-time token the admin shared.
+export const claimSetupSchema = z.object({
+  token: z.string().min(32).max(128),
+  password: strongPassword,
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;

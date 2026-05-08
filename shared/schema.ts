@@ -867,6 +867,28 @@ export const chamaContributions = pgTable(
   }),
 );
 
+// One-time setup links: admin creates user → tokenHash stored here →
+// link e-mailed/shared with new resident → /setup/:token page lets them set
+// their own password. Token is 32 random bytes (base64url, ~192 bits).
+// Expires in 7 days. Consumed on first use.
+export const userSetupTokens = pgTable(
+  "user_setup_tokens",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at").notNull(),
+    consumedAt: timestamp("consumed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    userIdIdx: index("user_setup_tokens_user_id_idx").on(t.userId),
+    expiresAtIdx: index("user_setup_tokens_expires_at_idx").on(t.expiresAt),
+  }),
+);
+
 // ─── Relations ────────────────────────────────────────────────────────────────
 
 export const parcelsRelations = relations(parcels, ({ one }) => ({

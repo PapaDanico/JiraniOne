@@ -23,6 +23,7 @@ const LandingPage        = lazy(() => import("@/pages/landing"));
 const LoginPage          = lazy(() => import("@/pages/login"));
 const RegisterPage       = lazy(() => import("@/pages/register"));
 const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
+const SetupPage          = lazy(() => import("@/pages/setup"));
 const PrivacyPage        = lazy(() => import("@/pages/privacy"));
 const TermsPage          = lazy(() => import("@/pages/terms"));
 const ResidentDashboard  = lazy(() => import("@/pages/resident/dashboard"));
@@ -57,6 +58,7 @@ function AppRoutes() {
         <Route path="/login" component={LoginPage} />
         <Route path="/register" component={RegisterPage} />
         <Route path="/forgot-password" component={ForgotPasswordPage} />
+        <Route path="/setup/:token" component={SetupPage} />
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/terms" component={TermsPage} />
 

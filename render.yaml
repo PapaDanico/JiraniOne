@@ -7,7 +7,7 @@ services:
     # Build needs devDeps (vite, esbuild, drizzle-kit) — do not pass --omit=dev.
     buildCommand: npm install && npm run build
     # All scripts use IF NOT EXISTS and are safe to re-run on every deploy.
-    preDeployCommand: node migrate-new-features.mjs && node migrate-password-reset.mjs && node migrate-payment-integrity.mjs && node migrate-anonymous-polls.mjs
+    preDeployCommand: node migrate-new-features.mjs && node migrate-password-reset.mjs && node migrate-payment-integrity.mjs && node migrate-anonymous-polls.mjs && node migrate-setup-links.mjs
     startCommand: node dist/server/index.js
     healthCheckPath: /api/health
     envVars:
