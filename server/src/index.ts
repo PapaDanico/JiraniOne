@@ -29,6 +29,7 @@ import { chamaRouter } from "./routes/chama.js";
 import { analyticsRouter } from "./routes/analytics.js";
 import { createWsServer } from "./ws.js";
 import { registerCronJobs } from "./cron.js";
+import { originGuard } from "./middleware/originGuard.js";
 import { logger, captureException } from "./lib/logger.js";
 import pinoHttp from "pino-http";
 import * as Sentry from "@sentry/node";
@@ -194,28 +195,7 @@ app.use(
 );
 
 // ─── Origin check on mutating requests ────────────────────────────────────────
-// Layered defence on top of SameSite=lax. Rejects state-changing requests
-// whose Origin header is not in the CORS allowlist. The CORS middleware
-// catches browser-driven cross-origin requests, but server-to-server callers
-// can spoof Origin freely; this is a belt-and-braces guard against CSRF in
-// case a future GET endpoint accidentally mutates state.
-const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-app.use((req, res, next) => {
-  if (!MUTATING_METHODS.has(req.method)) return next();
-
-  // Allow public M-PESA callback (it has its own IP allowlist) and
-  // server-to-server callers without an Origin (curl, mobile native,
-  // Daraja). Browsers ALWAYS send Origin on mutating XHR/fetch.
-  if (req.path === "/api/payments/mpesa/callback") return next();
-  const origin = req.headers.origin;
-  if (!origin) return next();
-
-  if (isProd && !ALLOWED_ORIGINS.includes(origin)) {
-    res.status(403).json({ error: "Origin not allowed" });
-    return;
-  }
-  next();
-});
+app.use(originGuard(ALLOWED_ORIGINS));
 
 // ─── Auth session middleware (Lucia) ──────────────────────────────────────────
 app.use(async (req, res, next) => {

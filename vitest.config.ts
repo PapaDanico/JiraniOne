@@ -14,6 +14,21 @@ export default defineConfig({
     // tests against a real Neon branch, set INTEGRATION=1 and configure
     // DATABASE_URL.
     testTimeout: 10_000,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html", "lcov"],
+      // Source under test. The migrate-*.mjs scripts and the seed are
+      // operational utilities, not runtime code paths, so we don't ask
+      // coverage to track them. index.ts is bootstrap-only and is
+      // covered transitively by the supertest-style middleware tests.
+      include: ["server/src/**/*.ts", "shared/**/*.ts"],
+      exclude: [
+        "**/*.test.ts",
+        "server/src/types/**",
+        "server/src/seed.ts",
+        "server/src/index.ts",
+      ],
+    },
   },
   resolve: {
     alias: {

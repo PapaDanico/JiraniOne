@@ -4,6 +4,7 @@ import type { Server } from "http";
 import { lucia } from "./auth.js";
 import type { WsEvent } from "@shared/types.js";
 import { logger } from "./lib/logger.js";
+import { originAllowed } from "./lib/wsOrigin.js";
 
 const log = logger.child({ component: "ws" });
 
@@ -19,21 +20,6 @@ const HEARTBEAT_MS = 30_000;
 
 interface AliveSocket extends WebSocket {
   isAlive?: boolean;
-}
-
-function originAllowed(req: IncomingMessage): boolean {
-  const isProd = process.env.NODE_ENV === "production";
-  if (!isProd) return true;
-  const origin = req.headers.origin;
-  if (!origin) return false; // Production browsers always send Origin on WS handshake.
-
-  const allowed = [
-    "https://www.jiranihub.co.ke",
-    "https://jiranihub.co.ke",
-    process.env.CLIENT_URL,
-    process.env.RENDER_EXTERNAL_URL,
-  ].filter(Boolean) as string[];
-  return allowed.includes(origin);
 }
 
 export function broadcastToEstate(estateId: string, event: WsEvent) {
