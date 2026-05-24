@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Store, Star, Phone, Plus, BadgeCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
+import { RoleBanner } from "@/components/shared/role-banner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SectionLoader } from "@/components/shared/loading";
@@ -28,6 +29,9 @@ export default function VendorDashboard() {
       <TopBar title="Vendor" />
 
       <main className="max-w-lg mx-auto px-4 pt-4 pb-6 space-y-5 page-content">
+        {/* Role banner */}
+        <RoleBanner role="vendor" />
+
         {/* Hero card */}
         <div className="kitenge-hero rounded-2xl p-5 text-white">
           <div className="flex items-center gap-3 mb-3">

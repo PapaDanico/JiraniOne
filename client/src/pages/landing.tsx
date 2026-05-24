@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import {
   Shield, Wrench, CreditCard, Bell, Users, Smartphone,
   ChevronRight, Star, MapPin,
+  Home as HomeIcon, Briefcase, Store as StoreIcon,
 } from "lucide-react";
 
 const features = [
@@ -62,6 +63,49 @@ const tiers = [
     price: "Contact us",
     units: "100+ units",
     features: ["Everything in Growth", "Custom integrations", "Dedicated support"],
+  },
+];
+
+const ROLES = [
+  {
+    label: "Resident",
+    desc: "Invite visitors, log issues, pay your levy via M-PESA, and stay on top of estate notices — all from your phone.",
+    Icon: HomeIcon,
+    chip: "Most common account",
+    chipBg: "bg-[#1B5E20]/10",
+    chipFg: "text-[#1B5E20]",
+    iconBg: "bg-[#1B5E20]",
+    iconFg: "text-[#D4A017]",
+  },
+  {
+    label: "Admin",
+    desc: "Run the estate: every ticket, every payment, every poll, every resident — with reports and an audit trail.",
+    Icon: Briefcase,
+    chip: "Estate manager",
+    chipBg: "bg-[#D4A017]/15",
+    chipFg: "text-[#9A6E00]",
+    iconBg: "bg-[#9A6E00]",
+    iconFg: "text-white",
+  },
+  {
+    label: "Security",
+    desc: "Scan visitor QR codes at the gate, run the gate log, and respond to emergency alerts in real time.",
+    Icon: Shield,
+    chip: "Gate officer",
+    chipBg: "bg-[#B71C1C]/10",
+    chipFg: "text-[#B71C1C]",
+    iconBg: "bg-[#B71C1C]",
+    iconFg: "text-white",
+  },
+  {
+    label: "Vendor",
+    desc: "List your service in the estate marketplace — plumbing, electricals, cleaning, tutoring, food.",
+    Icon: StoreIcon,
+    chip: "Service provider",
+    chipBg: "bg-purple-100",
+    chipFg: "text-purple-800",
+    iconBg: "bg-purple-600",
+    iconFg: "text-white",
   },
 ];
 
@@ -159,6 +203,50 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Who it's for */}
+      <section className="px-4 py-14 bg-[#F9F4E7]">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-8">
+            <p className="section-label mb-2">Who it's for</p>
+            <h2 className="tribal-heading text-3xl">Four roles. One app.</h2>
+            <p className="text-[#6B5D45] mt-2 text-sm max-w-md mx-auto">
+              Sign-in is the same for everyone. What you see after you sign in
+              depends on the role your estate admin assigned to your account.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {ROLES.map((r) => (
+              <div
+                key={r.label}
+                className="tribal-card p-5 flex flex-col gap-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${r.iconBg}`}>
+                    <r.Icon className={`h-5 w-5 ${r.iconFg}`} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-[#212121]">{r.label}</p>
+                    <span className={`inline-block text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 mt-0.5 ${r.chipBg} ${r.chipFg}`}>
+                      {r.chip}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-[#6B5D45] leading-relaxed">
+                  {r.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-xs text-[#6B5D45] mt-6">
+            Testing the app for a neighbour?
+            {" "}
+            <Link href="/login" className="font-semibold text-[#1B5E20] hover:underline">
+              Use a demo account from the sign-in page →
+            </Link>
+          </p>
         </div>
       </section>
 

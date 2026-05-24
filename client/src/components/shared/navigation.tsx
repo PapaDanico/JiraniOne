@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { RoleBadge } from "@/components/shared/role-badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -227,13 +228,6 @@ export function TopBar({ title }: { title?: string }) {
 
   if (!user) return null;
 
-  const roleLabel: Record<string, string> = {
-    admin:    "Admin",
-    resident: "Resident",
-    security: "Security",
-    vendor:   "Vendor",
-  };
-
   return (
     <header className="sticky top-0 z-40">
       <div className="bg-[#1B5E20] text-white">
@@ -266,9 +260,7 @@ export function TopBar({ title }: { title?: string }) {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs bg-[#D4A017]/20 text-[#D4A017] rounded-full px-2.5 py-0.5 font-semibold">
-              {roleLabel[user.role]}
-            </span>
+            <RoleBadge role={user.role} className="bg-white/15 text-white border-white/30" />
             <button
               onClick={() => setMenuOpen((v) => !v)}
               className="p-2 rounded-xl hover:bg-white/10 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"

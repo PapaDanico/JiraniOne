@@ -8,6 +8,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useEstate } from "@/hooks/useEstate";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
+import { RoleBanner } from "@/components/shared/role-banner";
 import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
 import { api } from "@/lib/api";
 import type { EstateAnalytics } from "@shared/types";
@@ -106,6 +107,9 @@ export default function AdminDashboard() {
       <TopBar title="Admin" />
 
       <main className="max-w-lg mx-auto px-4 pt-5 pb-6 space-y-6 page-content">
+
+        {/* Role banner */}
+        <RoleBanner role="admin" />
 
         {/* Header */}
         <div className="flex items-start justify-between">

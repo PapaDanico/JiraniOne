@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { QrCode, Search, ClipboardList, ShieldAlert, Package } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
+import { RoleBanner } from "@/components/shared/role-banner";
 import { TrafficWidget } from "@/components/shared/weather-traffic";
 
 const actions = [
@@ -55,6 +56,11 @@ export default function SecurityDashboard() {
       <TopBar title="Gate" />
 
       <main className="max-w-lg mx-auto px-4 pt-5 pb-6 page-content">
+        {/* Role banner */}
+        <div className="mb-5">
+          <RoleBanner role="security" />
+        </div>
+
         {/* Header */}
         <div className="kitenge-hero rounded-2xl p-5 mb-6 relative overflow-hidden">
           <div className="relative z-10">

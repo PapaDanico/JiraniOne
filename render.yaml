@@ -47,3 +47,7 @@ services:
         value: "5000"
       - key: MPESA_CALLBACK_ALLOWED_IPS
         sync: false          # optional override — comma-separated Safaricom egress IPs
+      - key: DEMO_PASSWORD
+        sync: false          # optional — shared password for the 4 seed accounts
+      - key: VITE_DEMO_MODE
+        sync: false          # set to "1" to surface the demo-accounts panel on /login

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "wouter";
@@ -9,7 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-export function LoginForm() {
+// Imperative handle exposed to the parent so the demo bench can pre-fill
+// the phone field without a heavy state-lift.
+export interface LoginFormHandle {
+  setPhone: (phone: string) => void;
+  focusPassword: () => void;
+}
+
+export const LoginForm = forwardRef<LoginFormHandle>(function LoginForm(_props, ref) {
   const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -17,10 +24,26 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
+    setValue,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
   });
+
+  useImperativeHandle(ref, () => ({
+    setPhone: (phone: string) => {
+      // Drop +254 prefix so the field shows the local-format that the
+      // visible "+254" prefix in the UI expects.
+      const local = phone.startsWith("+254")
+        ? phone.slice(4)
+        : phone.startsWith("254")
+          ? phone.slice(3)
+          : phone;
+      setValue("phone", local, { shouldValidate: false });
+    },
+    focusPassword: () => setFocus("password"),
+  }));
 
   const onSubmit = async (data: LoginInput) => {
     setError(null);
@@ -139,4 +162,4 @@ export function LoginForm() {
       </Button>
     </form>
   );
-}
+});

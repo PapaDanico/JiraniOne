@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useEstate } from "@/hooks/useEstate";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
+import { RoleBanner } from "@/components/shared/role-banner";
 import { Badge } from "@/components/ui/badge";
 import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
 import { api } from "@/lib/api";
@@ -127,6 +128,9 @@ export default function ResidentDashboard() {
       <TopBar />
 
       <main className="max-w-lg mx-auto px-4 pt-5 pb-6 space-y-5 page-content">
+
+        {/* ── Role banner ─────────────────────────────────────────── */}
+        <RoleBanner role="resident" />
 
         {/* ── Hero ──────────────────────────────────────────────── */}
         <div className="kitenge-hero rounded-2xl p-5 relative overflow-hidden">

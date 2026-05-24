@@ -1,16 +1,13 @@
 import { Link } from "wouter";
-import { Briefcase, Home, Shield, ShieldCheck, Smartphone, Store, Wifi } from "lucide-react";
+import { useRef } from "react";
+import { ShieldCheck, Smartphone, Wifi } from "lucide-react";
 import { AuthGate } from "@/components/shared/role-gate";
-import { LoginForm } from "@/components/auth/login-form";
-
-const ROLE_PILLS = [
-  { label: "Resident", Icon: Home },
-  { label: "Admin", Icon: Briefcase },
-  { label: "Security", Icon: Shield },
-  { label: "Vendor", Icon: Store },
-];
+import { LoginForm, type LoginFormHandle } from "@/components/auth/login-form";
+import { DemoBench } from "@/components/auth/demo-bench";
 
 export default function LoginPage() {
+  const formRef = useRef<LoginFormHandle | null>(null);
+
   return (
     <AuthGate>
       <div className="kitenge-hero relative min-h-[100dvh] flex flex-col items-center justify-center px-4 py-8">
@@ -57,26 +54,20 @@ export default function LoginPage() {
                   Welcome back
                 </h2>
                 <p className="text-sm text-[#6B5D45] mt-1.5">
-                  Use your Kenyan phone number to continue.
+                  Use your Kenyan phone number to continue. Your role
+                  (resident, admin, security, or vendor) was set when your
+                  account was created.
                 </p>
               </div>
 
-              <div className="mb-5 flex flex-wrap items-center gap-1.5">
-                {ROLE_PILLS.map(({ label, Icon }) => (
-                  <span
-                    key={label}
-                    className="inline-flex items-center gap-1 rounded-full border border-[#D4C9A8] bg-white/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#6B5D45]"
-                  >
-                    <Icon className="h-3 w-3 text-[#1B5E20]" />
-                    {label}
-                  </span>
-                ))}
-                <span className="text-[10px] font-semibold text-[#B0A080] ml-0.5">
-                  one login
-                </span>
-              </div>
+              <LoginForm ref={formRef} />
 
-              <LoginForm />
+              <DemoBench
+                onPick={(phone) => {
+                  formRef.current?.setPhone(phone);
+                  formRef.current?.focusPassword();
+                }}
+              />
 
               <div className="mt-6 flex items-center gap-3">
                 <div className="flex-1 h-px bg-[#D4C9A8]" />
