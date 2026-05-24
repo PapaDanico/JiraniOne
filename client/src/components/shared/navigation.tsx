@@ -1,48 +1,78 @@
 import { Link, useLocation } from "wouter";
 import {
-  Home, Users, Wrench, Megaphone, ShieldAlert,
-  LogOut, Menu, X, Store, CalendarDays, Vote, BookOpen,
-  CreditCard, Bell, UserPen, Eye, EyeOff,
+  Home, Users, Wrench, Megaphone, ShieldAlert, LogOut, Menu, X,
+  Store, Vote, CreditCard, UserPen, Eye, EyeOff, ChevronDown,
 } from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { RoleBadge } from "@/components/shared/role-badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import type { UserRole } from "@shared/types";
+
+// ─── Nav model ────────────────────────────────────────────────────────────────
+// Single source of truth, keyed by role. We render up to 5 items in the
+// bottom-nav (mobile) and up to 6 inline in the TopBar (desktop). Anything
+// else lives in the More menu drawer.
 
 interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
-  roles: string[];
+  // shorter label for the bottom-nav (which has ~60px per cell on
+  // a 375px viewport).
+  short?: string;
 }
 
-const navItems: NavItem[] = [
-  { href: "/dashboard/resident", label: "Home",        icon: <Home className="h-5 w-5" />,       roles: ["resident"] },
-  { href: "/visitors",           label: "Visitors",    icon: <Users className="h-5 w-5" />,       roles: ["resident"] },
-  { href: "/maintenance",        label: "Maintenance", icon: <Wrench className="h-5 w-5" />,      roles: ["resident"] },
-  { href: "/payments",           label: "Payments",    icon: <CreditCard className="h-5 w-5" />,  roles: ["resident"] },
-  { href: "/emergency",          label: "SOS",         icon: <ShieldAlert className="h-5 w-5" />, roles: ["resident"] },
+const PRIMARY_NAV: Record<UserRole, NavItem[]> = {
+  resident: [
+    { href: "/dashboard/resident", label: "Home",        icon: <Home className="h-5 w-5" /> },
+    { href: "/visitors",           label: "Visitors",    icon: <Users className="h-5 w-5" /> },
+    { href: "/maintenance",        label: "Issues",      icon: <Wrench className="h-5 w-5" /> },
+    { href: "/payments",           label: "Payments",    icon: <CreditCard className="h-5 w-5" /> },
+    { href: "/emergency",          label: "SOS",         icon: <ShieldAlert className="h-5 w-5" /> },
+  ],
+  admin: [
+    { href: "/dashboard/admin",    label: "Home",        icon: <Home className="h-5 w-5" /> },
+    { href: "/visitors",           label: "Visitors",    icon: <Users className="h-5 w-5" /> },
+    { href: "/maintenance",        label: "Tickets",     icon: <Wrench className="h-5 w-5" /> },
+    { href: "/announcements",      label: "Notices",     icon: <Megaphone className="h-5 w-5" /> },
+    { href: "/governance",         label: "Polls",       icon: <Vote className="h-5 w-5" /> },
+  ],
+  security: [
+    { href: "/dashboard/security", label: "Gate",        icon: <ShieldAlert className="h-5 w-5" /> },
+    { href: "/visitors",           label: "Visitors",    icon: <Users className="h-5 w-5" /> },
+    { href: "/emergency",          label: "Alerts",      icon: <ShieldAlert className="h-5 w-5" /> },
+    { href: "/announcements",      label: "Notices",     icon: <Megaphone className="h-5 w-5" /> },
+  ],
+  vendor: [
+    { href: "/dashboard/vendor",   label: "Profile",     icon: <Store className="h-5 w-5" /> },
+    { href: "/marketplace",        label: "Marketplace", icon: <Store className="h-5 w-5" /> },
+  ],
+};
 
-  { href: "/dashboard/admin",    label: "Home",        icon: <Home className="h-5 w-5" />,        roles: ["admin"] },
-  { href: "/visitors",           label: "Visitors",    icon: <Users className="h-5 w-5" />,       roles: ["admin"] },
-  { href: "/maintenance",        label: "Tickets",     icon: <Wrench className="h-5 w-5" />,      roles: ["admin"] },
-  { href: "/announcements",      label: "Notices",     icon: <Megaphone className="h-5 w-5" />,   roles: ["admin"] },
-  { href: "/governance",         label: "Polls",       icon: <Vote className="h-5 w-5" />,        roles: ["admin"] },
-
-  { href: "/dashboard/security", label: "Gate",        icon: <ShieldAlert className="h-5 w-5" />, roles: ["security"] },
-  { href: "/visitors",           label: "Visitors",    icon: <Users className="h-5 w-5" />,       roles: ["security"] },
-  { href: "/emergency",          label: "Alerts",      icon: <ShieldAlert className="h-5 w-5" />, roles: ["security"] },
-  { href: "/announcements",      label: "Notices",     icon: <Megaphone className="h-5 w-5" />,   roles: ["security"] },
-
-  { href: "/dashboard/vendor",   label: "Profile",     icon: <Store className="h-5 w-5" />,       roles: ["vendor"] },
-  { href: "/marketplace",        label: "Marketplace", icon: <Store className="h-5 w-5" />,       roles: ["vendor"] },
+const MORE_LINKS: Array<{ href: string; label: string; roles: UserRole[] }> = [
+  { href: "/announcements", label: "Announcements", roles: ["resident", "admin", "security"] },
+  { href: "/payments",      label: "Payments",      roles: ["resident", "admin"] },
+  { href: "/events",        label: "Events",        roles: ["resident", "admin", "security"] },
+  { href: "/bookings",      label: "Bookings",      roles: ["resident", "admin"] },
+  { href: "/marketplace",   label: "Marketplace",   roles: ["resident", "admin", "vendor"] },
+  { href: "/governance",    label: "Governance",    roles: ["resident", "admin"] },
+  { href: "/harambee",      label: "Harambee",      roles: ["resident", "admin"] },
+  { href: "/carpool",       label: "Carpool",       roles: ["resident", "admin"] },
+  { href: "/chama",         label: "Chama",         roles: ["resident", "admin"] },
+  { href: "/parcels",       label: "Parcels",       roles: ["resident", "admin", "security"] },
+  { href: "/classifieds",   label: "Noticeboard",   roles: ["resident", "admin"] },
+  { href: "/emergency",     label: "Emergency",     roles: ["resident", "admin", "security"] },
+  { href: "/notifications", label: "Notifications", roles: ["resident", "admin", "security", "vendor"] },
+  { href: "/admin/users",   label: "Residents",     roles: ["admin"] },
 ];
 
 // ─── Edit Profile Modal ───────────────────────────────────────────────────────
@@ -89,15 +119,14 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-3 mt-2">
-            <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-brand-green flex items-center justify-center">
               <UserPen className="h-5 w-5 text-white" />
             </div>
             <DialogTitle>Edit Profile</DialogTitle>
           </div>
         </DialogHeader>
 
-        {/* Tabs */}
-        <div className="flex border-b border-[#D4C9A8] px-6">
+        <div className="flex border-b border-tribal-border px-6">
           {(["name", "password"] as const).map((t) => (
             <button
               key={t}
@@ -105,8 +134,8 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
               className={cn(
                 "px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors capitalize",
                 tab === t
-                  ? "border-[#1B5E20] text-[#1B5E20]"
-                  : "border-transparent text-[#6B5D45] hover:text-[#212121]",
+                  ? "border-brand-green text-brand-green"
+                  : "border-transparent text-tribal-earth hover:text-tribal-charcoal",
               )}
             >
               {t === "name" ? "Display Name" : "Change Password"}
@@ -117,19 +146,14 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
         <div className="px-6 pb-2 space-y-4">
           {tab === "name" && (
             <div>
-              <Label className="text-[#212121] font-semibold">Display Name</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your full name"
-              />
+              <Label className="text-tribal-charcoal font-semibold">Display Name</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" />
             </div>
           )}
-
           {tab === "password" && (
             <>
               <div>
-                <Label className="text-[#212121] font-semibold">Current Password</Label>
+                <Label className="text-tribal-charcoal font-semibold">Current Password</Label>
                 <div className="relative">
                   <Input
                     type={showPw ? "text" : "password"}
@@ -137,14 +161,17 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
                     onChange={(e) => setCurrentPw(e.target.value)}
                     placeholder="Current password"
                   />
-                  <button type="button" onClick={() => setShowPw((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B5D45]">
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-tribal-earth"
+                  >
                     {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
               <div>
-                <Label className="text-[#212121] font-semibold">New Password</Label>
+                <Label className="text-tribal-charcoal font-semibold">New Password</Label>
                 <Input
                   type={showPw ? "text" : "password"}
                   value={newPw}
@@ -155,12 +182,8 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
             </>
           )}
 
-          {error && (
-            <p className="text-sm text-[#B71C1C] bg-[#B71C1C]/10 rounded-xl px-3 py-2">{error}</p>
-          )}
-          {success && (
-            <p className="text-sm text-[#1B5E20] bg-[#1B5E20]/10 rounded-xl px-3 py-2">{success}</p>
-          )}
+          {error   && <p className="text-sm text-brand-red bg-brand-red/10 rounded-xl px-3 py-2">{error}</p>}
+          {success && <p className="text-sm text-brand-green bg-brand-green/10 rounded-xl px-3 py-2">{success}</p>}
         </div>
 
         <DialogFooter>
@@ -181,65 +204,31 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
   );
 }
 
-export function BottomNav() {
-  const { user } = useAuth();
-  const [location] = useLocation();
-
-  if (!user) return null;
-
-  const items = navItems.filter((i) => i.roles.includes(user.role)).slice(0, 5);
-
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#F5F1E8] border-t border-[#D4C9A8] safe-bottom">
-      <div className="flex items-stretch justify-around max-w-lg mx-auto">
-        {items.map((item) => {
-          const active = location === item.href || location.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href + item.label}
-              href={item.href}
-              className={cn(
-                "flex flex-col items-center justify-center py-2 px-1 flex-1 min-h-[56px] text-xs gap-1 transition-colors",
-                active
-                  ? "text-[#1B5E20] font-semibold"
-                  : "text-[#6B5D45] hover:text-[#212121]",
-              )}
-            >
-              <span className={cn(
-                "p-1 rounded-lg transition-colors",
-                active ? "bg-[#1B5E20]/10" : ""
-              )}>
-                {item.icon}
-              </span>
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
+// ─── TopBar ───────────────────────────────────────────────────────────────────
+// Desktop: logo + inline nav + role chip + menu trigger.
+// Mobile : logo + role chip + menu trigger only (full nav lives in BottomNav).
+//
+// The "More" drawer hosts everything that doesn't fit primary nav. We
+// dropped the previous big-grid drawer because it duplicated the bottom-nav
+// items on mobile and the inline-nav items on desktop.
 
 export function TopBar({ title }: { title?: string }) {
   const { user, logout } = useAuth();
+  const [location] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
   if (!user) return null;
 
-  const roleLabel: Record<string, string> = {
-    admin:    "Admin",
-    resident: "Resident",
-    security: "Security",
-    vendor:   "Vendor",
-  };
+  const primary = PRIMARY_NAV[user.role as UserRole] ?? [];
+  const moreLinks = MORE_LINKS.filter((l) => l.roles.includes(user.role as UserRole));
 
   return (
     <header className="sticky top-0 z-40">
-      <div className="bg-[#1B5E20] text-white">
-        <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto">
-          <div className="flex items-center gap-2.5">
-            {/* Logo */}
+      <div className="bg-brand-green text-white">
+        <div className="flex items-center justify-between px-4 h-14 max-w-6xl mx-auto gap-3">
+          {/* Brand */}
+          <Link href={`/dashboard/${user.role}`} className="flex items-center gap-2.5 shrink-0">
             <img
               src="/logo.svg"
               alt="JiraniHub"
@@ -252,26 +241,51 @@ export function TopBar({ title }: { title?: string }) {
               }}
             />
             <div
-              className="w-7 h-7 rounded-lg bg-[#D4A017] items-center justify-center"
+              className="w-7 h-7 rounded-lg bg-brand-gold items-center justify-center"
               style={{ display: "none" }}
             >
-              <span className="text-[#212121] font-black text-xs">JH</span>
+              <span className="text-tribal-charcoal font-bold text-xs">JH</span>
             </div>
-            <span className="font-bold text-lg tracking-tight">JiraniHub</span>
+            <span className="font-bold text-lg tracking-tight font-display">JiraniHub</span>
             {title && (
               <>
-                <span className="text-white/30 mx-0.5">/</span>
-                <span className="text-sm font-medium text-white/75">{title}</span>
+                <span className="text-white/30 mx-0.5 hidden sm:inline">/</span>
+                <span className="text-sm font-medium text-white/75 hidden sm:inline">{title}</span>
               </>
             )}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs bg-[#D4A017]/20 text-[#D4A017] rounded-full px-2.5 py-0.5 font-semibold">
-              {roleLabel[user.role]}
-            </span>
+          </Link>
+
+          {/* Desktop inline nav */}
+          <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
+            {primary.map((item) => {
+              const active = location === item.href || location.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5",
+                    active
+                      ? "bg-white/15 text-white"
+                      : "text-white/70 hover:text-white hover:bg-white/10",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Right cluster */}
+          <div className="flex items-center gap-2 shrink-0">
+            <RoleBadge
+              role={user.role as UserRole}
+              className="bg-white/15 text-white border-white/30 hidden sm:inline-flex"
+            />
             <button
               onClick={() => setMenuOpen((v) => !v)}
               className="p-2 rounded-xl hover:bg-white/10 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
             >
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -279,61 +293,54 @@ export function TopBar({ title }: { title?: string }) {
         </div>
       </div>
 
-      {/* Maasai stripe */}
       <div className="maasai-stripe" />
 
-      {/* Edit Profile Modal */}
       <EditProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
 
-      {/* Drawer */}
+      {/* More drawer */}
       {menuOpen && (
-        <div className="bg-[#0D3B11] text-white border-b border-[#D4A017]/20">
-          <div className="max-w-2xl mx-auto px-4 py-4">
-            {/* User info */}
+        <div className="bg-brand-green-dark text-white border-b border-brand-gold/20">
+          <div className="max-w-6xl mx-auto px-4 py-4">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#D4A017]/20 flex items-center justify-center shrink-0">
-                <span className="text-[#D4A017] font-bold">{user.name.charAt(0)}</span>
+              <div className="w-10 h-10 rounded-xl bg-brand-gold/20 flex items-center justify-center shrink-0">
+                <span className="text-brand-gold font-bold">{user.name.charAt(0)}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-white">{user.name}</div>
+                <div className="text-sm font-semibold text-white truncate">{user.name}</div>
                 <div className="text-xs text-white/50">{user.phone}</div>
               </div>
+              <RoleBadge
+                role={user.role as UserRole}
+                className="bg-white/15 text-white border-white/30 sm:hidden"
+              />
               <button
                 onClick={() => { setMenuOpen(false); setProfileOpen(true); }}
-                className="flex items-center gap-1.5 text-xs text-[#D4A017] bg-[#D4A017]/15 hover:bg-[#D4A017]/25 rounded-lg px-2.5 py-1.5 transition-colors shrink-0"
+                className="flex items-center gap-1.5 text-xs text-brand-gold bg-brand-gold/15 hover:bg-brand-gold/25 rounded-lg px-2.5 py-1.5 transition-colors shrink-0"
               >
                 <UserPen className="h-3.5 w-3.5" /> Edit
               </button>
             </div>
-            {/* Menu links */}
-            <div className="grid grid-cols-3 gap-x-4 gap-y-1 mb-4">
-              {[
-                { href: "/announcements", label: "Announcements", roles: ["resident","admin","security"] },
-                { href: "/payments",      label: "Payments",      roles: ["resident","admin"] },
-                { href: "/events",        label: "Events",        roles: ["resident","admin","security"] },
-                { href: "/bookings",      label: "Bookings",      roles: ["resident","admin"] },
-                { href: "/marketplace",   label: "Marketplace",   roles: ["resident","admin","vendor"] },
-                { href: "/governance",    label: "Governance",    roles: ["resident","admin"] },
-                { href: "/harambee",      label: "Harambee",      roles: ["resident","admin"] },
-                { href: "/carpool",       label: "Carpool",       roles: ["resident","admin"] },
-                { href: "/chama",         label: "Chama",         roles: ["resident","admin"] },
-                { href: "/emergency",     label: "Emergency",     roles: ["resident","admin","security"] },
-                { href: "/notifications", label: "Notifications", roles: ["resident","admin","security","vendor"] },
-                { href: "/users",         label: "Residents",     roles: ["admin"] },
-              ]
-                .filter((i) => i.roles.includes(user.role))
-                .map((i) => (
-                  <Link
-                    key={i.href}
-                    href={i.href}
-                    onClick={() => setMenuOpen(false)}
-                    className="text-sm text-white/70 hover:text-white py-1.5 transition-colors"
-                  >
-                    {i.label}
-                  </Link>
-                ))
-              }
-            </div>
+
+            {moreLinks.length > 0 && (
+              <div className="mb-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/40 mb-2">
+                  More
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-1">
+                  {moreLinks.map((i) => (
+                    <Link
+                      key={i.href}
+                      href={i.href}
+                      onClick={() => setMenuOpen(false)}
+                      className="text-sm text-white/80 hover:text-white py-1.5 transition-colors"
+                    >
+                      {i.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="border-t border-white/10 pt-3">
               <button
                 onClick={() => { setMenuOpen(false); logout(); }}
@@ -347,5 +354,43 @@ export function TopBar({ title }: { title?: string }) {
         </div>
       )}
     </header>
+  );
+}
+
+// ─── BottomNav ────────────────────────────────────────────────────────────────
+// Mobile only — hidden ≥ md. Five primary items per role, derived from the
+// same PRIMARY_NAV registry as the TopBar inline nav.
+
+export function BottomNav() {
+  const { user } = useAuth();
+  const [location] = useLocation();
+
+  if (!user) return null;
+  const items = PRIMARY_NAV[user.role as UserRole] ?? [];
+  if (items.length === 0) return null;
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-tribal-cream border-t border-tribal-border safe-bottom md:hidden">
+      <div className="flex items-stretch justify-around max-w-lg mx-auto">
+        {items.map((item) => {
+          const active = location === item.href || location.startsWith(item.href + "/");
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex flex-col items-center justify-center py-2 px-1 flex-1 min-h-[56px] text-xs gap-1 transition-colors",
+                active ? "text-brand-green font-semibold" : "text-tribal-earth hover:text-tribal-charcoal",
+              )}
+            >
+              <span className={cn("p-1 rounded-lg transition-colors", active ? "bg-brand-green/10" : "")}>
+                {item.icon}
+              </span>
+              <span>{item.short ?? item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
