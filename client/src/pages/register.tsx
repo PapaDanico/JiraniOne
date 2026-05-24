@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,120 +66,165 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="kitenge-hero min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
+    <div className="kitenge-hero relative min-h-[100dvh] flex flex-col items-center justify-center px-4 py-8">
+      <div className="ring-deco relative w-full max-w-sm">
+        {/* Brand block (parity with /login) */}
         <div className="text-center mb-6">
-          <div className="flex justify-center mb-3">
-            <img
-              src="/logo.svg"
-              alt="JiraniHub"
-              className="h-20 w-20 object-contain drop-shadow-xl"
-              onError={(e) => {
-                const t = e.currentTarget;
-                t.style.display = "none";
-                const fb = t.nextElementSibling as HTMLElement;
-                if (fb) fb.style.removeProperty("display");
-              }}
-            />
+          <div className="inline-flex items-center justify-center mb-3">
             <div
-              className="w-16 h-16 rounded-2xl bg-white/15 items-center justify-center"
-              style={{ display: "none" }}
+              className="relative w-20 h-20 rounded-full bg-brand-gold flex items-center justify-center"
+              style={{
+                boxShadow:
+                  "0 0 0 6px rgba(212, 160, 23, 0.10), 0 0 0 14px rgba(212, 160, 23, 0.05)",
+              }}
             >
-              <span className="font-black text-2xl text-[#D4A017]">JH</span>
+              <img
+                src="/logo.svg"
+                alt="JiraniHub"
+                className="h-12 w-12 object-contain"
+                onError={(e) => {
+                  const t = e.currentTarget;
+                  t.style.display = "none";
+                  const fb = t.nextElementSibling as HTMLElement;
+                  if (fb) fb.style.display = "block";
+                }}
+              />
+              <span
+                className="font-black text-2xl text-brand-green"
+                style={{ display: "none" }}
+              >
+                JH
+              </span>
             </div>
           </div>
-          <h1 className="font-black text-2xl text-white tracking-tight">JiraniHub</h1>
-          <p className="text-white/60 text-sm mt-0.5">Create your resident account</p>
+          <h1 className="font-display font-extrabold text-2xl text-white tracking-tight">
+            JiraniHub
+          </h1>
+          <p className="font-serif italic text-base text-brand-gold mt-1">
+            Create your resident account
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-[#F5F1E8] rounded-2xl p-6 shadow-xl space-y-4">
-          <div className="maasai-stripe rounded-full mb-2" />
-
-          <div>
-            <Label className="text-[#212121] font-semibold">Full name</Label>
-            <Input value={form.name} onChange={(e) => set("name", e.target.value)}
-              placeholder="Jane Mwangi" required />
-          </div>
-
-          <div>
-            <Label className="text-[#212121] font-semibold">Phone number</Label>
-            <Input value={form.phone} onChange={(e) => set("phone", e.target.value)}
-              placeholder="0722 123 456" required />
-          </div>
-
-          <div>
-            <Label className="text-[#212121] font-semibold">Estate</Label>
-            <Select value={form.estateId} onValueChange={(v) => set("estateId", v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select your estate (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                {estates?.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.name} — {e.location}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-[#6B5D45] mt-1">Can be assigned by your admin later</p>
-          </div>
-
-          {form.estateId && (
+        <form
+          onSubmit={handleSubmit}
+          className="bg-tribal-cream rounded-3xl shadow-hero overflow-hidden"
+        >
+          <div className="maasai-stripe" />
+          <div className="px-6 py-6 space-y-4">
             <div>
-              <Label className="text-[#212121] font-semibold">Unit / House number</Label>
-              <Input value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)}
-                placeholder="A14" />
+              <Label className="text-tribal-charcoal font-semibold">Full name</Label>
+              <Input
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="Jane Mwangi"
+                required
+              />
             </div>
-          )}
 
-          <div>
-            <Label className="text-[#212121] font-semibold">Password</Label>
-            <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)}
-              placeholder="At least 8 characters" required />
-          </div>
-
-          <div>
-            <Label className="text-[#212121] font-semibold">Confirm password</Label>
-            <Input type="password" value={form.confirm} onChange={(e) => set("confirm", e.target.value)}
-              placeholder="Repeat your password" required />
-          </div>
-
-          <label className="flex items-start gap-2 text-xs text-[#6B5D45] cursor-pointer select-none pt-1">
-            <input
-              type="checkbox"
-              checked={consent}
-              onChange={(e) => setConsent(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-[#1B5E20]"
-              required
-            />
-            <span>
-              I agree to the{" "}
-              <a href="/privacy" target="_blank" rel="noreferrer" className="text-[#1B5E20] font-bold underline">
-                Privacy Policy
-              </a>{" "}
-              and{" "}
-              <a href="/terms" target="_blank" rel="noreferrer" className="text-[#1B5E20] font-bold underline">
-                Terms of Service
-              </a>
-              . I consent to JiraniHub processing my data under the Kenya Data Protection Act, 2019.
-            </span>
-          </label>
-
-          {error && (
-            <div className="bg-[#B71C1C]/10 border border-[#B71C1C]/20 rounded-xl px-3 py-2.5 text-sm text-[#B71C1C]">
-              {error}
+            <div>
+              <Label className="text-tribal-charcoal font-semibold">Phone number</Label>
+              <Input
+                value={form.phone}
+                onChange={(e) => set("phone", e.target.value)}
+                placeholder="0722 123 456"
+                required
+              />
             </div>
-          )}
 
-          <Button type="submit" className="w-full" loading={loading} disabled={!consent}>
-            Create Account
-          </Button>
+            <div>
+              <Label className="text-tribal-charcoal font-semibold">Estate</Label>
+              <Select value={form.estateId} onValueChange={(v) => set("estateId", v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your estate (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {estates?.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.name} — {e.location}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-tribal-earth mt-1">
+                Can be assigned by your admin later.
+              </p>
+            </div>
 
-          <p className="text-center text-sm text-[#6B5D45]">
-            Already have an account?{" "}
-            <a href="/login" className="text-[#1B5E20] font-bold">Sign in</a>
-          </p>
+            {form.estateId && (
+              <div>
+                <Label className="text-tribal-charcoal font-semibold">
+                  Unit / House number
+                </Label>
+                <Input
+                  value={form.unitNumber}
+                  onChange={(e) => set("unitNumber", e.target.value)}
+                  placeholder="A14"
+                />
+              </div>
+            )}
+
+            <div>
+              <Label className="text-tribal-charcoal font-semibold">Password</Label>
+              <Input
+                type="password"
+                value={form.password}
+                onChange={(e) => set("password", e.target.value)}
+                placeholder="At least 8 characters"
+                required
+              />
+            </div>
+
+            <div>
+              <Label className="text-tribal-charcoal font-semibold">Confirm password</Label>
+              <Input
+                type="password"
+                value={form.confirm}
+                onChange={(e) => set("confirm", e.target.value)}
+                placeholder="Repeat your password"
+                required
+              />
+            </div>
+
+            <label className="flex items-start gap-2 text-xs text-tribal-earth cursor-pointer select-none pt-1">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-brand-green"
+                required
+              />
+              <span>
+                I agree to the{" "}
+                <Link href="/privacy" className="text-brand-green font-bold underline">
+                  Privacy Policy
+                </Link>{" "}
+                and{" "}
+                <Link href="/terms" className="text-brand-green font-bold underline">
+                  Terms of Service
+                </Link>
+                . I consent to JiraniHub processing my data under the Kenya Data
+                Protection Act, 2019.
+              </span>
+            </label>
+
+            {error && (
+              <div className="rounded-xl bg-brand-red/10 border border-brand-red/30 px-3 py-2.5 text-sm text-brand-red flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" loading={loading} disabled={!consent}>
+              Create Account
+            </Button>
+
+            <p className="text-center text-sm text-tribal-earth">
+              Already have an account?{" "}
+              <Link href="/login" className="text-brand-green font-bold">
+                Sign in
+              </Link>
+            </p>
+          </div>
         </form>
       </div>
     </div>

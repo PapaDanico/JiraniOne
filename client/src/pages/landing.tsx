@@ -1,253 +1,371 @@
 import { Link } from "wouter";
 import {
   Shield, Wrench, CreditCard, Bell, Users, Smartphone,
-  ChevronRight, Star, MapPin,
+  ChevronRight, Star, MapPin, Home as HomeIcon, Briefcase, Store as StoreIcon,
+  Check,
 } from "lucide-react";
 
-const features = [
+// ─── Content ─────────────────────────────────────────────────────────────────
+
+const FEATURES = [
   {
-    icon: <Shield className="h-6 w-6" />,
+    Icon: Shield,
     title: "Visitor Management",
-    desc: "QR-coded visitor passes, gate logs, and real-time check-in alerts.",
-    color: "bg-[#1B5E20]/10 text-[#1B5E20]",
+    desc: "QR-coded passes, gate logs, real-time check-in alerts to the resident's phone.",
+    tone: "green",
   },
   {
-    icon: <Wrench className="h-6 w-6" />,
+    Icon: Wrench,
     title: "Maintenance Tickets",
-    desc: "Submit, track, and resolve estate issues with photo evidence and audit trails.",
-    color: "bg-[#D47A00]/10 text-[#D47A00]",
+    desc: "Photos, categories, priorities. Estate admin assigns, vendor responds, you see the status.",
+    tone: "amber",
   },
   {
-    icon: <CreditCard className="h-6 w-6" />,
+    Icon: CreditCard,
     title: "M-PESA Payments",
-    desc: "Levy collection, Harambee fundraising, and instant receipts via Safaricom.",
-    color: "bg-[#D4A017]/15 text-[#9A6E00]",
+    desc: "Service charge, harambee, marketplace — STK Push to Safaricom, receipts auto-archived.",
+    tone: "gold",
   },
   {
-    icon: <Bell className="h-6 w-6" />,
+    Icon: Bell,
     title: "Announcements & SMS",
-    desc: "Broadcast to residents in-app or via SMS. Works on 2G/3G Kenyan networks.",
-    color: "bg-purple-100 text-purple-700",
+    desc: "Broadcast to residents in-app. SMS fallback so it reaches every member, even on 2G.",
+    tone: "red",
   },
   {
-    icon: <Users className="h-6 w-6" />,
+    Icon: Users,
     title: "Governance & Polls",
-    desc: "Polls, committee transparency, estate minutes, and AGM coordination.",
-    color: "bg-[#B71C1C]/10 text-[#B71C1C]",
+    desc: "AGM coordination, anonymous voting on sensitive matters, transparent committee minutes.",
+    tone: "green",
   },
   {
-    icon: <Smartphone className="h-6 w-6" />,
+    Icon: Smartphone,
     title: "Offline-First",
-    desc: "Critical features work without data. Built and tested for Kenyan networks.",
-    color: "bg-teal-100 text-teal-700",
+    desc: "Visitor passes and emergency alerts cache locally. Built for outages and 3G dead-zones.",
+    tone: "amber",
+  },
+] as const;
+
+const TONE_BG: Record<string, string> = {
+  green: "bg-brand-green/10 text-brand-green",
+  amber: "bg-brand-amber/10 text-brand-amber",
+  gold:  "bg-brand-gold/15 text-brand-gold-dark",
+  red:   "bg-brand-red/10 text-brand-red",
+};
+
+const ROLES = [
+  {
+    Icon: HomeIcon,
+    label: "Resident",
+    chip: "Most common",
+    desc: "Invite visitors, log issues, pay your levy, stay on top of estate notices — from your phone.",
+    iconBg: "bg-brand-green",
+    iconFg: "text-brand-gold",
+    chipClass: "bg-brand-green/10 text-brand-green",
+  },
+  {
+    Icon: Briefcase,
+    label: "Admin",
+    chip: "Estate manager",
+    desc: "Every ticket, every payment, every poll, every resident — with reports and an audit trail.",
+    iconBg: "bg-brand-gold-dark",
+    iconFg: "text-white",
+    chipClass: "bg-brand-gold/15 text-brand-gold-dark",
+  },
+  {
+    Icon: Shield,
+    label: "Security",
+    chip: "Gate officer",
+    desc: "Scan visitor QR at the gate, run the gate log, respond to emergency alerts in real time.",
+    iconBg: "bg-brand-red",
+    iconFg: "text-white",
+    chipClass: "bg-brand-red/10 text-brand-red",
+  },
+  {
+    Icon: StoreIcon,
+    label: "Vendor",
+    chip: "Service provider",
+    desc: "List your service in the estate marketplace — plumbing, electricals, cleaning, tutoring, food.",
+    iconBg: "bg-purple-600",
+    iconFg: "text-white",
+    chipClass: "bg-purple-100 text-purple-800",
   },
 ];
 
-const tiers = [
+const TIERS = [
   {
     name: "Starter",
     price: "KES 4,000",
     units: "Up to 20 units",
-    features: ["Visitor management", "Maintenance tickets", "Announcements"],
+    features: ["Visitor management", "Maintenance tickets", "Announcements", "SMS notifications"],
   },
   {
     name: "Growth",
     price: "KES 9,500",
     units: "21–100 units",
-    features: ["Everything in Starter", "M-PESA payments", "Marketplace", "Events & bookings"],
+    features: [
+      "Everything in Starter",
+      "M-PESA payments",
+      "Marketplace + Bookings",
+      "Events & governance",
+    ],
     highlight: true,
   },
   {
     name: "Enterprise",
     price: "Contact us",
     units: "100+ units",
-    features: ["Everything in Growth", "Custom integrations", "Dedicated support"],
+    features: ["Everything in Growth", "Custom integrations", "Dedicated support", "Multi-estate console"],
   },
 ];
 
-const testimonials = [
+const TESTIMONIALS = [
   {
-    quote: "JiraniHub has transformed how we manage our estate. Visitor access is now seamless.",
+    quote:
+      "JiraniHub replaced our WhatsApp group, the visitor's logbook and the levy spreadsheet in one go. Our gate is sane now.",
     name: "Wanjiku M.",
-    role: "Admin, Westlands Estate",
+    role: "Admin · Westlands Estate",
     initials: "WM",
   },
   {
-    quote: "Paying my monthly levy via M-PESA directly in the app is incredibly convenient.",
+    quote:
+      "Paying my service charge via M-PESA in the app, with the receipt arriving by SMS, beats the bank queue every month.",
     name: "Kamau O.",
-    role: "Resident, Kilimani Gardens",
+    role: "Resident · Kilimani Gardens",
     initials: "KO",
   },
 ];
 
+// ─── Page ────────────────────────────────────────────────────────────────────
+
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#F5F1E8]">
-      {/* Nav */}
-      <nav className="sticky top-0 z-40 bg-[#F5F1E8]/95 backdrop-blur border-b border-[#D4C9A8] px-4 py-3">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#1B5E20] flex items-center justify-center">
-              <span className="text-[#D4A017] font-bold text-sm">JH</span>
+    <div className="min-h-screen bg-tribal-cream">
+      {/* Top nav */}
+      <nav className="sticky top-0 z-40 bg-tribal-cream/95 backdrop-blur border-b border-tribal-border">
+        <div className="container-wide flex items-center justify-between py-3">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-brand-green flex items-center justify-center">
+              <span className="text-brand-gold font-bold text-sm">JH</span>
             </div>
-            <span className="font-bold text-xl text-[#1B5E20]">JiraniHub</span>
-          </div>
-          <Link
-            href="/login"
-            className="btn-primary text-sm px-4 py-2 rounded-xl min-h-0"
-          >
+            <span className="font-bold text-xl text-brand-green font-display">JiraniHub</span>
+          </Link>
+          <Link href="/login" className="btn-primary px-4 py-2 min-h-0 text-sm">
             Sign In
           </Link>
         </div>
       </nav>
 
-      {/* Maasai stripe */}
       <div className="maasai-stripe" />
 
-      {/* Hero */}
-      <section className="kitenge-hero text-white px-4 py-20 relative overflow-hidden">
-        <div className="relative z-10 max-w-2xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-[#D4A017]/20 border border-[#D4A017]/30 rounded-full px-4 py-1.5 text-sm mb-6 text-[#D4A017] font-medium">
+      {/* ── Hero ──────────────────────────────────────────────────────── */}
+      <section className="kitenge-hero relative overflow-hidden">
+        <div className="ring-deco relative z-10 container-wide py-20 md:py-24 text-center">
+          <div className="inline-flex items-center gap-2 bg-brand-gold/20 border border-brand-gold/30 rounded-full px-4 py-1.5 text-sm mb-6 text-brand-gold font-semibold">
             <MapPin className="h-3.5 w-3.5" />
-            🇰🇪 Built for Kenyan Estates
+            Built for Kenyan Estates
           </div>
-          <h1 className="font-bold text-4xl md:text-5xl leading-tight mb-5 tracking-tight">
-            Ditch the WhatsApp Group.<br />
-            <span className="text-[#D4A017]">Manage Your Estate Properly.</span>
+          <h1 className="font-display font-extrabold text-4xl md:text-6xl leading-tight tracking-tight text-white mb-3">
+            Ditch the WhatsApp group.
           </h1>
-          <p className="text-white/75 text-lg mb-10 max-w-lg mx-auto leading-relaxed">
-            JiraniHub is a digital estate management platform for Kenyan gated communities —
-            visitors, maintenance, M-PESA, and more.
+          <p className="font-serif italic text-2xl md:text-3xl text-brand-gold mb-6">
+            Manage your estate properly.
+          </p>
+          <p className="text-white/75 text-base md:text-lg max-w-xl mx-auto leading-relaxed mb-10">
+            JiraniHub is the digital infrastructure layer that replaces paper logbooks,
+            verbal announcements and the family WhatsApp group running your estate today.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 bg-[#D4A017] hover:bg-[#B8860B] text-white font-bold px-8 py-3.5 rounded-xl text-base transition-colors"
+              className="inline-flex items-center justify-center gap-2 bg-brand-gold hover:bg-brand-gold-dark text-white font-bold px-8 py-3.5 rounded-xl text-base transition-colors min-h-[48px]"
             >
               Get Started Free <ChevronRight className="h-4 w-4" />
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 border border-white/30 text-white hover:bg-white/10 font-medium px-8 py-3.5 rounded-xl text-base transition-colors"
+              className="inline-flex items-center justify-center gap-2 border border-white/30 text-white hover:bg-white/10 font-semibold px-8 py-3.5 rounded-xl text-base transition-colors min-h-[48px]"
             >
-              View Demo
+              Try the Demo
             </Link>
           </div>
-          <p className="text-white/40 text-sm mt-4">No credit card required. Billed via M-PESA.</p>
+          <p className="text-white/40 text-xs mt-5">
+            No credit card required &middot; Billed via M-PESA &middot; Cancel anytime
+          </p>
         </div>
       </section>
 
-      {/* Maasai stripe */}
       <div className="maasai-stripe" />
 
-      {/* Features */}
-      <section className="px-4 py-16">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10">
-            <p className="section-label mb-2">Features</p>
-            <h2 className="tribal-heading text-3xl">Everything your estate needs</h2>
-            <p className="text-[#6B5D45] mt-2">9 integrated modules. One platform.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {features.map((f) => (
-              <div key={f.title} className="tribal-card p-5 hover:shadow-md transition-shadow">
-                <div className={`w-11 h-11 rounded-xl ${f.color} flex items-center justify-center mb-4`}>
-                  {f.icon}
-                </div>
-                <h3 className="font-bold text-[#212121] mb-1.5">{f.title}</h3>
-                <p className="text-sm text-[#6B5D45] leading-relaxed">{f.desc}</p>
+      {/* ── Features ─────────────────────────────────────────────────── */}
+      <section className="container-wide py-16">
+        <div className="text-center mb-10">
+          <p className="section-label mb-2">Features</p>
+          <h2 className="font-display font-bold text-3xl md:text-4xl text-tribal-charcoal mb-2">
+            Nine modules. <span className="font-serif italic text-brand-green">One platform.</span>
+          </h2>
+          <p className="text-tribal-earth text-sm max-w-md mx-auto">
+            Every piece a Kenyan estate needs — without the bolt-on integrations.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {FEATURES.map((f) => (
+            <div key={f.title} className="tribal-card p-5 hover:shadow-card-lg transition-shadow">
+              <div className={`w-11 h-11 rounded-xl ${TONE_BG[f.tone]} flex items-center justify-center mb-4`}>
+                <f.Icon className="h-5 w-5" />
               </div>
-            ))}
-          </div>
+              <h3 className="font-display font-bold text-tribal-charcoal mb-1.5">{f.title}</h3>
+              <p className="text-sm text-tribal-earth leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="bg-[#EDE7D8] px-4 py-12 border-y border-[#D4C9A8]">
-        <div className="max-w-3xl mx-auto">
-          <p className="section-label text-center mb-8">What residents say</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {testimonials.map((t) => (
-              <div key={t.name} className="bg-[#F5F1E8] rounded-2xl p-5 border border-[#D4C9A8]">
-                <div className="flex gap-0.5 mb-3">
-                  {[1,2,3,4,5].map(i => <Star key={i} className="h-4 w-4 fill-[#D4A017] text-[#D4A017]" />)}
+      <div className="maasai-stripe" />
+
+      {/* ── Who it's for ─────────────────────────────────────────────── */}
+      <section className="container-wide py-16 bg-tribal-cream-dark/40">
+        <div className="text-center mb-10">
+          <p className="section-label mb-2">Who it's for</p>
+          <h2 className="font-display font-bold text-3xl md:text-4xl text-tribal-charcoal mb-2">
+            Four roles. <span className="font-serif italic text-brand-green">One sign-in.</span>
+          </h2>
+          <p className="text-tribal-earth text-sm max-w-lg mx-auto">
+            What you see after you sign in depends on the role your estate admin assigned to you.
+            Same login, different dashboard.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {ROLES.map((r) => (
+            <div key={r.label} className="tribal-card p-5 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${r.iconBg}`}>
+                  <r.Icon className={`h-5 w-5 ${r.iconFg}`} />
                 </div>
-                <p className="text-[#212121] text-sm italic leading-relaxed mb-4">"{t.quote}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#1B5E20] flex items-center justify-center">
-                    <span className="text-white font-bold text-xs">{t.initials}</span>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-[#212121]">{t.name}</p>
-                    <p className="text-xs text-[#6B5D45]">{t.role}</p>
-                  </div>
+                <div>
+                  <p className="font-display font-bold text-tribal-charcoal">{r.label}</p>
+                  <span className={`inline-block text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 mt-0.5 ${r.chipClass}`}>
+                    {r.chip}
+                  </span>
                 </div>
               </div>
-            ))}
-          </div>
+              <p className="text-sm text-tribal-earth leading-relaxed">{r.desc}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-center text-xs text-tribal-earth mt-8">
+          Testing the app for a neighbour?{" "}
+          <Link href="/login" className="font-semibold text-brand-green hover:underline">
+            Use a demo account from the sign-in page →
+          </Link>
+        </p>
+      </section>
+
+      {/* ── Testimonials ─────────────────────────────────────────────── */}
+      <section className="container-wide py-14">
+        <p className="section-label text-center mb-6">What residents say</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl mx-auto">
+          {TESTIMONIALS.map((t) => (
+            <div key={t.name} className="quote-block">
+              <p className="text-lg leading-relaxed mb-4 not-italic font-serif italic">
+                {t.quote}
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-brand-gold/20 flex items-center justify-center">
+                  <span className="text-brand-gold font-bold text-sm">{t.initials}</span>
+                </div>
+                <div className="font-sans not-italic">
+                  <p className="font-semibold text-sm text-white">{t.name}</p>
+                  <p className="text-xs text-white/60">{t.role}</p>
+                </div>
+                <div className="ml-auto flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star key={i} className="h-3.5 w-3.5 fill-brand-gold text-brand-gold" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="px-4 py-16">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-10">
-            <p className="section-label mb-2">Pricing</p>
-            <h2 className="tribal-heading text-3xl">Transparent pricing, no surprises</h2>
-            <p className="text-[#6B5D45] mt-2">Per estate, per month. Cancel anytime.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {tiers.map((t) => (
-              <div
-                key={t.name}
-                className={`rounded-2xl border p-6 ${
+      <div className="maasai-stripe" />
+
+      {/* ── Pricing ──────────────────────────────────────────────────── */}
+      <section className="container-wide py-16">
+        <div className="text-center mb-10">
+          <p className="section-label mb-2">Pricing</p>
+          <h2 className="font-display font-bold text-3xl md:text-4xl text-tribal-charcoal mb-2">
+            Transparent pricing.{" "}
+            <span className="font-serif italic text-brand-green">No surprises.</span>
+          </h2>
+          <p className="text-tribal-earth text-sm">Per estate, per month. Cancel anytime.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+          {TIERS.map((t) => (
+            <div
+              key={t.name}
+              className={
+                t.highlight
+                  ? "archetype-card p-7 shadow-hero"
+                  : "tribal-card p-6 flex flex-col"
+              }
+            >
+              {t.highlight && (
+                <span className="text-[10px] bg-brand-gold text-white px-3 py-0.5 rounded-full mb-3 inline-block font-bold uppercase tracking-widest relative z-10">
+                  Most popular
+                </span>
+              )}
+              <div className={`font-display text-3xl font-extrabold relative z-10 ${t.highlight ? "text-white" : "text-tribal-charcoal"}`}>
+                {t.price}
+              </div>
+              <div className={`text-sm relative z-10 ${t.highlight ? "text-white/60" : "text-tribal-earth"}`}>
+                /month
+              </div>
+              <div className={`font-display font-bold text-xl mt-3 relative z-10 ${t.highlight ? "text-brand-gold" : "text-tribal-charcoal"}`}>
+                {t.name}
+              </div>
+              <div className={`text-sm mb-5 relative z-10 ${t.highlight ? "text-white/60" : "text-tribal-earth"}`}>
+                {t.units}
+              </div>
+              <ul className={`space-y-2.5 relative z-10 ${t.highlight ? "" : "flex-1"}`}>
+                {t.features.map((f) => (
+                  <li
+                    key={f}
+                    className={`flex items-start gap-2 text-sm ${t.highlight ? "text-white/90" : "text-tribal-charcoal"}`}
+                  >
+                    <Check className={`h-4 w-4 shrink-0 mt-0.5 ${t.highlight ? "text-brand-gold" : "text-brand-green"}`} />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/login"
+                className={`mt-6 block text-center rounded-xl py-2.5 text-sm font-semibold transition-colors relative z-10 ${
                   t.highlight
-                    ? "border-[#1B5E20] bg-[#1B5E20] text-white shadow-xl"
-                    : "border-[#D4C9A8] bg-[#EDE7D8]"
+                    ? "bg-brand-gold text-white hover:bg-brand-gold-dark"
+                    : "border border-tribal-border text-brand-green hover:bg-tribal-cream-dark"
                 }`}
               >
-                {t.highlight && (
-                  <span className="text-xs bg-[#D4A017] text-white px-3 py-0.5 rounded-full mb-3 inline-block font-semibold">
-                    Most Popular
-                  </span>
-                )}
-                <div className="text-2xl font-bold mb-0.5">{t.price}</div>
-                <div className={`text-sm mb-1 ${t.highlight ? "text-white/60" : "text-[#6B5D45]"}`}>/month</div>
-                <div className={`font-bold text-xl mb-3 ${t.highlight ? "" : "text-[#212121]"}`}>{t.name}</div>
-                <div className={`text-sm mb-5 ${t.highlight ? "text-white/60" : "text-[#6B5D45]"}`}>{t.units}</div>
-                <ul className="space-y-2.5">
-                  {t.features.map((f) => (
-                    <li key={f} className={`flex items-center gap-2 text-sm ${t.highlight ? "text-white/90" : "text-[#212121]"}`}>
-                      <span className={`text-base ${t.highlight ? "text-[#D4A017]" : "text-[#1B5E20]"}`}>✓</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/login"
-                  className={`mt-6 block text-center rounded-xl py-2.5 text-sm font-semibold transition-colors ${
-                    t.highlight
-                      ? "bg-[#D4A017] text-white hover:bg-[#B8860B]"
-                      : "border border-[#D4C9A8] text-[#1B5E20] hover:bg-[#D4C9A8]/50"
-                  }`}
-                >
-                  Get Started
-                </Link>
-              </div>
-            ))}
-          </div>
+                Get Started
+              </Link>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="kitenge-hero px-4 py-14 text-center relative overflow-hidden">
-        <div className="relative z-10">
-          <h2 className="font-bold text-3xl text-white mb-4">
+      {/* ── Final CTA ────────────────────────────────────────────────── */}
+      <section className="kitenge-hero text-center relative overflow-hidden py-14">
+        <div className="ring-deco container-wide relative z-10">
+          <h2 className="font-display font-extrabold text-3xl md:text-4xl text-white mb-2">
             Ready to upgrade your estate?
           </h2>
+          <p className="font-serif italic text-xl text-brand-gold mb-6">
+            Your neighbours will notice the difference.
+          </p>
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 bg-[#D4A017] hover:bg-[#B8860B] text-white font-bold px-10 py-4 rounded-xl text-base transition-colors"
+            className="inline-flex items-center gap-2 bg-brand-gold hover:bg-brand-gold-dark text-white font-bold px-10 py-4 rounded-xl text-base transition-colors min-h-[48px]"
           >
             Start Free Trial <ChevronRight className="h-4 w-4" />
           </Link>
@@ -257,15 +375,16 @@ export default function LandingPage() {
 
       <div className="maasai-stripe" />
 
-      <footer className="px-4 py-8 text-center bg-[#EDE7D8] border-t border-[#D4C9A8]">
+      <footer className="container-wide py-8 text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="w-6 h-6 rounded-lg bg-[#1B5E20] flex items-center justify-center">
-            <span className="text-[#D4A017] font-bold text-xs">JH</span>
+          <div className="w-6 h-6 rounded-lg bg-brand-green flex items-center justify-center">
+            <span className="text-brand-gold font-bold text-xs">JH</span>
           </div>
-          <span className="font-bold text-[#1B5E20]">JiraniHub</span>
+          <span className="font-display font-bold text-brand-green">JiraniHub</span>
         </div>
-        <p className="text-xs text-[#6B5D45]">
-          © {new Date().getFullYear()} JiraniHub · Nairobi, Kenya · Your Digital Neighbour
+        <p className="text-xs text-tribal-earth">
+          © {new Date().getFullYear()} JiraniHub · Nairobi, Kenya
+          <span className="hidden sm:inline"> · Your Digital Neighbour</span>
         </p>
       </footer>
     </div>

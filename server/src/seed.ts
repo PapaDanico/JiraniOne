@@ -50,33 +50,44 @@ async function seed() {
     await db.select().from(estates).where(eq(estates.name, "NHC Stoni Athi View")).limit(1)
   )[0]!.id;
 
-  // Seed accounts. Passwords are randomly generated each run and printed to
-  // stdout once — copy them somewhere if you need to log in. NEVER hard-code
-  // passwords here again.
-  const randomPass = () => randomBytes(9).toString("base64url");
+  // Seed accounts. When DEMO_PASSWORD is set, every seeded account uses
+  // that single password — useful for "neighbours testing the app" runs
+  // where the admin wants to share one credential out-of-band. Otherwise
+  // each account gets a one-shot random password printed to stdout below.
+  // NEVER hard-code a default password here.
+  const sharedDemoPassword = process.env.DEMO_PASSWORD;
+  if (sharedDemoPassword && sharedDemoPassword.length < 8) {
+    console.error(
+      "DEMO_PASSWORD must be at least 8 characters. Refusing to seed weak credentials.",
+    );
+    process.exit(1);
+  }
+  const passwordFor = () =>
+    sharedDemoPassword ?? randomBytes(9).toString("base64url");
+
   const seedUsers = [
     {
       phone: "+254700000001",
-      password: randomPass(),
+      password: passwordFor(),
       name: "Daniel Ng'ong'a",
       role: "admin" as const,
     },
     {
       phone: "+254700000002",
-      password: randomPass(),
+      password: passwordFor(),
       name: "Aisha Kamau",
       role: "resident" as const,
       unitNumber: "A4",
     },
     {
       phone: "+254700000003",
-      password: randomPass(),
+      password: passwordFor(),
       name: "James Otieno",
       role: "security" as const,
     },
     {
       phone: "+254700000004",
-      password: randomPass(),
+      password: passwordFor(),
       name: "Grace Wanjiku Electricals",
       role: "vendor" as const,
     },
@@ -99,10 +110,17 @@ async function seed() {
       .returning();
 
     if (inserted[0]) {
-      console.log(`✅ ${u.role}: ${u.phone} / ${u.password} — ${u.name}`);
+      const pwForLog = sharedDemoPassword ? "<DEMO_PASSWORD>" : u.password;
+      console.log(`✅ ${u.role}: ${u.phone} / ${pwForLog} — ${u.name}`);
     } else {
       console.log(`⏭  ${u.role} ${u.phone} already exists`);
     }
+  }
+
+  if (sharedDemoPassword) {
+    console.log(
+      "\nℹ  All four seed accounts share the password from DEMO_PASSWORD. Share it with testers out-of-band.",
+    );
   }
 
   // Set admin on estate

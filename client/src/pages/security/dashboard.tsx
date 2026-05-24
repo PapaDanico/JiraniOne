@@ -2,48 +2,46 @@ import { Link } from "wouter";
 import { QrCode, Search, ClipboardList, ShieldAlert, Package } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
+import { RoleBanner } from "@/components/shared/role-banner";
+import { SectionTitle } from "@/components/shared/section-title";
+import { InfoBox } from "@/components/shared/info-box";
 import { TrafficWidget } from "@/components/shared/weather-traffic";
 
-const actions = [
+const ACTIONS = [
   {
     href: "/visitors",
     label: "Scan QR",
     desc: "Check a visitor's pass",
-    icon: <QrCode className="h-9 w-9" />,
-    bg: "bg-[#1B5E20]",
-    accent: "border-[#D4A017]/30",
+    Icon: QrCode,
+    bg: "bg-brand-green",
   },
   {
     href: "/visitors",
     label: "Search Visitor",
     desc: "Search by phone number",
-    icon: <Search className="h-9 w-9" />,
-    bg: "bg-[#D47A00]",
-    accent: "border-[#D47A00]/30",
+    Icon: Search,
+    bg: "bg-brand-amber",
   },
   {
     href: "/visitors",
     label: "Gate Log",
     desc: "Full entry history",
-    icon: <ClipboardList className="h-9 w-9" />,
-    bg: "bg-[#212121]",
-    accent: "border-white/10",
+    Icon: ClipboardList,
+    bg: "bg-tribal-charcoal",
   },
   {
     href: "/emergency",
     label: "Emergency",
     desc: "Raise an alert",
-    icon: <ShieldAlert className="h-9 w-9" />,
-    bg: "bg-[#B71C1C]",
-    accent: "border-[#B71C1C]/30",
+    Icon: ShieldAlert,
+    bg: "bg-brand-red",
   },
   {
     href: "/parcels",
     label: "Parcels",
     desc: "Log & track deliveries",
-    icon: <Package className="h-9 w-9" />,
+    Icon: Package,
     bg: "bg-sky-600",
-    accent: "border-sky-400/30",
   },
 ];
 
@@ -51,47 +49,73 @@ export default function SecurityDashboard() {
   const { user } = useAuth();
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Gate" />
 
-      <main className="max-w-lg mx-auto px-4 pt-5 pb-6 page-content">
-        {/* Header */}
-        <div className="kitenge-hero rounded-2xl p-5 mb-6 relative overflow-hidden">
+      <main className="container-app pt-5 pb-6 space-y-5 page-content">
+        <RoleBanner role="security" />
+
+        {/* Hero */}
+        <div className="archetype-card">
           <div className="relative z-10">
-            <p className="text-[#D4A017] text-sm font-semibold mb-0.5">Security Panel</p>
-            <h1 className="font-bold text-2xl text-white tracking-tight">Estate Gate</h1>
-            <p className="text-white/60 text-sm mt-1">{user?.name} · Gate Officer</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-gold mb-1">
+              Security Panel
+            </p>
+            <h1 className="font-display font-extrabold text-2xl tracking-tight">
+              Estate Gate
+            </h1>
+            <p className="font-serif italic text-base text-white/70 mt-0.5">
+              {user?.name} · Gate Officer
+            </p>
+            <div className="mt-4 flag-bar w-24" />
           </div>
         </div>
 
-        <p className="section-label mb-4">Quick Actions</p>
-        <div className="grid grid-cols-2 gap-4">
-          {actions.map((a) => (
-            <Link
-              key={a.href + a.label}
-              href={a.href}
-              className={`flex flex-col items-center justify-center p-6 rounded-2xl text-center gap-3 min-h-[148px] text-white border ${a.accent} ${a.bg} transition-opacity hover:opacity-90`}
-            >
-              {a.icon}
-              <div>
-                <div className="font-bold text-sm">{a.label}</div>
-                <div className="text-xs opacity-70 mt-0.5 leading-tight">{a.desc}</div>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* Traffic */}
-        <div className="mt-6">
-          <TrafficWidget />
-        </div>
-
-        {/* Tip */}
-        <div className="mt-6 bg-[#EDE7D8] border border-[#D4C9A8] rounded-2xl p-4">
-          <p className="text-xs text-[#6B5D45] text-center">
-            💡 <strong>Reminder:</strong> Every visitor needs an approved pass. Check QR code or search by phone number.
+        {/* Primary scan action — large, thumb-friendly */}
+        <Link
+          href="/visitors"
+          className="block rounded-2xl bg-brand-green text-white p-6 text-center min-h-[140px] hover:bg-brand-green-dark transition-colors active:scale-[0.99]"
+        >
+          <QrCode className="h-12 w-12 mx-auto mb-3 text-brand-gold" />
+          <p className="font-display font-extrabold text-xl">Scan visitor QR</p>
+          <p className="text-sm text-white/70 mt-1">
+            Open the gate scanner — works offline once loaded
           </p>
-        </div>
+        </Link>
+
+        {/* Quick actions */}
+        <section>
+          <SectionTitle>Quick actions</SectionTitle>
+          <div className="grid grid-cols-2 gap-3">
+            {ACTIONS.map((a) => (
+              <Link
+                key={a.label}
+                href={a.href}
+                className={`flex flex-col justify-between rounded-2xl p-4 min-h-[120px] text-white transition-opacity hover:opacity-90 active:scale-[0.98] ${a.bg}`}
+              >
+                <a.Icon className="h-7 w-7" />
+                <div className="mt-2">
+                  <p className="font-display font-bold text-sm leading-tight">{a.label}</p>
+                  <p className="text-[11px] opacity-75 mt-0.5 leading-tight">{a.desc}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* Traffic for gate handover */}
+        <section>
+          <SectionTitle>Local traffic</SectionTitle>
+          <TrafficWidget />
+        </section>
+
+        <InfoBox variant="red" title="Emergency response">
+          <p>
+            Tap <strong>Emergency</strong> to broadcast an alert to all on-duty
+            security and the estate admin. Use only for active incidents — fire,
+            medical, intrusion, or a panic-button trigger from a resident.
+          </p>
+        </InfoBox>
       </main>
 
       <BottomNav />

@@ -1,148 +1,354 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+
+/* ─────────────────────────────────────────────────────────────────
+ * JiraniHub design system
+ * ─────────────────────────────────────────────────────────────────
+ * Component layer organised in four bands:
+ *   1. Cultural primitives   — Maasai stripe, kitenge hero, flag bar
+ *   2. Layout primitives     — page-wrap, section-title, ibox, split
+ *   3. Display primitives    — kpi-tile, person-card, archetype-card,
+ *                              concentric rings (Diagnostic ref)
+ *   4. Controls              — buttons, input, tab row, tags, pills
+ * ───────────────────────────────────────────────────────────────── */
+
 @layer base {
   :root {
-    --brand-green: #1B5E20;
-    --brand-amber: #D47A00;
-    --brand-gold: #D4A017;
-    --tribal-red: #B71C1C;
-    --tribal-cream: #F5F1E8;
-    --tribal-sand: #EDE7D8;
-    --tribal-border: #D4C9A8;
-    --tribal-earth: #6B5D45;
-    --tribal-charcoal: #212121;
+    /* Mirrors of tailwind.config.ts. Useful when we need raw colors in
+     * gradients/animations where Tailwind utility classes don't compose. */
+    --brand-green:        #0F4D2A;
+    --brand-green-mid:    #1B5E20;
+    --brand-green-dark:   #063519;
+    --brand-gold:         #D4A017;
+    --brand-gold-dark:    #9A6E00;
+    --brand-red:          #BB0000;
+    --flag-green:         #006B3F;
+    --flag-black:         #0A0A0A;
+    --cream:              #F7F2E5;
+    --cream-dark:         #EFE7D2;
+    --border:             #D7CBA5;
+    --earth:              #6B5D45;
+    --charcoal:           #1A1A1A;
+    --muted:              #8A8170;
   }
 
-  * {
-    -webkit-tap-highlight-color: transparent;
-  }
+  * { -webkit-tap-highlight-color: transparent; }
 
   html {
-    font-family: 'IBM Plex Sans', 'Inter', sans-serif;
+    font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   body {
-    @apply bg-[#F5F1E8] text-[#212121];
+    background: var(--cream);
+    color: var(--charcoal);
     min-height: 100dvh;
   }
 
-  button, a, [role="button"] {
-    min-height: 44px;
-    min-width: 44px;
+  /* WCAG 2.1 — every interactive element large enough for thumb hits. */
+  button, a, [role="button"] { min-height: 44px; min-width: 44px; }
+
+  /* Headings default to Plus Jakarta. Override per-page when an italic
+   * Cormorant accent is wanted (use .font-serif or .accent-italic). */
+  h1, h2, h3, h4 {
+    font-family: 'Plus Jakarta Sans', 'DM Sans', sans-serif;
+    letter-spacing: -0.01em;
   }
 }
 
 @layer components {
-  /* ── Maasai stripe divider ─────────────────────────────── */
+
+  /* ── 1. CULTURAL PRIMITIVES ───────────────────────────────────── */
+
+  /* Maasai stripe — the four-tone kitenge band used as a divider.
+   * Stays at 4px so it reads as a ribbon, never a panel. */
   .maasai-stripe {
     height: 4px;
     flex-shrink: 0;
     background: repeating-linear-gradient(
       90deg,
-      #1B5E20 0px, #1B5E20 20px,
-      #212121 20px, #212121 40px,
-      #B71C1C 40px, #B71C1C 60px,
-      #F5F1E8 60px, #F5F1E8 80px
+      var(--brand-green)     0,   var(--brand-green)     20px,
+      var(--flag-black)      20px,var(--flag-black)      40px,
+      var(--brand-red)       40px,var(--brand-red)       60px,
+      var(--brand-gold)      60px,var(--brand-gold)      80px
     );
   }
 
-  /* ── Kitenge hero pattern ──────────────────────────────── */
+  /* Kenyan flag bar — black/red/green only (no white), used as a thinner
+   * accent inside hero cards. */
+  .flag-bar {
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(
+      90deg,
+      var(--flag-black)   0%,  var(--flag-black)   33.3%,
+      var(--brand-red)    33.3%, var(--brand-red)  66.6%,
+      var(--flag-green)   66.6%, var(--flag-green) 100%
+    );
+  }
+
+  /* Kitenge hero — deep estate-green base with diagonal kitenge weave. */
   .kitenge-hero {
     position: relative;
-    background: linear-gradient(145deg, #1B5E20 0%, #0D3B11 60%, #1a1a1a 100%);
+    background:
+      linear-gradient(145deg,
+        var(--brand-green)      0%,
+        var(--brand-green-dark) 60%,
+        var(--flag-black)       100%);
+    color: #fff;
   }
   .kitenge-hero::before {
     content: '';
     position: absolute;
     inset: 0;
     background-image:
-      repeating-linear-gradient(
-        45deg,
-        rgba(212, 160, 23, 0.10) 0px, rgba(212, 160, 23, 0.10) 2px,
-        transparent 2px, transparent 20px
-      ),
-      repeating-linear-gradient(
-        -45deg,
-        rgba(183, 28, 28, 0.07) 0px, rgba(183, 28, 28, 0.07) 2px,
-        transparent 2px, transparent 20px
-      );
+      repeating-linear-gradient(45deg,
+        rgba(212, 160, 23, 0.10) 0, rgba(212, 160, 23, 0.10) 2px,
+        transparent 2px, transparent 22px),
+      repeating-linear-gradient(-45deg,
+        rgba(187, 0, 0, 0.06) 0, rgba(187, 0, 0, 0.06) 2px,
+        transparent 2px, transparent 22px);
     pointer-events: none;
   }
 
-  /* ── Tribal card ───────────────────────────────────────── */
-  .tribal-card {
-    @apply bg-[#EDE7D8] border border-[#D4C9A8] rounded-2xl;
+  /* Concentric rings — diagonal/decorative rings behind a hero subject.
+   * Lifted from the Diagnostic design; we use it on landing/login. */
+  .ring-deco {
+    position: relative;
+    isolation: isolate;
   }
-
-  /* ── Section heading with gold accent ─────────────────── */
-  .tribal-heading {
-    @apply font-bold text-[#212121] tracking-tight;
-    font-family: 'IBM Plex Sans', sans-serif;
+  .ring-deco::before,
+  .ring-deco::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 9999px;
+    border: 1px solid rgba(212, 160, 23, 0.10);
+    pointer-events: none;
+    z-index: 0;
   }
+  .ring-deco::before { width: 480px; height: 480px; }
+  .ring-deco::after  { width: 320px; height: 320px; border-color: rgba(212, 160, 23, 0.18); }
+  .ring-deco > * { position: relative; z-index: 1; }
 
-  .section-label {
-    @apply text-xs font-semibold uppercase tracking-widest text-[#6B5D45];
-  }
+  /* ── 2. LAYOUT PRIMITIVES ─────────────────────────────────────── */
 
-  /* ── Primary buttons ───────────────────────────────────── */
-  .btn-primary {
-    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#1B5E20] text-white font-semibold text-sm transition-colors hover:bg-[#0D3B11] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
-  }
-
-  .btn-secondary {
-    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-xl border border-[#D4C9A8] bg-[#F5F1E8] text-[#212121] font-medium text-sm transition-colors hover:bg-[#EDE7D8] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
-  }
-
-  .btn-gold {
-    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#D4A017] text-white font-semibold text-sm transition-colors hover:bg-[#B8860B] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
-  }
-
-  .btn-danger {
-    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#B71C1C] text-white font-semibold text-sm transition-colors hover:bg-[#8B0000] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
-  }
-
-  /* ── Input ─────────────────────────────────────────────── */
-  .input {
-    @apply w-full rounded-xl border border-[#D4C9A8] bg-white px-3 py-2.5 text-sm text-[#212121] placeholder:text-[#B0A080] focus:outline-none focus:ring-2 focus:ring-[#1B5E20]/30 focus:border-[#1B5E20] min-h-[44px];
-  }
-
-  /* ── Tribal gold accent line ───────────────────────────── */
-  .gold-line {
-    height: 2px;
-    background: linear-gradient(90deg, #D4A017, transparent);
-    @apply rounded-full;
-  }
-
-  /* ── Page wrapper ──────────────────────────────────────── */
   .page-wrap {
-    @apply min-h-screen bg-[#F5F1E8] pb-20;
+    @apply min-h-screen bg-tribal-cream;
+    /* Bottom nav clearance on mobile, room for footer on desktop. */
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+  .page-wrap[data-bottomnav="true"] { padding-bottom: 5rem; }
+
+  .container-app {
+    @apply max-w-2xl mx-auto px-4;
+  }
+  .container-wide {
+    @apply max-w-6xl mx-auto px-4;
+  }
+
+  /* Section title — bottom-border on green (KASH .stitle). */
+  .section-title {
+    @apply text-base font-semibold text-brand-green pb-2 mb-3
+           border-b-2 border-brand-gold/40 flex items-center gap-2;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.005em;
+  }
+
+  /* All-caps muted label that sits above a section title. */
+  .section-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-tribal-earth;
+  }
+
+  /* Info box — clean card with subtle border, used for narrative
+   * explanations and policy notes. Mirrors KASH .ibox. */
+  .ibox {
+    @apply bg-white border border-tribal-border-soft rounded-2xl p-5;
+    box-shadow: 0 1px 3px rgba(15, 77, 42, 0.04);
+  }
+  .ibox-title {
+    @apply text-sm font-semibold text-tribal-charcoal flex items-center gap-2 mb-2;
+  }
+  .ibox-body {
+    @apply text-[13px] text-tribal-earth leading-relaxed;
+  }
+
+  /* Tribal card — warm sand surface, used for content cards on
+   * cream pages. */
+  .tribal-card {
+    @apply bg-white border border-tribal-border-soft rounded-2xl;
+    box-shadow: 0 1px 3px rgba(15, 77, 42, 0.04);
+  }
+  .tribal-card-warm {
+    @apply bg-tribal-cream-dark border border-tribal-border rounded-2xl;
+  }
+
+  /* Split-card — two-column with coloured left border, used to compare
+   * options (e.g. in-house vs outsource on KASH). */
+  .split-card {
+    @apply bg-white border border-tribal-border-soft rounded-2xl p-5;
+    border-left-width: 4px;
+  }
+
+  /* ── 3. DISPLAY PRIMITIVES ────────────────────────────────────── */
+
+  /* KPI tile — KASH .fte-c. Big number, tiny label. */
+  .kpi-tile {
+    @apply bg-white border border-tribal-border-soft rounded-2xl p-4 text-center;
+    box-shadow: 0 1px 3px rgba(15, 77, 42, 0.04);
+  }
+  .kpi-tile .kpi-value {
+    @apply text-2xl font-bold text-brand-green leading-none tracking-tight;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .kpi-tile .kpi-label {
+    @apply text-[10px] text-tribal-earth mt-1.5 uppercase tracking-[0.1em] font-semibold;
+  }
+  .kpi-tile .kpi-delta {
+    @apply text-[10px] font-medium mt-1 block;
+  }
+
+  /* Person card — top-border accent in role color (KASH .pc). */
+  .person-card {
+    @apply relative bg-white border border-tribal-border-soft rounded-2xl p-4;
+    box-shadow: 0 1px 3px rgba(15, 77, 42, 0.04);
+  }
+  .person-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 1rem 1rem 0 0;
+    background: var(--brand-green);
+  }
+  .person-card[data-role="admin"]::before    { background: var(--brand-gold-dark); }
+  .person-card[data-role="security"]::before { background: var(--brand-red); }
+  .person-card[data-role="vendor"]::before   { background: #6B21A8; }
+
+  /* Gradient archetype card — used on landing/login to spotlight the
+   * primary CTA or persona. Diagonally lit from the green base. */
+  .archetype-card {
+    @apply relative overflow-hidden rounded-2xl p-6 text-white;
+    background: linear-gradient(135deg,
+      var(--brand-green) 0%,
+      var(--brand-green-dark) 100%);
+    box-shadow: 0 12px 30px -10px rgba(6, 53, 25, 0.45);
+  }
+  .archetype-card::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    border-radius: 9999px;
+    border: 1px solid rgba(212, 160, 23, 0.20);
+  }
+  .archetype-card::after {
+    content: '';
+    position: absolute;
+    top: -20px; right: -20px;
+    width: 140px; height: 140px;
+    border-radius: 9999px;
+    border: 1px solid rgba(212, 160, 23, 0.30);
+  }
+
+  /* ── 4. CONTROLS ──────────────────────────────────────────────── */
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
+           font-semibold text-sm transition-colors min-h-[44px]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-brand-green text-white hover:bg-brand-green-dark;
+  }
+  .btn-secondary {
+    @apply btn border border-tribal-border bg-white text-tribal-charcoal hover:bg-tribal-cream;
+  }
+  .btn-gold {
+    @apply btn bg-brand-gold text-white hover:bg-brand-gold-dark;
+  }
+  .btn-danger {
+    @apply btn bg-brand-red text-white hover:bg-red-800;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-tribal-charcoal hover:bg-tribal-cream-dark;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs min-h-[36px];
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-tribal-border bg-white px-3 py-2.5
+           text-sm text-tribal-charcoal placeholder:text-tribal-muted
+           focus:outline-none focus:ring-2 focus:ring-brand-green/30
+           focus:border-brand-green min-h-[44px];
+  }
+
+  /* Tab row — KASH .tabs + .tab. Pill-shaped, active state has a lifted
+   * white card and a green text. */
+  .tab-row {
+    @apply flex flex-wrap gap-1 bg-tribal-cream-dark rounded-xl p-1;
+  }
+  .tab-btn {
+    @apply flex-1 min-w-[80px] px-3 py-2 rounded-lg text-xs font-semibold
+           text-tribal-earth transition-colors hover:bg-white/60
+           min-h-[36px];
+  }
+  .tab-btn[data-active="true"] {
+    @apply bg-white text-brand-green shadow-card;
+  }
+
+  /* Tags — three role tones used across role-aware cards. */
+  .tag {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5
+           text-[10px] font-bold uppercase tracking-[0.08em];
+  }
+  .tag-green  { @apply bg-brand-green text-white; }
+  .tag-gold   { @apply bg-brand-gold text-white; }
+  .tag-red    { @apply bg-brand-red text-white; }
+  .tag-soft-green  { @apply bg-brand-green/12 text-brand-green; }
+  .tag-soft-gold   { @apply bg-brand-gold/15 text-brand-gold-dark; }
+  .tag-soft-red    { @apply bg-brand-red/12 text-brand-red; }
+
+  /* Quote block — Diagnostic ref. Dark green body, italic serif text,
+   * gold left border. Used on landing for testimonials. */
+  .quote-block {
+    @apply relative rounded-2xl p-6 text-white;
+    background: var(--brand-green-dark);
+    border-left: 3px solid var(--brand-gold);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic;
+  }
+  .quote-block::before {
+    content: '\201C';
+    display: block;
+    font-size: 3.5rem;
+    line-height: 0.6;
+    color: var(--brand-gold);
+    margin-bottom: 0.5rem;
   }
 }
 
-/* Mobile safe area for bottom nav */
-.safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Smooth page transitions */
+/* Page transition fade-up on every main */
 .page-content {
-  animation: fadeIn 0.25s ease-out;
+  animation: fadeUp 0.3s ease-out;
 }
-
-@keyframes fadeIn {
+@keyframes fadeUp {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* SOS pulse animation */
-@keyframes sos-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(183, 28, 28, 0.5); }
-  50%       { box-shadow: 0 0 0 16px rgba(183, 28, 28, 0); }
+/* SOS pulse — kept from previous design for the emergency button. */
+@keyframes sosPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(187, 0, 0, 0.5); }
+  50%      { box-shadow: 0 0 0 18px rgba(187, 0, 0, 0); }
 }
-.sos-pulse {
-  animation: sos-pulse 2s ease-in-out infinite;
-}
+.sos-pulse { animation: sosPulse 2s ease-in-out infinite; }
+
+/* Mobile safe-area bottom padding */
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
