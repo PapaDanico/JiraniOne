@@ -357,7 +357,7 @@ maintenanceRouter.post("/:id/comments", async (req, res) => {
   }
 
   broadcastToEstate(ticket.estateId, {
-    type: "comment:created",
+    type: "ticket:updated",
     payload: { ticketId: ticket.id, comment },
     estateId: ticket.estateId,
   });
