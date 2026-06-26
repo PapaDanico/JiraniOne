@@ -3,7 +3,12 @@ import { drizzle as drizzleHttp } from "drizzle-orm/neon-http";
 import { drizzle as drizzlePool } from "drizzle-orm/neon-serverless";
 import * as schema from "@shared/schema.js";
 
-const url = process.env.DATABASE_URL!;
+const url = process.env.DATABASE_URL;
+if (!url) {
+  console.error("❌ FATAL: DATABASE_URL environment variable is not set");
+  console.error("   Please configure DATABASE_URL in your environment before starting the server");
+  process.exit(1);
+}
 
 // HTTP driver: fast, serverless-friendly. NO transaction support.
 // Use this for the vast majority of read paths and single-statement writes.

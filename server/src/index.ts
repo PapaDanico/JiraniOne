@@ -1,4 +1,14 @@
 import "dotenv/config";
+
+// Validate critical environment variables early
+const requiredEnvVars = ["DATABASE_URL", "SESSION_SECRET"];
+const missing = requiredEnvVars.filter((v) => !process.env[v]);
+if (missing.length > 0) {
+  console.error(`❌ FATAL: Missing required environment variables: ${missing.join(", ")}`);
+  console.error("   Please configure these variables before starting the server");
+  process.exit(1);
+}
+
 import express from "express";
 import { createServer } from "http";
 import cors from "cors";
