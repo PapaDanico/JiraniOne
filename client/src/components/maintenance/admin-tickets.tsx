@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Wrench } from "lucide-react";
+import { User, Wrench, Send } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import {
   SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -47,13 +48,27 @@ function UpdateModal({ ticket, onClose }: UpdateModalProps) {
   const qc = useQueryClient();
   const [status, setStatus] = useState<TicketStatus>(ticket.status);
   const [notes, setNotes] = useState(ticket.adminNotes ?? "");
+  const [commentBody, setCommentBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: () =>
       api.patch(`/api/maintenance/${ticket.id}`, { status, adminNotes: notes }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["maintenance"] });
+      qc.invalidateQueries({ queryKey: ["maintenance", "estate"] });
       onClose();
+    },
+    onError: (err: unknown) => {
+      setError(err instanceof Error ? err.message : "Update failed");
+    },
+  });
+
+  const commentMutation = useMutation({
+    mutationFn: () =>
+      api.post(`/api/maintenance/${ticket.id}/comments`, { body: commentBody }),
+    onSuccess: () => {
+      setCommentBody("");
+      qc.invalidateQueries({ queryKey: ["maintenance", "estate"] });
     },
   });
 
@@ -82,6 +97,23 @@ function UpdateModal({ ticket, onClose }: UpdateModalProps) {
               <p className="text-xs text-[#6B5D45] mt-1">{ticket.description}</p>
             )}
           </div>
+
+          {ticket.photoUrls && ticket.photoUrls.length > 0 && (
+            <div>
+              <Label className="text-[#212121] font-semibold text-xs">Photos</Label>
+              <div className="grid grid-cols-2 gap-2 mt-1.5">
+                {ticket.photoUrls.map((url, i) => (
+                  <img
+                    key={i}
+                    src={url}
+                    alt={`Photo ${i + 1}`}
+                    className="w-full h-24 object-cover rounded-lg border border-tribal-border"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <Label className="text-[#212121] font-semibold">Status</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as TicketStatus)}>
@@ -104,6 +136,49 @@ function UpdateModal({ ticket, onClose }: UpdateModalProps) {
               rows={3}
             />
           </div>
+
+          {ticket.comments && ticket.comments.length > 0 && (
+            <div>
+              <Label className="text-[#212121] font-semibold text-xs">Updates ({ticket.comments.length})</Label>
+              <div className="space-y-2 mt-2 max-h-40 overflow-y-auto">
+                {ticket.comments.map((c) => (
+                  <div key={c.id} className="rounded-lg bg-tribal-background p-2.5 text-xs">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-semibold text-[#212121]">{c.author?.name ?? "Unknown"}</span>
+                      <span className="text-[#D4C9A8] text-xs">{formatRelative(c.createdAt)}</span>
+                    </div>
+                    <p className="text-[#6B5D45] mt-1">{c.body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <Label className="text-[#212121] font-semibold">Add Update</Label>
+            <div className="flex gap-1.5 mt-1.5">
+              <Input
+                value={commentBody}
+                onChange={(e) => setCommentBody(e.target.value)}
+                placeholder="Type update..."
+                className="text-xs"
+              />
+              <Button
+                size="sm"
+                onClick={() => commentMutation.mutate()}
+                disabled={!commentBody.trim() || commentMutation.isPending}
+                className="shrink-0"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="rounded-lg bg-[#B71C1C]/10 border border-[#B71C1C]/20 px-3 py-2.5 text-xs text-[#B71C1C]">
+              {error}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
