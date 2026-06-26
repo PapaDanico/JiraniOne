@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell, CheckCheck, MessageCircle } from "lucide-react";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { SectionLoader } from "@/components/shared/loading";
 import { api } from "@/lib/api";
 import { formatRelative } from "@/lib/utils";
@@ -24,6 +25,19 @@ export default function NotificationsPage() {
     queryFn: () => api.get<Notification[]>("/api/notifications").then((r) => r.data),
   });
 
+  const { data: smsQuota } = useQuery({
+    queryKey: ["sms-quota"],
+    queryFn: () =>
+      api
+        .get<{
+          sentToday: number;
+          dailyLimit: number;
+          remaining: number;
+          percentUsed: number;
+        }>("/api/users/me/sms-quota")
+        .then((r) => r.data),
+  });
+
   const markRead = useMutation({
     mutationFn: (id: string) => api.patch(`/api/notifications/${id}/read`, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
@@ -39,8 +53,39 @@ export default function NotificationsPage() {
   return (
     <div className="page-wrap">
       <TopBar title="Notifications" />
-      <main className="max-w-lg mx-auto px-4 pt-4 page-content">
-        <div className="flex items-center justify-between mb-4">
+      <main className="max-w-lg mx-auto px-4 pt-4 space-y-4 page-content">
+        {smsQuota && (
+          <Card className={smsQuota.percentUsed > 80 ? "border-amber-500" : ""}>
+            <CardContent className="py-3">
+              <div className="flex items-start gap-3">
+                <MessageCircle className="h-5 w-5 text-[#D47A00] flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-[#212121]">SMS Quota</p>
+                  <div className="mt-2 w-full bg-[#F0EDE5] rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-full transition-colors ${
+                        smsQuota.percentUsed > 80
+                          ? "bg-amber-500"
+                          : smsQuota.percentUsed > 50
+                            ? "bg-brand-gold"
+                            : "bg-brand-green"
+                      }`}
+                      style={{ width: `${smsQuota.percentUsed}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-[#6B5D45] mt-1">
+                    {smsQuota.sentToday} of {smsQuota.dailyLimit} messages sent today
+                    {smsQuota.remaining > 0
+                      ? ` • ${smsQuota.remaining} remaining`
+                      : " • Limit reached"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="section-label">My Notifications</p>
             {unreadCount > 0 && (

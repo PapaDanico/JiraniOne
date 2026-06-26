@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import { randomBytes } from "crypto";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { users, userSetupTokens } from "@shared/schema.js";
 import {
@@ -250,6 +250,32 @@ usersRouter.post("/me/password", async (req, res) => {
 });
 
 // ── Kenya DPA 2019 — data subject rights ─────────────────────────────────────
+
+// GET /api/users/me/sms-quota — current SMS usage for the authenticated user
+usersRouter.get("/me/sms-quota", async (_req, res) => {
+  const user = res.locals.user!;
+  const dailyCap = parseInt(process.env.SMS_PER_USER_DAILY_CAP ?? "30", 10);
+
+  const [row] = await db
+    .select({ sentCount: sql<number>`COALESCE(sent_count, 0)` })
+    .from(sql`sms_quotas`)
+    .where(
+      sql`user_id = ${user.id} AND day = CURRENT_DATE`
+    )
+    .limit(1);
+
+  const sentCount = row?.sentCount ?? 0;
+  const remaining = Math.max(0, dailyCap - sentCount);
+
+  res.json({
+    data: {
+      sentToday: sentCount,
+      dailyLimit: dailyCap,
+      remaining,
+      percentUsed: Math.round((sentCount / dailyCap) * 100),
+    },
+  });
+});
 
 // GET /api/users/me/data — return all data we hold about this user.
 // Used to satisfy DPA Article 26 (right to data portability / access).
