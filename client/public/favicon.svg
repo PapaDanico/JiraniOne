@@ -1,33 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
   <defs>
-    <clipPath id="c"><circle cx="16" cy="18" r="12"/></clipPath>
-    <clipPath id="s"><ellipse cx="16" cy="18" rx="5" ry="8"/></clipPath>
+    <linearGradient id="fg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1B5E20;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F4D2A;stop-opacity:1" />
+    </linearGradient>
   </defs>
 
-  <!-- Flag bands inside circle -->
-  <rect x="4" y="9" width="24" height="9"  fill="#111111" clip-path="url(#c)"/>
-  <rect x="4" y="15" width="24" height="8" fill="#1B5E20" clip-path="url(#c)"/>
-  <rect x="4" y="22" width="24" height="9" fill="#B71C1C" clip-path="url(#c)"/>
-  <rect x="4" y="14" width="24" height="2" fill="#fff" clip-path="url(#c)"/>
-  <rect x="4" y="21" width="24" height="2" fill="#fff" clip-path="url(#c)"/>
+  <!-- Shield shape -->
+  <path d="M16,2 L24,8 L24,16 C24,22 16,28 16,28 C16,28 8,22 8,16 L8,8 Z"
+        fill="url(#fg)" stroke="#063519" stroke-width="0.5"/>
 
-  <!-- Maasai shield -->
-  <ellipse cx="16" cy="18" rx="5" ry="8" fill="#111111"/>
-  <path d="M11 18 Q11 11 16 10 L16 18 Z" fill="#1B5E20"/>
-  <path d="M21 18 Q21 11 16 10 L16 18 Z" fill="#1B5E20"/>
-  <path d="M11 18 Q11 25 16 26 L16 18 Z" fill="#B71C1C"/>
-  <path d="M21 18 Q21 25 16 26 L16 18 Z" fill="#B71C1C"/>
-  <rect x="15" y="10" width="2" height="16" fill="#111111" clip-path="url(#s)"/>
-  <ellipse cx="16" cy="18" rx="1.5" ry="3" fill="#fff"/>
+  <!-- Kenya flag stripes -->
+  <rect x="10" y="7" width="12" height="2.5" fill="#0A0A0A"/>
+  <rect x="10" y="9.5" width="12" height="2.5" fill="#006B3F"/>
+  <rect x="10" y="12" width="12" height="2.5" fill="#BB0000"/>
 
-  <!-- Outer ring -->
-  <circle cx="16" cy="18" r="12" fill="none" stroke="#fff" stroke-width="1"/>
-  <circle cx="16" cy="18" r="13" fill="none" stroke="#111111" stroke-width="2"/>
+  <!-- Center accent (spear) -->
+  <line x1="16" y1="5" x2="16" y2="24" stroke="#D4A017" stroke-width="0.8"/>
+  <circle cx="16" cy="11" r="1.2" fill="#D4A017" opacity="0.8"/>
 
-  <!-- House roof -->
-  <path d="M16 6 L25 13 A13 13 0 0 0 7 13 Z" fill="#f0ede5"/>
-  <polyline points="7,13 16,6 25,13" fill="none" stroke="#111111" stroke-width="2" stroke-linejoin="miter"/>
-  <polyline points="8,14 16,8 24,14" fill="none" stroke="#fff" stroke-width="1" stroke-linejoin="miter"/>
-  <!-- Chimney -->
-  <rect x="21" y="7" width="3" height="5" fill="#111111"/>
+  <!-- Small white highlight -->
+  <path d="M10 9.5 Q12 8 14 9.5" fill="none" stroke="#FFFFFF" stroke-width="0.6" opacity="0.6"/>
 </svg>
