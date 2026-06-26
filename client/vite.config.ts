@@ -11,6 +11,17 @@ export default defineConfig({
   build: {
     outDir: "../dist/public",
     emptyOutDir: true,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom"],
+          query: ["@tanstack/react-query"],
+          forms: ["react-hook-form", "zod"],
+          utils: ["lucide-react", "date-fns", "clsx", "tailwind-merge"],
+        },
+      },
+    },
   },
   resolve: {
     alias: {
