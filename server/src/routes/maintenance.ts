@@ -15,6 +15,7 @@ import { newId } from "../lib/ids.js";
 import { broadcastToEstate } from "../ws.js";
 import { processUploadedImages } from "../lib/imageUpload.js";
 import { writeAudit } from "../lib/audit.js";
+import { createNotification } from "../lib/notify.js";
 
 export const maintenanceRouter = Router();
 maintenanceRouter.use(requireAuth);
@@ -52,14 +53,16 @@ maintenanceRouter.get(
     const user = res.locals.user!;
     const { status, priority, category } = req.query as Record<string, string>;
 
+    const conditions = [
+      eq(maintenanceTickets.estateId, user.estateId!),
+      isNull(maintenanceTickets.deletedAt),
+    ];
+    if (status) conditions.push(eq(maintenanceTickets.status, status as never));
+    if (priority) conditions.push(eq(maintenanceTickets.priority, priority as never));
+    if (category) conditions.push(eq(maintenanceTickets.category, category as never));
+
     const rows = await db.query.maintenanceTickets.findMany({
-      where: and(
-        eq(maintenanceTickets.estateId, user.estateId!),
-        isNull(maintenanceTickets.deletedAt),
-        status ? eq(maintenanceTickets.status, status as never) : undefined,
-        priority ? eq(maintenanceTickets.priority, priority as never) : undefined,
-        category ? eq(maintenanceTickets.category, category as never) : undefined,
-      ),
+      where: and(...conditions),
       with: {
         resident: { columns: { name: true, unitNumber: true } },
         assignedTo: { columns: { name: true } },
@@ -255,6 +258,35 @@ maintenanceRouter.patch(
       .where(eq(maintenanceTickets.id, req.params['id']!))
       .returning();
 
+    // Notify resident of status change
+    if (parsed.data.status && parsed.data.status !== existing.status) {
+      const statusLabels: Record<string, string> = {
+        open: "Open",
+        assigned: "Assigned",
+        in_progress: "In Progress",
+        resolved: "Resolved",
+        closed: "Closed",
+      };
+      await createNotification({
+        userId: existing.residentId,
+        title: "Ticket Update",
+        body: `Your "${existing.title}" ticket status changed to ${statusLabels[parsed.data.status]}.`,
+        type: "ticket_status",
+        linkTo: `/maintenance`,
+      });
+    }
+
+    // Notify assignee if assigned
+    if (parsed.data.assignedToId && parsed.data.assignedToId !== existing.assignedToId) {
+      await createNotification({
+        userId: parsed.data.assignedToId,
+        title: "New Assignment",
+        body: `You've been assigned to: ${existing.title}`,
+        type: "ticket_assigned",
+        linkTo: `/maintenance`,
+      });
+    }
+
     broadcastToEstate(user.estateId!, {
       type: "ticket:updated",
       payload: updated,
@@ -281,7 +313,7 @@ maintenanceRouter.post("/:id/comments", async (req, res) => {
   const user = res.locals.user!;
   const parsed = addCommentSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input" });
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
 
@@ -312,6 +344,23 @@ maintenanceRouter.post("/:id/comments", async (req, res) => {
       body: parsed.data.body,
     })
     .returning();
+
+  // Notify ticket owner if comment from admin
+  if (user.role === "admin" && ticket.residentId !== user.id) {
+    await createNotification({
+      userId: ticket.residentId,
+      title: "New Update",
+      body: `Admin added a comment on your ticket: "${ticket.title}"`,
+      type: "ticket_comment",
+      linkTo: `/maintenance`,
+    });
+  }
+
+  broadcastToEstate(ticket.estateId, {
+    type: "ticket:updated",
+    payload: { ticketId: ticket.id, comment },
+    estateId: ticket.estateId,
+  });
 
   res.status(201).json({ data: comment });
 });

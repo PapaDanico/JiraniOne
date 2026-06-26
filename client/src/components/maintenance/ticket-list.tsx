@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Plus, Wrench, AlertCircle, Clock, CheckCircle } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Wrench, AlertCircle, Clock, CheckCircle, ChevronDown, ChevronUp, Send } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { TicketForm } from "./ticket-form";
 import { SectionLoader } from "@/components/shared/loading";
 import { formatRelative } from "@/lib/utils";
@@ -29,6 +30,118 @@ const CATEGORY_EMOJI: Record<string, string> = {
   plumbing: "🔧", electrical: "⚡", roads: "🛣️",
   landscaping: "🌿", security: "🔒", cleaning: "🧹", other: "📋",
 };
+
+interface TicketCardProps {
+  ticket: MaintenanceTicket;
+}
+
+function TicketCard({ ticket }: TicketCardProps) {
+  const qc = useQueryClient();
+  const [expanded, setExpanded] = useState(false);
+  const [commentBody, setCommentBody] = useState("");
+
+  const cfg = STATUS_MAP[ticket.status];
+  const pri = PRIORITY_MAP[ticket.priority];
+  const emoji = CATEGORY_EMOJI[ticket.category] ?? "📋";
+
+  const commentMutation = useMutation({
+    mutationFn: () =>
+      api.post(`/api/maintenance/${ticket.id}/comments`, { body: commentBody }),
+    onSuccess: () => {
+      setCommentBody("");
+      qc.invalidateQueries({ queryKey: ["maintenance", "my"] });
+    },
+  });
+
+  return (
+    <Card className="overflow-hidden">
+      <div className={`h-1 w-full ${cfg.bar}`} />
+      <CardContent className="py-3">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#EDE7D8] flex items-center justify-center shrink-0 text-lg">
+            {emoji}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm text-[#212121] truncate">{ticket.title}</p>
+            <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
+              <Badge variant={cfg.variant as never} className="flex items-center gap-1 text-xs">
+                {cfg.icon} {cfg.label}
+              </Badge>
+              <span className={`text-xs font-medium ${pri.color}`}>{pri.label}</span>
+            </div>
+            {ticket.photoUrls && ticket.photoUrls.length > 0 && (
+              <div className="mt-2 flex gap-1">
+                {ticket.photoUrls.slice(0, 3).map((url, i) => (
+                  <img
+                    key={i}
+                    src={url}
+                    alt={`Photo ${i + 1}`}
+                    className="w-14 h-14 object-cover rounded-lg border border-tribal-border"
+                  />
+                ))}
+                {ticket.photoUrls.length > 3 && (
+                  <div className="w-14 h-14 rounded-lg bg-[#EDE7D8] flex items-center justify-center text-xs font-semibold text-[#6B5D45]">
+                    +{ticket.photoUrls.length - 3}
+                  </div>
+                )}
+              </div>
+            )}
+            {ticket.adminNotes && (
+              <div className="mt-1.5 pl-2 border-l-2 border-[#1B5E20]/40">
+                <p className="text-xs text-[#1B5E20] font-medium">Admin Notes:</p>
+                <p className="text-xs text-[#1B5E20]/80">{ticket.adminNotes}</p>
+              </div>
+            )}
+            <p className="text-xs text-[#D4C9A8] mt-1.5">{formatRelative(ticket.createdAt)}</p>
+          </div>
+          {ticket.comments && ticket.comments.length > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setExpanded(!expanded)}
+              className="shrink-0 h-8 w-8 p-0"
+            >
+              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          )}
+        </div>
+
+        {expanded && ticket.comments && ticket.comments.length > 0 && (
+          <div className="mt-3 space-y-2 pt-3 border-t border-tribal-border">
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {ticket.comments.map((c) => (
+                <div key={c.id} className="rounded-lg bg-tribal-background p-2 text-xs">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="font-semibold text-[#212121]">{c.author?.name ?? "Unknown"}</span>
+                    <span className="text-[#D4C9A8]">{formatRelative(c.createdAt)}</span>
+                  </div>
+                  <p className="text-[#6B5D45] mt-0.5">{c.body}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-1.5 mt-2">
+              <Input
+                value={commentBody}
+                onChange={(e) => setCommentBody(e.target.value)}
+                placeholder="Reply..."
+                className="text-xs h-8"
+              />
+              <Button
+                size="sm"
+                onClick={() => commentMutation.mutate()}
+                disabled={!commentBody.trim() || commentMutation.isPending}
+                className="shrink-0 h-8 w-8 p-0"
+              >
+                <Send className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export function TicketList() {
   const [formOpen, setFormOpen] = useState(false);
@@ -64,39 +177,9 @@ export function TicketList() {
         </div>
       ) : (
         <div className="space-y-2.5">
-          {tickets.map((t) => {
-            const cfg = STATUS_MAP[t.status];
-            const pri = PRIORITY_MAP[t.priority];
-            const emoji = CATEGORY_EMOJI[t.category] ?? "📋";
-            return (
-              <Card key={t.id} className="overflow-hidden">
-                <div className={`h-1 w-full ${cfg.bar}`} />
-                <CardContent className="py-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-[#EDE7D8] flex items-center justify-center shrink-0 text-lg">
-                      {emoji}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-[#212121] truncate">{t.title}</p>
-                      <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
-                        <Badge variant={cfg.variant as never} className="flex items-center gap-1 text-xs">
-                          {cfg.icon} {cfg.label}
-                        </Badge>
-                        <span className={`text-xs font-medium ${pri.color}`}>{pri.label}</span>
-                      </div>
-                      {t.adminNotes && (
-                        <div className="mt-1.5 pl-2 border-l-2 border-[#1B5E20]/40">
-                          <p className="text-xs text-[#1B5E20] font-medium">Admin Notes:</p>
-                          <p className="text-xs text-[#1B5E20]/80">{t.adminNotes}</p>
-                        </div>
-                      )}
-                      <p className="text-xs text-[#D4C9A8] mt-1.5">{formatRelative(t.createdAt)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {tickets.map((t) => (
+            <TicketCard key={t.id} ticket={t} />
+          ))}
         </div>
       )}
 
