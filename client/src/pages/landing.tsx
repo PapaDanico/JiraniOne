@@ -142,15 +142,12 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-tribal-cream">
       {/* Top nav */}
-      <nav className="sticky top-0 z-40 bg-tribal-cream/95 backdrop-blur border-b border-tribal-border">
-        <div className="container-wide flex items-center justify-between py-3">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-brand-green flex items-center justify-center">
-              <span className="text-brand-gold font-bold text-sm">JH</span>
-            </div>
-            <span className="font-bold text-xl text-brand-green font-display">JiraniHub</span>
+      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-tribal-border shadow-sm">
+        <div className="container-wide flex items-center justify-between py-2">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <img src="/logo-horizontal.svg" alt="JiraniHub" className="h-14" />
           </Link>
-          <Link href="/login" className="btn-primary px-4 py-2 min-h-0 text-sm">
+          <Link href="/login" className="btn-primary px-6 py-2.5 min-h-[44px] text-sm font-semibold">
             Sign In
           </Link>
         </div>
@@ -175,16 +172,16 @@ export default function LandingPage() {
             JiraniHub is the digital infrastructure layer that replaces paper logbooks,
             verbal announcements and the family WhatsApp group running your estate today.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/login"
-              className="inline-flex items-center justify-center gap-2 bg-brand-gold hover:bg-brand-gold-dark text-white font-bold px-8 py-3.5 rounded-xl text-base transition-colors min-h-[48px]"
+              className="inline-flex items-center justify-center gap-2 bg-brand-gold hover:bg-brand-gold-dark text-white font-bold px-8 py-3.5 rounded-xl text-base transition-all duration-200 min-h-[48px] hover:shadow-lg hover:scale-105 active:scale-95"
             >
               Get Started Free <ChevronRight className="h-4 w-4" />
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center justify-center gap-2 border border-white/30 text-white hover:bg-white/10 font-semibold px-8 py-3.5 rounded-xl text-base transition-colors min-h-[48px]"
+              className="inline-flex items-center justify-center gap-2 border-2 border-white text-white hover:bg-white/20 font-semibold px-8 py-3.5 rounded-xl text-base transition-all duration-200 min-h-[48px] hover:shadow-lg"
             >
               Try the Demo
             </Link>
@@ -208,13 +205,16 @@ export default function LandingPage() {
             Every piece a Kenyan estate needs — without the bolt-on integrations.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {FEATURES.map((f) => (
-            <div key={f.title} className="tribal-card p-5 hover:shadow-card-lg transition-shadow">
-              <div className={`w-11 h-11 rounded-xl ${TONE_BG[f.tone]} flex items-center justify-center mb-4`}>
-                <f.Icon className="h-5 w-5" />
+            <div
+              key={f.title}
+              className="tribal-card p-6 hover:shadow-card-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
+            >
+              <div className={`w-12 h-12 rounded-xl ${TONE_BG[f.tone]} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                <f.Icon className="h-6 w-6" />
               </div>
-              <h3 className="font-display font-bold text-tribal-charcoal mb-1.5">{f.title}</h3>
+              <h3 className="font-display font-bold text-tribal-charcoal mb-2 text-lg">{f.title}</h3>
               <p className="text-sm text-tribal-earth leading-relaxed">{f.desc}</p>
             </div>
           ))}
@@ -235,16 +235,19 @@ export default function LandingPage() {
             Same login, different dashboard.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {ROLES.map((r) => (
-            <div key={r.label} className="tribal-card p-5 flex flex-col gap-3">
+            <div
+              key={r.label}
+              className="tribal-card p-6 flex flex-col gap-4 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
+            >
               <div className="flex items-center gap-3">
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${r.iconBg}`}>
-                  <r.Icon className={`h-5 w-5 ${r.iconFg}`} />
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${r.iconBg} group-hover:scale-110 transition-transform`}>
+                  <r.Icon className={`h-6 w-6 ${r.iconFg}`} />
                 </div>
                 <div>
-                  <p className="font-display font-bold text-tribal-charcoal">{r.label}</p>
-                  <span className={`inline-block text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 mt-0.5 ${r.chipClass}`}>
+                  <p className="font-display font-bold text-tribal-charcoal text-base">{r.label}</p>
+                  <span className={`inline-block text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-1 mt-1 ${r.chipClass}`}>
                     {r.chip}
                   </span>
                 </div>
