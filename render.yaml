@@ -21,6 +21,8 @@ services:
         generateValue: true
       - key: CLIENT_URL
         value: https://www.jiranihub.co.ke
+      - key: RENDER_EXTERNAL_URL
+        sync: true          # Render provides this automatically
       - key: MPESA_CONSUMER_KEY
         sync: false
       - key: MPESA_CONSUMER_SECRET
