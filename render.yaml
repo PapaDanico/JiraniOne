@@ -4,8 +4,9 @@ services:
     runtime: node
     region: fra  # Frankfurt — closest to Kenya
     plan: starter
-    # Build needs devDeps (vite, esbuild, drizzle-kit) — do not pass --omit=dev.
-    buildCommand: npm install && npm run build
+    # Build needs devDeps (vite, esbuild, drizzle-kit).
+    # Use npm ci to respect lock file, then rebuild esbuild binary.
+    buildCommand: npm ci && npm rebuild esbuild && npm run build
     # All scripts use IF NOT EXISTS and are safe to re-run on every deploy.
     preDeployCommand: node migrate-new-features.mjs && node migrate-password-reset.mjs && node migrate-payment-integrity.mjs && node migrate-anonymous-polls.mjs && node migrate-setup-links.mjs && node migrate-payment-metadata.mjs
     startCommand: node dist/server/index.js
