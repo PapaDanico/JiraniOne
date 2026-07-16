@@ -1,0 +1,32 @@
+[build]
+  # Schema changes are pushed deliberately via `npm run db:push` (Drizzle's
+  # declarative push), not as an automatic build step — so build behaves
+  # identically for previews and production, and no build needs DATABASE_URL.
+  command = "npm run build:client"
+  publish = "dist/public"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  # sharp and bcrypt are native addons — don't let the function bundler
+  # try to tree-shake/bundle their .node binaries.
+  external_node_modules = ["sharp", "bcrypt"]
+
+# Order matters — first match wins. API and upload routes must be caught
+# before the SPA fallback, or every request would 200 with index.html.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/uploads/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

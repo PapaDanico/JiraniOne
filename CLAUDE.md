@@ -26,20 +26,21 @@ accordingly.
 - Wouter (lightweight client-side routing)
 - TanStack Query / React Query (server state + caching)
 - React Hook Form + Zod (form handling + validation)
-- WebSocket client (real-time updates)
+- React Query polling (real-time-ish updates — no WebSocket, see below)
 - IndexedDB (offline-first storage for critical forms)
 
 ### Backend
-- Node.js + Express.js (TypeScript, ES modules)
+- Node.js + Express.js (TypeScript, ES modules), run as a Netlify Function
+  via `serverless-http` in production (see DEPLOYMENT TARGET below)
 - Drizzle ORM (type-safe DB operations)
 - Lucia Auth (phone number + password authentication)
 - Express sessions + connect-pg-simple (PostgreSQL session storage)
-- WebSocket server (ws library, real-time events)
-- node-cron (scheduled cleanup jobs)
+- Netlify Scheduled Functions (cron-equivalent jobs — no in-process scheduler)
 
 ### Database
-- PostgreSQL via Neon (serverless, cloud-hosted)
-- Drizzle migrations (version-controlled schema)
+- PostgreSQL via Supabase (cloud-hosted), accessed through Supabase's
+  Transaction pooler (Supavisor) for serverless-friendly connection pooling
+- Drizzle ORM, schema pushed declaratively via `npm run db:push`
 
 ### Payments
 - M-PESA Daraja API (STK Push, C2B, B2C)
@@ -243,7 +244,7 @@ client/src/
 │   ├── admin/           # Admin dashboard + management pages
 │   ├── security/        # Gate dashboard + scanner
 │   └── vendor/          # Vendor profile + listings
-├── hooks/               # useAuth, useWebSocket, useOfflineSync
+├── hooks/               # useAuth, usePolling, useOfflineSync
 ├── lib/                 # queryClient, api helpers, utils
 └── types/               # Shared TypeScript interfaces
 ```
@@ -264,15 +265,29 @@ If referencing the Replit export for logic, SKIP these entirely:
 
 ## DEPLOYMENT TARGET
 
-### Platform: Railway.app (primary) or Render.com (fallback)
-- Handles Node.js backend + PostgreSQL + static frontend in one project
+### Platform: Netlify (Functions + static hosting)
+- Frontend built via Vite and served as static assets from Netlify's CDN
+  (`publish = dist/public`)
+- Backend runs as a single Netlify Function (`netlify/functions/api.ts`),
+  wrapping the Express app with `serverless-http` — see `server/src/createApp.ts`
+- Scheduled jobs (M-PESA reconciliation, daily cleanup, weekly visitor PII
+  anonymization) run as Netlify Scheduled Functions, not an in-process
+  scheduler — see `netlify/functions/reconcile-payments.ts`,
+  `daily-cleanup.ts`, `visitor-purge.ts`
+- Maintenance ticket photo uploads go to Netlify Blobs in production (local
+  dev still uses disk — see `server/src/lib/blobStorage.ts`)
+- No WebSocket server — real-time updates are client-side polling
+  (`client/src/hooks/usePolling.ts`), since Netlify Functions have no
+  persistent process to hold a WS connection
 - Auto-deploy from GitHub on push to main
-- Environment variables managed in Railway dashboard
+- Environment variables (including `DATABASE_URL`) managed in the Netlify
+  site dashboard — needed at both build time (pre-build migration scripts)
+  and function runtime
 
 ### Domain
 - Custom domain: jiranihub.co.ke (or similar .co.ke)
 - HTTPS enforced
-- M-PESA callback URL must be HTTPS — Railway provides this by default
+- M-PESA callback URL must be HTTPS — Netlify provides this by default
 
 ---
 

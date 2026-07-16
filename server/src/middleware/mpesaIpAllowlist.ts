@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { logger } from "../lib/logger.js";
+import { getClientIp } from "../lib/httpUtils.js";
 
 const log = logger.child({ component: "mpesa_ip_allowlist" });
 
@@ -43,9 +44,7 @@ export function mpesaIpAllowlist(
     return;
   }
 
-  // Requires app.set('trust proxy', ...) so Express resolves the real client
-  // IP through Render's load balancer.
-  const ip = (req.ip ?? "").replace(/^::ffff:/, "");
+  const ip = getClientIp(req);
   if (!ip || !ALLOWLIST.has(ip)) {
     // Always 200 to Safaricom (they retry on non-2xx) but DO NOT process.
     // Log so we can spot probes / IP rotations.

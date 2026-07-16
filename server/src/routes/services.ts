@@ -54,9 +54,19 @@ servicesRouter.patch("/:id", requireRole("admin"), async (req, res) => {
     )).limit(1);
   if (!existing) { res.status(404).json({ error: "Provider not found" }); return; }
 
-  const updates: Partial<typeof existing> = { ...req.body as Partial<typeof existing>, updatedAt: new Date() };
-  delete updates.id;
-  delete updates.estateId;
+  // Explicit allow-list — `rating`/`ratingCount` are derived from reviews
+  // (not implemented yet) and `userId` is the owning vendor; none of those
+  // should be settable by a raw PATCH body.
+  const body = req.body as {
+    name?: string; category?: string; phone?: string;
+    description?: string | null; verified?: boolean;
+  };
+  const updates: Partial<typeof existing> = { updatedAt: new Date() };
+  if (body.name !== undefined) updates.name = body.name;
+  if (body.category !== undefined) updates.category = body.category;
+  if (body.phone !== undefined) updates.phone = body.phone;
+  if (body.description !== undefined) updates.description = body.description;
+  if (body.verified !== undefined) updates.verified = body.verified;
 
   const [updated] = await db.update(serviceProviders)
     .set(updates)

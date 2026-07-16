@@ -67,7 +67,7 @@ export const registerSchema = z.object({
   unitNumber: z.string().max(20).optional(),
   consent: z.boolean().refine((v) => v === true, {
     message: "You must agree to the Privacy Policy and Terms",
-  }).optional(),
+  }),
 });
 
 export const forgotPasswordSchema = z.object({
@@ -169,6 +169,10 @@ export const emergencyAlertSchema = z.object({
   description: z.string().max(500).optional(),
   locationLat: z.number().optional(),
   locationLng: z.number().optional(),
+});
+
+export const updateEmergencyStatusSchema = z.object({
+  status: z.enum(["active", "responding", "resolved"]),
 });
 
 // M-PESA only handles whole shillings; .int() rejects decimals upstream so

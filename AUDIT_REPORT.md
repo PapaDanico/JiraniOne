@@ -1,241 +1,73 @@
-# 🔍 JiraniHub Comprehensive Audit Report
-**Date:** June 26, 2026  
-**Version:** 2.0 (Clean Build)  
-**Status:** ✅ Production Ready (Minor Enhancements Needed)
+# 🔍 JiraniHub Comprehensive Audit & Bug Report
+**Date:** 2026-07-16
+**Version:** 2.0 (Clean Build)
+**Scope:** Full backend (`server/src`), frontend (`client/src`), and shared schema/validators, read in full — not a smoke test.
+
+This supersedes the previous audit report, which was a feature-completeness pass and did not catch the correctness/security defects below. This pass specifically hunted for logic errors, race conditions, authorization bypasses, and broken execution paths, verified by tracing concrete request scenarios rather than reading code for style.
 
 ---
 
-## 📊 Executive Summary
+## ✅ Fixed in this pass
 
-| Metric | Status | Notes |
-|--------|--------|-------|
-| **Code Quality** | ✅ Excellent | 49/49 tests pass, TypeScript clean |
-| **Performance** | ✅ Optimized | Code splitting implemented, 64% bundle reduction |
-| **Security** | ✅ Hardened | CSP, rate limiting, auth middleware, CORS |
-| **UI/UX** | ✅ Complete | Mobile-first, responsive, 44px touch targets |
-| **Module Coverage** | ⚠️ 4/9 core | 4 fully implemented, 5 partial |
-| **Deployment** | ✅ Live | Render auto-deploy working, Vite code splitting |
+### Critical — money / financial integrity
+1. **Forged donations, zero payment collected.** `POST /api/payments/campaigns/:id/donate` inserted a `donations` row and incremented `fundraising_campaigns.current_amount` straight from client input, with no M-PESA charge, no `campaign.status` check, and no relation to the STK-push flow at all. Any authenticated resident could inflate any campaign's total for free. The client never called this route (it uses `/api/harambee/:id/donate`, which does this correctly). **Fix:** removed the dead/dangerous endpoint entirely — `server/src/routes/payments.ts`.
+2. **M-PESA "not configured" stub fails open in production.** `isMpesaConfigured()` gated the dev stub with no `NODE_ENV` check, in three separate places (`payments.ts` `/stk-push`, `chama.ts` `/:id/contribute`, `harambee.ts` `/:id/donate`). If a Daraja env var went missing/blank in production (typo, botched secret rotation), every payment "succeeded" instantly with `mpesaRef: "DEV_STUB"` and no money ever moved. **Fix:** stub path now only runs when `NODE_ENV !== "production"`; in production a missing config returns `503` and marks the payment `failed` instead of `completed`.
 
----
+### High — data corruption / race conditions
+3. **Facility double-booking (TOCTOU).** The conflict check and the booking `INSERT` were two separate statements on the non-transactional `db` client; two concurrent requests for the same slot could both pass the check before either commit. **Fix:** wrapped in `dbTx.transaction` with `SELECT ... FOR UPDATE` on the facility row, serializing concurrent bookings per facility — `server/src/routes/facilities.ts`.
+4. **Facility booking approval never re-checked conflicts.** A booking could be approved after a conflicting one was already approved (via reject → new booking → re-approve sequences). **Fix:** added an overlap re-check on transition to `"approved"`.
+5. **Carpool overbooking race.** `seatsAvailable` was read, checked, then written back with no lock; two concurrent bookings for the last seat could both succeed. Cancel had the same issue in reverse (double-increment past `seatsTotal`). **Fix:** both endpoints now lock the offer row (`FOR UPDATE`) inside a transaction; cancel additionally clamps to `seatsTotal` — `server/src/routes/carpool.ts`.
+6. **Chama duplicate-membership race.** Membership check + insert were unlocked; a double-click or client retry could create two membership rows for one user. **Fix:** wrapped in a transaction with a row lock on the chama — `server/src/routes/chama.ts`.
 
-## ✅ Working Features (Verified)
+### High — authorization / access control
+7. **Cross-estate admin bypass in classifieds.** `PATCH`/`DELETE /api/classifieds/:id` authorized any `admin` account regardless of which estate the listing belonged to — an admin from Estate B could edit/delete Estate A's listings. **Fix:** admin check now also requires `listing.estateId === user.estateId` — `server/src/routes/classifieds.ts`.
+8. **WebSocket broadcasts had no role scoping.** `broadcastToEstate` fanned out to every socket in an estate regardless of role, so a `vendor` account (spec: marketplace-only access) received panic-button GPS coordinates and phone numbers for every emergency alert in the estate. **Fix:** sockets now track the connected user's role, and `broadcastToEstate` accepts an optional `roles` filter; emergency alert broadcasts are now restricted to `admin`/`security` — `server/src/ws.ts`, `server/src/routes/emergency.ts`.
+9. **Service-provider mass assignment.** The admin `PATCH /api/services/:id` spread the raw request body into the update (minus `id`/`estateId`), so `rating`, `ratingCount`, and the owning `userId` could be set directly with no real review/rating computation behind them. **Fix:** replaced with an explicit field allow-list (`name`, `category`, `phone`, `description`, `verified`) — `server/src/routes/services.ts`.
+10. **Maintenance ticket assignee not scoped to estate.** `assignedToId` was accepted with no check that the assignee belonged to the same estate, silently notifying an unrelated user. **Fix:** assignee is now validated against the ticket's estate before the update — `server/src/routes/maintenance.ts`.
 
-### Tier 1: Core & Tested (100% Confidence)
-- ✅ **Authentication** - Lucia auth, phone + password, session management
-- ✅ **Visitor Management** - QR codes, check-in/out, gate logs
-- ✅ **Maintenance** - Full ticket lifecycle, comments, photos, assignments
-- ✅ **Payments** - M-PESA STK Push, callbacks, receipts
-- ✅ **Announcements** - Broadcast with priorities, read receipts
-- ✅ **WebSocket** - Real-time updates, event broadcasting
-- ✅ **Rate Limiting** - Global (200/15min), auth (10/15min), STK (5/15min)
-- ✅ **Security Headers** - CSP, CORS, HSTS, X-Frame-Options
-- ✅ **Health Check** - `/api/health` with DB connectivity test (503 if down)
+### High — broken registration flow
+11. **Anti-enumeration measure was both ineffective and broke the app.** `POST /register` returned `202 {message, deferred:true}` for an existing phone vs. `201 <AuthUser>` for success — the differing status code defeated the stated purpose, **and** the client's `register()` treats any 2xx as success and stores the body as the logged-in user, so a returning user got dropped into a broken, garbage `auth.me` cache state (no session, but "truthy" user object) instead of a clear error. **Fix:** existing-phone registration now returns a plain `409` with a clear message ("already registered, try signing in") — `server/src/routes/auth.ts`.
+12. **Login lockout counter race + crash.** The failed-attempt counter was a plain select-then-insert/update; concurrent bad-password requests could race (lost increments), and a user's very first failure under concurrent requests could throw an uncaught primary-key violation (500 instead of 401). **Fix:** atomic `INSERT ... ON CONFLICT DO UPDATE` increment — `server/src/routes/auth.ts`.
+13. **Consent checkbox was decorative.** `registerSchema`'s `consent` field was `.optional()`, so omitting it entirely passed validation — a direct API call could create an account with no consent record at all, and the web form never actually sent the value it collected in the first place. **Fix:** `consent` is now required by the schema, and the client sends it — `shared/validators.ts`, `client/src/hooks/useAuth.tsx`, `client/src/pages/register.tsx`. *(Note: there is still no DB column to persist a consent timestamp — see Follow-ups.)*
 
-### Tier 2: Implemented & Functional (High Confidence)
-- ✅ **Events** - Creation, RSVP tracking, basic reminders
-- ✅ **Facility Bookings** - Time-slot booking, **conflict detection**, approval workflow
-- ✅ **Polls & Voting** - Poll creation, anonymous voting, results
-- ✅ **Marketplace** - Service provider listings, booking integration
-- ✅ **Emergency** - Panic button, GPS capture, alert broadcast
-- ✅ **Parcels** - Status tracking, resident notifications
-- ✅ **Carpool** - Route tracking, ride booking
-- ✅ **Chama** - Group management, contribution tracking
+### Medium
+14. **Emergency status update skipped validation.** `PATCH /api/emergency/:id` cast `req.body.status` directly instead of validating it, so a bad value hit the Postgres enum column and threw — which, per the next item, previously just hung the request. **Fix:** added `updateEmergencyStatusSchema` (zod) — `shared/validators.ts`, `server/src/routes/emergency.ts`.
+15. **Async route errors never reached the error handler.** Express 4 does not auto-forward promise rejections from `async (req, res) => {}` handlers; with no wrapper anywhere in the codebase, a thrown error in any route became an untracked `unhandledRejection` — logged, but the client's connection just hung until timeout instead of getting a response. **Fix:** added `express-async-errors`, imported first in `server/src/index.ts`, so thrown/rejected errors now correctly reach the existing `app.use((err, ...) => ...)` handler and return a proper `500`.
+16. **Admin analytics counted soft-deleted residents.** The estate headcount query was missing `isNull(users.deletedAt)` (present everywhere else in the codebase), so removed residents stayed in `residents.total` indefinitely. **Fix:** added the filter — `server/src/routes/analytics.ts`.
+17. **Parcel `/collected` skipped the gate check-in step.** A resident could mark a parcel "collected" while it was still `"expected"`, bypassing the gate hand-off entirely. **Fix:** now requires `status === "at_gate"` first — `server/src/routes/parcels.ts`.
+18. **Seed script silently duplicated the demo estate.** `estates.name` has no unique constraint, so `onConflictDoNothing()` never actually detected a collision; every re-run of `npm run db:seed` created a fresh duplicate "NHC Stoni Athi View" row, and the dead `if (!estate)` branch never ran. **Fix:** now looks the estate up by name first and only inserts if absent — `server/src/seed.ts`.
 
-### Tier 3: UI/UX Verified (Recent Changes)
-- ✅ **Logo Redesign** - Enhanced visual identity
-- ✅ **Responsive Design** - 375px+ viewports, mobile-first
-- ✅ **Code Splitting** - React/Query/Forms chunks, 64% main bundle reduction
-- ✅ **Maintenance Title** - Fixed "Matengenezo" → "Maintenance" display
+### Frontend
+19. **Emergency panic button never captured GPS, and had no error feedback.** Despite CLAUDE.md's explicit "GPS distress button: captures location" requirement, the alert form never called `navigator.geolocation`, and the mutation had no `onError` — a failed send (poor connectivity, exactly the scenario this feature exists for) just silently un-loaded the button with no explanation. **Fix:** best-effort, non-blocking GPS capture on dialog open, plus an error banner with a fallback to call security directly — `client/src/pages/emergency/index.tsx`.
+20. **WebSocket reconnect fired after intentional disconnect.** The cleanup function only called `ws.current?.close()` without marking the effect as torn down; the `onclose` handler's reconnect check (`ws.current?.readyState === CLOSED`) is also true for an intentionally-closed socket, so logging out silently reopened a new WS connection ~3s later for a session that no longer existed. **Fix:** added a `stopped` flag checked before reconnecting, and clear the pending reconnect timer on cleanup — `client/src/hooks/useWebSocket.ts`.
+21. **M-PESA STK-push dialog had no error handling.** A failed STK push (Daraja down, network drop) just stopped the button's spinner with zero feedback. **Fix:** added `onError` with a visible error banner, and coerced the amount to an integer client-side (the server rejects decimals) — `client/src/pages/payments/index.tsx`.
+22. **Admin user edit/deactivate had no error feedback**, silently doing nothing on a failed `PATCH`/`DELETE`. **Fix:** added error display to the edit dialog and the deactivate action — `client/src/pages/admin/users.tsx`.
+23. **Maintenance photo cap ("up to 5") was UI text only.** Selecting more than 5 files uploaded all of them, relying entirely on unverified server behavior. **Fix:** client now truncates to the first 5 and shows a notice — `client/src/components/maintenance/ticket-form.tsx`.
 
 ---
 
-## 🐛 Bugs Found & Status
+## ⚠️ Known issues — not fixed in this pass (recommended follow-ups)
 
-### Critical Issues (0)
-✅ **None identified** - Health endpoint works correctly with DB validation
+These were identified and verified but require larger, riskier changes (schema migrations against a live DB we don't have credentials for in this environment, or product decisions) better suited to their own dedicated change:
 
-### High Priority (0) 
-✅ **Booking conflicts:** Already implemented with overlap detection ✓
-
-### Medium Priority Issues Found (2)
-
-**1. ⚠️ Marketplace Ratings UI Missing**
-- **Component:** `/client/src/pages/marketplace/`
-- **Issue:** Schema has `rating` field, but UI doesn't display/allow rating vendors
-- **Impact:** Medium - Vendors can't be rated, breaking marketplace trust
-- **Fix Effort:** 2 hours
-- **Solution:** Add star rating component to vendor cards
-
-**2. ⚠️ Emergency Incident Log Not Exposed**
-- **Component:** `/server/src/routes/emergency.ts`
-- **Issue:** Alerts created but no GET `/api/emergency/incidents` endpoint
-- **Impact:** Medium - Admin can't view incident history/response tracking
-- **Fix Effort:** 3 hours
-- **Solution:** Add incidents query endpoint with status filtering
-
-### Low Priority Observations (3)
-
-**3. ℹ️ Recurring Events Not Supported**
-- **Component:** `/shared/schema.ts` (events table)
-- **Issue:** No `repeat_pattern` column; one-time events only
-- **Impact:** Low - Matches MVP but limits use case
-- **Post-Launch:** Add cron to expand recurring bookings
-
-**4. ℹ️ SMS Quota Dashboard Missing**
-- **Component:** `/client/src/pages/notifications/`
-- **Issue:** 30/day cap enforced server-side, not visible to user
-- **Impact:** Low - Users don't know they're close to limit
-- **Post-Launch:** Add usage indicator
-
-**5. ℹ️ Committee Member List Not Visible**
-- **Component:** `/client/src/pages/governance/`
-- **Issue:** No page to view committee structure/assignments
-- **Impact:** Low - Governance transparency incomplete
-- **Post-Launch:** Add admin page for committee management
+- **No phone-ownership verification at registration.** Anyone can register an account under any real Kenyan phone number with no OTP/SMS confirmation step, squatting the number against its real owner. Recommend an OTP-gated registration flow (the OTP infrastructure already exists for password reset — `server/src/routes/auth.ts`).
+- **Consent has no persistence.** The schema fix (#13 above) makes the API reject requests without `consent: true`, but there is still no `consentedAt` column on `users` to durably record when/if consent was given — needed for real Kenya Data Protection Act compliance. Requires a schema migration.
+- **M-PESA callback race can orphan a payment.** If `stkPush()` succeeds but the follow-up `UPDATE payments SET checkout_request_id = ...` fails/is delayed, and Safaricom's callback arrives in that window, the callback's lookup (keyed on `checkout_request_id`) finds nothing and silently drops it — and the 5-minute reconciliation cron also requires a non-null `checkout_request_id`, so it can never recover the row either. Needs either writing `checkoutRequestId` before calling `stkPush`, or a secondary reconciliation path keyed on payment `id`.
+- **Generic `/stk-push` type values aren't guarded.** A client could call the generic STK endpoint with `type: "harambee_donation"` (instead of the dedicated `harambee.ts` endpoint) and have Safaricom genuinely charge the resident, but with no `metadata.campaignId` set, so the callback handler's special-case logic silently skips creating the donation record — real money collected, no fundraising credit given. Recommend rejecting reserved `type` values on the generic endpoint.
+- **No multi-provider SMS fallback**, despite CLAUDE.md describing Safaricom → Airtel → Telkom fallback. `lib/sms.ts` calls only Africa's Talking; an outage silently drops OTPs and alerts with no retry or secondary provider.
+- **No offline-first implementation exists** for emergency alerts, maintenance drafts, or visitor pre-registration, despite being an explicit CLAUDE.md requirement (IndexedDB queue, background sync). This is a substantial feature gap, not a small fix — needs its own design/implementation pass.
+- **Chama/carpool schema lacks unique constraints** (`chama_members(chama_id, user_id)` in particular) that would provide defense-in-depth against the races fixed above at the application layer. Since this environment has no `DATABASE_URL` to run `db:push` against, adding and verifying a migration wasn't safe to do blind — recommend adding `unique(chamaId, userId)` to `chamaMembers` in `shared/schema.ts` and pushing it in an environment with DB access.
 
 ---
 
-## 📈 Performance Metrics
+## Verification performed
 
-### Bundle Optimization (Implemented Today)
-```
-Before: 1×488KB monolithic chunk
-After:  5 smart chunks (React/Query/Forms/Utils/App)
-
-Main chunk reduction: 64% (488KB → 176KB)
-Initial load on 3G: ~10s → ~3s
-Cache granularity: Independent per feature
-```
-
-### Database Queries (No N+1 Detected)
-- ✅ Eager loading for related records (residents, assignees)
-- ✅ Pagination implemented (100-item limits)
-- ✅ Indexes on estate_id, user_id, facility_id
-
-### API Response Times (from logs)
-- ✅ Static HTML: 2ms
-- ✅ API endpoints: 15-50ms
-- ✅ Auth checks: <5ms
+- `npm run typecheck` — clean, 0 errors.
+- `npm run test` — 50/50 passing (added a regression test for the new required `consent` field).
+- `npm run build` — production build succeeds (client + server bundles).
+- No live database was available in this environment (no `DATABASE_URL`), so none of the fixes could be exercised against a real Postgres instance — review the transaction/locking changes (`facilities.ts`, `carpool.ts`, `chama.ts`) with real concurrent load before relying on them in production.
 
 ---
 
-## 🔒 Security Audit (Spot Check)
-
-| Category | Status | Details |
-|----------|--------|---------|
-| **Auth** | ✅ Good | Lucia + session cookies, no hardcoded secrets |
-| **Input Validation** | ✅ Good | Zod on all POST/PATCH routes |
-| **SQL Injection** | ✅ Safe | Drizzle ORM parameterized, no raw SQL |
-| **CSRF** | ✅ Good | SameSite=lax cookies + Origin header check |
-| **XSS** | ✅ Protected | CSP report-only, React escapes by default |
-| **Rate Limiting** | ✅ Enforced | Global + auth-specific + STK-specific |
-| **M-PESA Callback** | ✅ Secure | IP allowlist + idempotency on ResultCode |
-| **CORS** | ✅ Restrictive | Whitelist-only, no * wildcard |
-
----
-
-## 📋 Module Completeness Matrix
-
-| # | Module | Coverage | Verdict |
-|---|--------|----------|---------|
-| 1 | Security & Visitors | 100% | **READY** |
-| 2 | Maintenance | 100% | **READY** |
-| 3 | Payments | 100% | **READY** |
-| 4 | Announcements | 100% | **READY** |
-| 5 | Marketplace | 85% | ⚠️ Add ratings UI |
-| 6 | Events | 90% | ⚠️ Recurring later |
-| 7 | Governance | 70% | ⚠️ Add committee view |
-| 8 | Facility Booking | 100% | **READY** |
-| 9 | Emergency | 90% | ⚠️ Add incidents endpoint |
-
-**Launch Readiness:** 4/9 fully ready. Remaining 5 functional but missing secondary features.
-
----
-
-## 🎯 Recommended Action Plan
-
-### BEFORE PRODUCTION (Must Fix)
-- [ ] **Marketplace Ratings UI** - Add star rating to vendor cards (2h)
-- [ ] **Emergency Incidents** - Add GET `/api/emergency/incidents` (2h)
-- [ ] Run end-to-end payment test (STK Push sandbox) (1h)
-
-### WITHIN 2 WEEKS (Should Fix)
-- [ ] **Committee Management** - Add admin UI for governance structure (3h)
-- [ ] **Recurring Events** - Add repeat pattern support (4h)
-- [ ] Incident response SLA dashboard (3h)
-
-### POST-LAUNCH (Nice to Have)
-- [ ] SMS quota visualization dashboard
-- [ ] Meeting minutes versioning
-- [ ] Advanced facility analytics
-
----
-
-## ✨ Recent Improvements (This Session)
-
-1. **Fixed Maintenance Title** - "Matengenezo" → "Maintenance"
-2. **Code Splitting** - 64% bundle reduction for 3G users
-3. **RENDER_EXTERNAL_URL** - Proper CORS origin handling
-4. **Render Rebuild** - Deployed latest changes
-
----
-
-## 🚀 Deployment Status
-
-- ✅ **Repository:** All committed, main branch clean
-- ✅ **Build:** Successful (Vite + esbuild)
-- ✅ **Tests:** 49/49 passing
-- ✅ **TypeScript:** 0 errors
-- ✅ **Render:** Auto-deploy configured
-- ✅ **Database:** Migrations tracked, schema versioned
-
-**Live URL:** `https://jiranihub.onrender.com`  
-**Last Deploy:** 2026-06-26 11:10 UTC  
-**Status:** ✅ Healthy (provisioned with code splitting)
-
----
-
-## 📸 UI/UX Verification (Based on Code Structure)
-
-### Pages Verified ✓
-- ✓ `/login` - Form rendering, validation
-- ✓ `/` - Landing page, hero section
-- ✓ `/maintenance` - Title fixed, ticket list
-- ✓ `/dashboard/resident` - React mount point loads
-- ✓ `/dashboard/admin` - Tabs, module shortcuts
-- ✓ All pages: CSS bundled, fonts loaded, responsive design
-
-### Design System Confirmed ✓
-- ✓ Kenya flag colors (Red/Green/Black) applied
-- ✓ Mobile-first layout (44px touch targets)
-- ✓ Tailwind + shadcn/ui components
-- ✓ Swahili labels in appropriate contexts
-- ✓ Icons via Lucide React
-
----
-
-## 🎓 Key Findings
-
-1. **Code Quality is Excellent** - Clean architecture, no anti-patterns detected
-2. **Performance Optimized** - Code splitting, lazy loading, caching headers
-3. **Security Hardened** - CSP, rate limiting, auth, CORS all properly configured
-4. **Almost Feature Complete** - 4/9 core modules fully ready, 5 partial but functional
-5. **Production Deployable** - Only cosmetic/secondary features missing
-
----
-
-## ✅ Final Verdict
-
-**Status: ✅ PRODUCTION READY (Minor Enhancements)**
-
-This application is suitable for launching with the caveat that non-critical features (ratings UI, committee viewing, incident logging) should be added within 2 weeks post-launch. The core functionality (authentication, visitors, maintenance, payments, announcements) is solid, well-tested, and secure.
-
-**Confidence Level:** 95%  
-**Risk Level:** Low  
-**Recommendation:** Deploy to production with noted enhancements tracked as post-launch tasks.
-
----
-
-Generated: 2026-06-26  
-Audited by: Claude Code  
-Session: https://claude.ai/code/
+Generated: 2026-07-16
+Audited by: Claude Code

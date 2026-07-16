@@ -163,6 +163,9 @@ function EditUserDialog({ user, onClose }: { user: EstateUser; onClose: () => vo
             <Label className="text-[#212121] font-semibold">Unit / House number</Label>
             <Input value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} placeholder="A14" />
           </div>
+          {mutation.isError && (
+            <p className="text-sm text-[#B71C1C]">{(mutation.error as Error).message}</p>
+          )}
         </div>
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
@@ -187,6 +190,7 @@ export default function AdminUsersPage() {
   const deactivate = useMutation({
     mutationFn: (id: string) => api.delete(`/api/users/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["estate-users"] }),
+    onError: (err) => alert(err instanceof Error ? err.message : "Failed to remove user."),
   });
 
   const filtered = users?.filter((u) =>

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, desc, and, gte } from "drizzle-orm";
-import { db } from "../db.js";
+import { db, dbTx } from "../db.js";
 import { carpoolOffers, carpoolBookings, users } from "@shared/schema.js";
 import { createCarpoolOfferSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
@@ -148,115 +148,142 @@ carpoolRouter.delete("/:id", async (req, res) => {
 carpoolRouter.post("/:id/book", async (req, res) => {
   const user = res.locals.user!;
 
-  const [offer] = await db
-    .select()
-    .from(carpoolOffers)
-    .where(eq(carpoolOffers.id, req.params.id!))
-    .limit(1);
+  try {
+    const booking = await dbTx.transaction(async (tx) => {
+      // Lock the offer row so two concurrent bookings for the last seat
+      // serialize — without this, both requests can read seatsAvailable=1
+      // before either decrement commits, overbooking the ride.
+      const [offer] = await tx
+        .select()
+        .from(carpoolOffers)
+        .where(eq(carpoolOffers.id, req.params.id!))
+        .for("update")
+        .limit(1);
 
-  if (!offer || offer.estateId !== user.estateId) {
-    res.status(404).json({ error: "Offer not found" });
-    return;
+      if (!offer || offer.estateId !== user.estateId) {
+        throw Object.assign(new Error("Offer not found"), { httpStatus: 404 });
+      }
+      if (offer.status !== "active") {
+        throw Object.assign(new Error("Offer is not available for booking"), { httpStatus: 400 });
+      }
+      if (offer.driverId === user.id) {
+        throw Object.assign(new Error("Driver cannot book their own offer"), { httpStatus: 400 });
+      }
+      if (offer.seatsAvailable < 1) {
+        throw Object.assign(new Error("No seats available"), { httpStatus: 400 });
+      }
+
+      const [existing] = await tx
+        .select()
+        .from(carpoolBookings)
+        .where(
+          and(
+            eq(carpoolBookings.offerId, offer.id),
+            eq(carpoolBookings.passengerId, user.id),
+          ),
+        )
+        .limit(1);
+
+      if (existing && existing.status !== "cancelled") {
+        throw Object.assign(
+          new Error("You already have a booking for this offer"),
+          { httpStatus: 400 },
+        );
+      }
+
+      const [inserted] = await tx
+        .insert(carpoolBookings)
+        .values({
+          id: newId(),
+          offerId: offer.id,
+          passengerId: user.id,
+          status: "confirmed",
+        })
+        .returning();
+
+      const newSeatsAvailable = offer.seatsAvailable - 1;
+      await tx
+        .update(carpoolOffers)
+        .set({
+          seatsAvailable: newSeatsAvailable,
+          status: newSeatsAvailable === 0 ? "full" : "active",
+          updatedAt: new Date(),
+        })
+        .where(eq(carpoolOffers.id, offer.id));
+
+      return inserted;
+    });
+
+    res.status(201).json({ data: booking });
+  } catch (err) {
+    const httpStatus = (err as { httpStatus?: number }).httpStatus;
+    if (httpStatus) {
+      res.status(httpStatus).json({ error: (err as Error).message });
+      return;
+    }
+    throw err;
   }
-  if (offer.status !== "active") {
-    res.status(400).json({ error: "Offer is not available for booking" });
-    return;
-  }
-  if (offer.driverId === user.id) {
-    res.status(400).json({ error: "Driver cannot book their own offer" });
-    return;
-  }
-  if (offer.seatsAvailable < 1) {
-    res.status(400).json({ error: "No seats available" });
-    return;
-  }
-
-  // Check for existing active booking by this user
-  const [existing] = await db
-    .select()
-    .from(carpoolBookings)
-    .where(
-      and(
-        eq(carpoolBookings.offerId, offer.id),
-        eq(carpoolBookings.passengerId, user.id),
-      ),
-    )
-    .limit(1);
-
-  if (existing && existing.status !== "cancelled") {
-    res.status(400).json({ error: "You already have a booking for this offer" });
-    return;
-  }
-
-  const [booking] = await db
-    .insert(carpoolBookings)
-    .values({
-      id: newId(),
-      offerId: offer.id,
-      passengerId: user.id,
-      status: "confirmed",
-    })
-    .returning();
-
-  const newSeatsAvailable = offer.seatsAvailable - 1;
-  await db
-    .update(carpoolOffers)
-    .set({
-      seatsAvailable: newSeatsAvailable,
-      status: newSeatsAvailable === 0 ? "full" : "active",
-      updatedAt: new Date(),
-    })
-    .where(eq(carpoolOffers.id, offer.id));
-
-  res.status(201).json({ data: booking });
 });
 
 // DELETE /:id/book — passenger cancels their booking
 carpoolRouter.delete("/:id/book", async (req, res) => {
   const user = res.locals.user!;
 
-  const [offer] = await db
-    .select()
-    .from(carpoolOffers)
-    .where(eq(carpoolOffers.id, req.params.id!))
-    .limit(1);
+  try {
+    await dbTx.transaction(async (tx) => {
+      // Lock the offer row: two concurrent cancels of the same booking
+      // must not both increment seatsAvailable past seatsTotal.
+      const [offer] = await tx
+        .select()
+        .from(carpoolOffers)
+        .where(eq(carpoolOffers.id, req.params.id!))
+        .for("update")
+        .limit(1);
 
-  if (!offer || offer.estateId !== user.estateId) {
-    res.status(404).json({ error: "Offer not found" });
-    return;
+      if (!offer || offer.estateId !== user.estateId) {
+        throw Object.assign(new Error("Offer not found"), { httpStatus: 404 });
+      }
+
+      const [booking] = await tx
+        .select()
+        .from(carpoolBookings)
+        .where(
+          and(
+            eq(carpoolBookings.offerId, offer.id),
+            eq(carpoolBookings.passengerId, user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!booking || booking.status === "cancelled") {
+        throw Object.assign(new Error("Active booking not found"), { httpStatus: 404 });
+      }
+
+      await tx
+        .update(carpoolBookings)
+        .set({ status: "cancelled" })
+        .where(eq(carpoolBookings.id, booking.id));
+
+      // Restore seat and set offer back to active if it was full. Clamp to
+      // seatsTotal so this can never overshoot the offer's real capacity.
+      const newSeatsAvailable = Math.min(offer.seatsAvailable + 1, offer.seatsTotal);
+      await tx
+        .update(carpoolOffers)
+        .set({
+          seatsAvailable: newSeatsAvailable,
+          status: offer.status === "cancelled" ? "cancelled" : "active",
+          updatedAt: new Date(),
+        })
+        .where(eq(carpoolOffers.id, offer.id));
+    });
+
+    res.json({ data: { success: true } });
+  } catch (err) {
+    const httpStatus = (err as { httpStatus?: number }).httpStatus;
+    if (httpStatus) {
+      res.status(httpStatus).json({ error: (err as Error).message });
+      return;
+    }
+    throw err;
   }
-
-  const [booking] = await db
-    .select()
-    .from(carpoolBookings)
-    .where(
-      and(
-        eq(carpoolBookings.offerId, offer.id),
-        eq(carpoolBookings.passengerId, user.id),
-      ),
-    )
-    .limit(1);
-
-  if (!booking || booking.status === "cancelled") {
-    res.status(404).json({ error: "Active booking not found" });
-    return;
-  }
-
-  await db
-    .update(carpoolBookings)
-    .set({ status: "cancelled" })
-    .where(eq(carpoolBookings.id, booking.id));
-
-  // Restore seat and set offer back to active if it was full
-  const newSeatsAvailable = offer.seatsAvailable + 1;
-  await db
-    .update(carpoolOffers)
-    .set({
-      seatsAvailable: newSeatsAvailable,
-      status: offer.status === "cancelled" ? "cancelled" : "active",
-      updatedAt: new Date(),
-    })
-    .where(eq(carpoolOffers.id, offer.id));
-
-  res.json({ data: { success: true } });
 });

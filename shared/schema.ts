@@ -9,8 +9,9 @@ import {
   decimal,
   jsonb,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
@@ -358,6 +359,14 @@ export const donations = pgTable(
   (t) => ({
     campaignIdIdx: index("donations_campaign_id_idx").on(t.campaignId),
     donorIdIdx: index("donations_donor_id_idx").on(t.donorId),
+    // Partial — many rows have NULL mpesaRef (never charged) and dev/stub
+    // paths use literal "DEV_STUB"/"STUB" values; only real M-PESA
+    // references need to be unique, to make concurrent Safaricom callback
+    // retries idempotent (a duplicate insert attempt throws instead of
+    // double-crediting a campaign).
+    mpesaRefUq: uniqueIndex("donations_mpesa_ref_unique")
+      .on(t.mpesaRef)
+      .where(sql`${t.mpesaRef} is not null and ${t.mpesaRef} not in ('DEV_STUB', 'STUB')`),
   }),
 );
 
@@ -385,6 +394,16 @@ export const payments = pgTable(
   (t) => ({
     userIdIdx: index("payments_user_id_idx").on(t.userId),
     estateIdIdx: index("payments_estate_id_idx").on(t.estateId),
+    // Partial unique indexes make the M-PESA callback handler idempotent
+    // against Safaricom's retry behavior (it retries if it doesn't see a
+    // 200 in time, and does not deduplicate). NULL/DEV_STUB/STUB values
+    // are excluded since many rows are pending or unpaid dev/stub paths.
+    checkoutRequestIdUq: uniqueIndex("payments_checkout_request_id_unique")
+      .on(t.checkoutRequestId)
+      .where(sql`${t.checkoutRequestId} is not null`),
+    mpesaRefUq: uniqueIndex("payments_mpesa_ref_unique")
+      .on(t.mpesaRef)
+      .where(sql`${t.mpesaRef} is not null and ${t.mpesaRef} not in ('DEV_STUB', 'STUB')`),
   }),
 );
 
@@ -681,7 +700,11 @@ export const voteEligibility = pgTable(
   (t) => ({
     pollIdIdx: index("vote_eligibility_poll_id_idx").on(t.pollId),
     userIdIdx: index("vote_eligibility_user_id_idx").on(t.userId),
-    pollUserUq: index("vote_eligibility_poll_user_uq").on(t.pollId, t.userId),
+    // Must be unique, not just a plain index — this is the DB-level
+    // backstop against a double-vote race (two concurrent requests both
+    // passing the app-level "already voted" check before either insert
+    // commits).
+    pollUserUq: uniqueIndex("vote_eligibility_poll_user_uq").on(t.pollId, t.userId),
   }),
 );
 
@@ -865,6 +888,9 @@ export const chamaContributions = pgTable(
   (t) => ({
     chamaIdIdx: index("chama_contributions_chama_id_idx").on(t.chamaId),
     userIdIdx: index("chama_contributions_user_id_idx").on(t.userId),
+    mpesaRefUq: uniqueIndex("chama_contributions_mpesa_ref_unique")
+      .on(t.mpesaRef)
+      .where(sql`${t.mpesaRef} is not null and ${t.mpesaRef} not in ('DEV_STUB', 'STUB')`),
   }),
 );
 

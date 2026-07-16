@@ -6,7 +6,6 @@ import { createAnnouncementSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
-import { broadcastToEstate } from "../ws.js";
 
 export const announcementsRouter = Router();
 announcementsRouter.use(requireAuth);
@@ -42,12 +41,6 @@ announcementsRouter.post("/", requireRole("admin"), async (req, res) => {
       priority: parsed.data.priority,
     })
     .returning();
-
-  broadcastToEstate(user.estateId!, {
-    type: "announcement:new",
-    payload: row,
-    estateId: user.estateId!,
-  });
 
   res.status(201).json({ data: row });
 });

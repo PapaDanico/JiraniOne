@@ -56,6 +56,7 @@ export default function RegisterPage() {
         phone: form.phone, password: form.password, name: form.name,
         estateId: form.estateId || undefined,
         unitNumber: form.unitNumber || undefined,
+        consent,
       });
       setLocation("/dashboard/resident");
     } catch (err) {

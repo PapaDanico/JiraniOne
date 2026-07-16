@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import { randomInt, createHash } from "crypto";
-import { and, count, eq, gt, isNull } from "drizzle-orm";
+import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { lucia } from "../auth.js";
 import { users, estates, passwordResetTokens, loginAttempts, userSetupTokens } from "@shared/schema.js";
@@ -37,15 +37,15 @@ authRouter.post("/register", async (req, res) => {
 
   const [existing] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
   if (existing) {
-    // Anti-enumeration: don't reveal whether the phone is taken. Return a
-    // success-shaped response so an attacker probing /register cannot map
-    // which numbers have accounts. Real registrations succeed below; the
-    // duplicate write would have collided on the UNIQUE phone column anyway.
-    res.status(202).json({
-      data: {
-        message: "If your phone number is eligible, we've started your registration. Check your SMS or sign in.",
-        deferred: true,
-      },
+    // Previously this returned a 202 "success-shaped" response to avoid
+    // leaking whether the phone was taken — but the status code (202 vs
+    // 201) and body shape already gave it away, AND the client's register()
+    // treats any 2xx as success and stores the response body as the
+    // AuthUser, so a returning user got silently dropped into a broken,
+    // logged-out-but-truthy auth state instead of a usable error. A clear
+    // 409 is both more honest and fixes that client-side breakage.
+    res.status(409).json({
+      error: "This phone number is already registered. Try signing in instead.",
     });
     return;
   }
@@ -119,26 +119,32 @@ authRouter.post("/login", async (req, res) => {
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
-    const newCount = (attemptRow?.failedCount ?? 0) + 1;
-    const shouldLock = newCount >= LOGIN_LOCKOUT_THRESHOLD;
-    const lockedUntil = shouldLock ? new Date(Date.now() + LOGIN_LOCKOUT_MS) : null;
-
-    if (attemptRow) {
-      await db.update(loginAttempts)
-        .set({
-          failedCount: newCount,
-          lockedUntil,
+    // Atomic upsert-increment: a plain select-then-insert/update race let
+    // two concurrent bad-password requests both read the same failedCount
+    // (lost update), and a user's very first failure could throw a
+    // primary-key violation when two requests both tried to INSERT,
+    // surfacing as an uncaught 500 instead of 401.
+    const [attempt] = await db
+      .insert(loginAttempts)
+      .values({
+        userId: user.id,
+        failedCount: 1,
+        lastFailedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: loginAttempts.userId,
+        set: {
+          failedCount: sql`${loginAttempts.failedCount} + 1`,
           lastFailedAt: new Date(),
           updatedAt: new Date(),
-        })
+        },
+      })
+      .returning();
+
+    if (attempt!.failedCount >= LOGIN_LOCKOUT_THRESHOLD) {
+      await db.update(loginAttempts)
+        .set({ lockedUntil: new Date(Date.now() + LOGIN_LOCKOUT_MS) })
         .where(eq(loginAttempts.userId, user.id));
-    } else {
-      await db.insert(loginAttempts).values({
-        userId: user.id,
-        failedCount: newCount,
-        lockedUntil,
-        lastFailedAt: new Date(),
-      });
     }
 
     res.status(401).json({ error: "Invalid phone number or password" });

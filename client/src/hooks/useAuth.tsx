@@ -14,7 +14,7 @@ interface AuthContext {
   logout: () => Promise<void>;
   register: (data: {
     phone: string; password: string; name: string;
-    estateId?: string; unitNumber?: string;
+    estateId?: string; unitNumber?: string; consent: boolean;
   }) => Promise<void>;
 }
 
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: (data: { phone: string; password: string; name: string; estateId?: string; unitNumber?: string }) =>
+    mutationFn: (data: { phone: string; password: string; name: string; estateId?: string; unitNumber?: string; consent: boolean }) =>
       api.post<AuthUser>("/api/auth/register", data),
     onSuccess: (res) => {
       qc.setQueryData(["auth", "me"], res.data);

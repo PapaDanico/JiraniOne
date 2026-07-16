@@ -20,35 +20,34 @@ async function seed() {
 
   console.log("🌱 Seeding JiraniHub...");
 
-  // Estate
-  const estateId = newId();
-  const [estate] = await db
-    .insert(estates)
-    .values({
-      id: estateId,
-      name: "NHC Stoni Athi View",
-      location: "Athi River, Machakos County",
-      subscriptionTier: "growth",
-      totalUnits: 120,
-    })
-    .onConflictDoNothing()
-    .returning();
+  // Estate. `estates.name` has no unique constraint, so `onConflictDoNothing`
+  // can never detect a collision here — look the row up by name first
+  // instead, or every re-run of this script inserts a fresh duplicate estate.
+  const [existingEstate] = await db
+    .select()
+    .from(estates)
+    .where(eq(estates.name, "NHC Stoni Athi View"))
+    .limit(1);
 
-  if (!estate) {
-    const [existing] = await db
-      .select()
-      .from(estates)
-      .where(eq(estates.name, "NHC Stoni Athi View"))
-      .limit(1);
-    if (!existing) throw new Error("Failed to seed estate");
+  let finalEstateId: string;
+  if (existingEstate) {
     console.log("Estate already exists, skipping.");
+    finalEstateId = existingEstate.id;
   } else {
+    const [estate] = await db
+      .insert(estates)
+      .values({
+        id: newId(),
+        name: "NHC Stoni Athi View",
+        location: "Athi River, Machakos County",
+        subscriptionTier: "growth",
+        totalUnits: 120,
+      })
+      .returning();
+    if (!estate) throw new Error("Failed to seed estate");
     console.log(`✅ Estate: ${estate.name} (${estate.id})`);
+    finalEstateId = estate.id;
   }
-
-  const finalEstateId = estate?.id ?? (
-    await db.select().from(estates).where(eq(estates.name, "NHC Stoni Athi View")).limit(1)
-  )[0]!.id;
 
   // Seed accounts. When DEMO_PASSWORD is set, every seeded account uses
   // that single password — useful for "neighbours testing the app" runs

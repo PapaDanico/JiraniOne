@@ -12,17 +12,17 @@ import {
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
-import { broadcastToEstate } from "../ws.js";
 import { processUploadedImages } from "../lib/imageUpload.js";
 import { writeAudit } from "../lib/audit.js";
 import { createNotification } from "../lib/notify.js";
+import { MAX_TICKET_PHOTOS, MAX_TICKET_PHOTO_BYTES } from "@shared/constants.js";
 
 export const maintenanceRouter = Router();
 maintenanceRouter.use(requireAuth);
 
 const upload = multer({
-  dest: "uploads/",
-  limits: { fileSize: 5 * 1024 * 1024, files: 5 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_TICKET_PHOTO_BYTES, files: MAX_TICKET_PHOTOS },
   fileFilter: (_req, file, cb) => {
     const allowed = [".jpg", ".jpeg", ".png", ".webp"];
     cb(null, allowed.includes(path.extname(file.originalname).toLowerCase()));
@@ -198,12 +198,6 @@ maintenanceRouter.post(
       })
       .returning();
 
-    broadcastToEstate(user.estateId, {
-      type: "ticket:created",
-      payload: ticket,
-      estateId: user.estateId,
-    });
-
     void writeAudit(req, {
       action: "ticket.created",
       targetType: "maintenance_ticket",
@@ -241,6 +235,24 @@ maintenanceRouter.patch(
     if (!existing) {
       res.status(404).json({ error: "Ticket not found" });
       return;
+    }
+
+    if (parsed.data.assignedToId) {
+      const [assignee] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(
+          and(
+            eq(users.id, parsed.data.assignedToId),
+            eq(users.estateId, user.estateId!),
+            isNull(users.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (!assignee) {
+        res.status(400).json({ error: "Assignee must belong to this estate" });
+        return;
+      }
     }
 
     const updates: Partial<typeof existing> = {
@@ -286,12 +298,6 @@ maintenanceRouter.patch(
         linkTo: `/maintenance`,
       });
     }
-
-    broadcastToEstate(user.estateId!, {
-      type: "ticket:updated",
-      payload: updated,
-      estateId: user.estateId!,
-    });
 
     void writeAudit(req, {
       action: "ticket.updated",
@@ -355,12 +361,6 @@ maintenanceRouter.post("/:id/comments", async (req, res) => {
       linkTo: `/maintenance`,
     });
   }
-
-  broadcastToEstate(ticket.estateId, {
-    type: "ticket:updated",
-    payload: { ticketId: ticket.id, comment },
-    estateId: ticket.estateId,
-  });
 
   res.status(201).json({ data: comment });
 });

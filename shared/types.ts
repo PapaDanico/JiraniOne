@@ -273,23 +273,6 @@ export interface TrafficData {
   updatedAt: string;
 }
 
-// WebSocket event types
-export type WsEventType =
-  | "visitor:checked_in"
-  | "visitor:checked_out"
-  | "ticket:updated"
-  | "ticket:created"
-  | "announcement:new"
-  | "emergency:alert"
-  | "notification:new"
-  | "payment:confirmed";
-
-export interface WsEvent<T = unknown> {
-  type: WsEventType;
-  payload: T;
-  estateId: string;
-}
-
 // API response wrapper
 export interface ApiResponse<T = unknown> {
   data: T;

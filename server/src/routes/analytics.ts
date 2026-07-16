@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, count, sum, and, gte } from "drizzle-orm";
+import { eq, count, sum, and, gte, isNull } from "drizzle-orm";
 import { db } from "../db.js";
 import {
   users,
@@ -48,7 +48,7 @@ analyticsRouter.get("/", async (_req, res) => {
     db
       .select({ id: users.id, role: users.role })
       .from(users)
-      .where(and(eq(users.estateId, estateId))),
+      .where(and(eq(users.estateId, estateId), isNull(users.deletedAt))),
 
     // Last 6 months of completed payments for grouping
     db

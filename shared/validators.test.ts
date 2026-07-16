@@ -86,6 +86,7 @@ describe("registerSchema", () => {
         phone: "0722123456",
         password: "secret123",
         name: "Jane Mwangi",
+        consent: true,
       }),
     ).toBeTruthy();
   });
@@ -96,6 +97,24 @@ describe("registerSchema", () => {
         phone: "0722123456",
         password: "secret123",
         name: "J",
+      }),
+    ).toThrow();
+  });
+
+  it("requires explicit consent", () => {
+    expect(() =>
+      registerSchema.parse({
+        phone: "0722123456",
+        password: "secret123",
+        name: "Jane Mwangi",
+      }),
+    ).toThrow();
+    expect(() =>
+      registerSchema.parse({
+        phone: "0722123456",
+        password: "secret123",
+        name: "Jane Mwangi",
+        consent: false,
       }),
     ).toThrow();
   });
