@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import type { CarpoolOffer } from "@shared/types";
 
@@ -45,6 +45,8 @@ export default function CarpoolPage() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<OfferForm>(defaultForm);
+  const [formError, setFormError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const { data: offers = [], isLoading } = useQuery<CarpoolOffer[]>({
     queryKey: ["carpool"],
@@ -52,25 +54,31 @@ export default function CarpoolPage() {
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["carpool"] });
+  const onActionError = (e: unknown, fallback: string) =>
+    setActionError(e instanceof ApiError ? e.message : fallback);
 
   const createOffer = useMutation({
     mutationFn: (body: object) => api.post("/api/carpool", body),
-    onSuccess: () => { invalidate(); setShowForm(false); setForm(defaultForm); },
+    onSuccess: () => { invalidate(); setShowForm(false); setForm(defaultForm); setFormError(""); },
+    onError: (e) => setFormError(e instanceof ApiError ? e.message : "Failed to post ride offer."),
   });
 
   const cancelOffer = useMutation({
     mutationFn: (id: string) => api.delete(`/api/carpool/${id}`),
-    onSuccess: invalidate,
+    onSuccess: () => { setActionError(""); invalidate(); },
+    onError: (e) => onActionError(e, "Failed to cancel ride offer."),
   });
 
   const bookSeat = useMutation({
     mutationFn: (id: string) => api.post(`/api/carpool/${id}/book`, {}),
-    onSuccess: invalidate,
+    onSuccess: () => { setActionError(""); invalidate(); },
+    onError: (e) => onActionError(e, "Failed to book seat."),
   });
 
   const cancelBooking = useMutation({
     mutationFn: (id: string) => api.delete(`/api/carpool/${id}/book`),
-    onSuccess: invalidate,
+    onSuccess: () => { setActionError(""); invalidate(); },
+    onError: (e) => onActionError(e, "Failed to cancel booking."),
   });
 
   function handleSubmit(e: React.FormEvent) {
@@ -80,7 +88,7 @@ export default function CarpoolPage() {
       destination: form.destination,
       departureTime: form.departureTime,
       seatsTotal: form.seatsTotal,
-      ...(form.fare ? { fare: form.fare } : {}),
+      ...(form.fare ? { fare: Math.trunc(Number(form.fare)) } : {}),
       ...(form.notes ? { notes: form.notes } : {}),
     });
   }
@@ -173,6 +181,9 @@ export default function CarpoolPage() {
                 style={{ borderColor: "#D4A017", color: "#6B5D45" }}
               />
             </div>
+            {formError && (
+              <p className="text-xs font-medium" style={{ color: "#B71C1C" }}>{formError}</p>
+            )}
             <button
               type="submit"
               disabled={createOffer.isPending}
@@ -182,6 +193,10 @@ export default function CarpoolPage() {
               {createOffer.isPending ? "Posting…" : "Post Ride"}
             </button>
           </form>
+        )}
+
+        {actionError && (
+          <p className="text-xs font-medium text-center" style={{ color: "#B71C1C" }}>{actionError}</p>
         )}
 
         {/* Loading skeleton */}

@@ -98,7 +98,7 @@ export default function AdminDashboard() {
   const { data: estate } = useEstate();
   const [tab, setTab] = useState<TabKey>("overview");
 
-  const { data: analytics, isLoading } = useQuery<EstateAnalytics>({
+  const { data: analytics, isLoading, isError, refetch } = useQuery<EstateAnalytics>({
     queryKey: ["analytics"],
     queryFn: () => api.get<EstateAnalytics>("/api/analytics").then((r) => r.data),
     staleTime: 5 * 60 * 1000,
@@ -163,6 +163,18 @@ export default function AdminDashboard() {
                 {[0, 1, 2, 3].map((i) => (
                   <div key={i} className="kpi-tile animate-pulse h-20" />
                 ))}
+              </div>
+            ) : isError ? (
+              <div className="tribal-card p-6 text-center space-y-3">
+                <p className="text-sm text-[#B71C1C] font-medium">
+                  Failed to load estate analytics.
+                </p>
+                <button
+                  onClick={() => refetch()}
+                  className="text-sm font-semibold text-[#1B5E20] underline underline-offset-2"
+                >
+                  Try again
+                </button>
               </div>
             ) : (
               analytics && (

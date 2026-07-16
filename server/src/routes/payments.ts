@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, desc, and, sql } from "drizzle-orm";
-import { db, dbTx } from "../db.js";
+import { db, dbTx, type DBTx } from "../db.js";
 import { payments, fundraisingCampaigns, donations, chamaContributions } from "@shared/schema.js";
 import {
   initiatePaymentSchema,
@@ -12,6 +12,112 @@ import { mpesaIpAllowlist } from "../middleware/mpesaIpAllowlist.js";
 import { newId } from "../lib/ids.js";
 import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
 import { writeAudit } from "../lib/audit.js";
+
+// Shared by the public M-PESA callback handler below AND the reconciliation
+// cron job (server/src/cron.ts) — both settle a pending payment the same
+// way, so the downstream donation/contribution insert + campaign-total
+// increment can't drift between the two paths (a prior version of the cron
+// job only flipped payments.status, silently dropping the donation/
+// contribution row and the campaign total credit whenever a callback was
+// lost). Caller must run this inside a transaction with the payment row
+// already locked FOR UPDATE, or use settlePaymentById below.
+export async function applyPaymentResult(
+  tx: DBTx,
+  payment: {
+    id: string;
+    user_id: string;
+    amount: string;
+    type: string;
+    status: string;
+    metadata: Record<string, unknown> | null;
+  },
+  result: { success: boolean; mpesaRef: string | null },
+): Promise<void> {
+  // Idempotency guard: if the payment already settled, do nothing.
+  if (payment.status !== "pending") return;
+
+  if (!result.success) {
+    await tx
+      .update(payments)
+      .set({ status: "failed", updatedAt: new Date() })
+      .where(eq(payments.id, payment.id));
+    return;
+  }
+
+  await tx
+    .update(payments)
+    .set({
+      status: "completed",
+      mpesaRef: result.mpesaRef ?? undefined,
+      updatedAt: new Date(),
+    })
+    .where(eq(payments.id, payment.id));
+
+  // Create downstream records for harambee donations and chama contributions.
+  if (payment.type === "harambee_donation") {
+    const meta = payment.metadata ?? {};
+    const campaignId = meta.campaignId as string | undefined;
+    const anonymous = Boolean(meta.anonymous);
+    if (campaignId) {
+      await tx.insert(donations).values({
+        id: newId(),
+        campaignId,
+        donorId: payment.user_id,
+        amount: payment.amount,
+        anonymous,
+        mpesaRef: result.mpesaRef,
+      });
+      await tx.execute(sql`
+        UPDATE fundraising_campaigns
+           SET current_amount = current_amount + ${payment.amount}::numeric,
+               updated_at = NOW()
+         WHERE id = ${campaignId}
+      `);
+    }
+  } else if (payment.type === "chama_contribution") {
+    const meta = payment.metadata ?? {};
+    const chamaId = meta.chamaId as string | undefined;
+    const periodLabel = String(meta.periodLabel ?? "");
+    if (chamaId) {
+      await tx.insert(chamaContributions).values({
+        id: newId(),
+        chamaId,
+        userId: payment.user_id,
+        amount: payment.amount,
+        periodLabel,
+        mpesaRef: result.mpesaRef,
+        paidAt: new Date(),
+      });
+    }
+  }
+}
+
+// Locks the payment row, applies the result via applyPaymentResult, commits.
+// Used by the reconciliation cron job, which (unlike the webhook) doesn't
+// already hold a lock from an inbound callback request.
+export async function settlePaymentById(
+  paymentId: string,
+  result: { success: boolean; mpesaRef: string | null },
+): Promise<void> {
+  await dbTx.transaction(async (tx) => {
+    const rows = await tx.execute<{
+      id: string;
+      user_id: string;
+      amount: string;
+      type: string;
+      status: string;
+      metadata: Record<string, unknown> | null;
+    }>(sql`
+      SELECT id, user_id, amount, type, status, metadata
+        FROM payments
+       WHERE id = ${paymentId}
+       FOR UPDATE
+    `);
+    const payment = rows[0];
+    if (!payment) return;
+    await applyPaymentResult(tx, payment, result);
+  });
+}
 
 // ─── Public M-PESA callback router ───────────────────────────────────────────
 // Mounted at /api/payments/mpesa/callback BEFORE requireAuth — Safaricom does
@@ -43,14 +149,13 @@ mpesaCallbackRouter.post(
         // concurrent retries from Safaricom serialize on it.
         const rows = await tx.execute<{
           id: string;
-          estate_id: string;
           user_id: string;
           amount: string;
           type: string;
           status: string;
           metadata: Record<string, unknown> | null;
         }>(sql`
-          SELECT id, estate_id, user_id, amount, type, status, metadata
+          SELECT id, user_id, amount, type, status, metadata
             FROM payments
            WHERE checkout_request_id = ${CheckoutRequestID}
            FOR UPDATE
@@ -58,14 +163,8 @@ mpesaCallbackRouter.post(
         const payment = rows[0];
         if (!payment) return;
 
-        // Idempotency guard: if the payment already settled, do nothing.
-        if (payment.status !== "pending") return;
-
         if (ResultCode !== 0) {
-          await tx
-            .update(payments)
-            .set({ status: "failed", updatedAt: new Date() })
-            .where(eq(payments.id, payment.id));
+          await applyPaymentResult(tx, payment, { success: false, mpesaRef: null });
           return;
         }
 
@@ -74,48 +173,7 @@ mpesaCallbackRouter.post(
           items.find((i) => i.Name === name)?.Value;
         const mpesaRef = String(get("MpesaReceiptNumber") ?? "");
 
-        await tx
-          .update(payments)
-          .set({ status: "completed", mpesaRef, updatedAt: new Date() })
-          .where(eq(payments.id, payment.id));
-
-        // Create downstream records for harambee donations and chama contributions.
-        if (payment.type === "harambee_donation") {
-          const meta = payment.metadata ?? {};
-          const campaignId = meta.campaignId as string | undefined;
-          const anonymous = Boolean(meta.anonymous);
-          if (campaignId) {
-            await tx.insert(donations).values({
-              id: newId(),
-              campaignId,
-              donorId: payment.user_id,
-              amount: payment.amount,
-              anonymous,
-              mpesaRef,
-            });
-            await tx.execute(sql`
-              UPDATE fundraising_campaigns
-                 SET current_amount = current_amount + ${payment.amount}::numeric,
-                     updated_at = NOW()
-               WHERE id = ${campaignId}
-            `);
-          }
-        } else if (payment.type === "chama_contribution") {
-          const meta = payment.metadata ?? {};
-          const chamaId = meta.chamaId as string | undefined;
-          const periodLabel = String(meta.periodLabel ?? "");
-          if (chamaId) {
-            await tx.insert(chamaContributions).values({
-              id: newId(),
-              chamaId,
-              userId: payment.user_id,
-              amount: payment.amount,
-              periodLabel,
-              mpesaRef,
-              paidAt: new Date(),
-            });
-          }
-        }
+        await applyPaymentResult(tx, payment, { success: true, mpesaRef });
       });
     } catch (err) {
       // A unique-violation here means a concurrent callback already settled.

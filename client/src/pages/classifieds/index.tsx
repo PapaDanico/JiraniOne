@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { SectionLoader } from "@/components/shared/loading";
 import { formatRelative } from "@/lib/utils";
 import type { Classified, ClassifiedCategory } from "@shared/types";
@@ -49,14 +49,20 @@ function CreateListingModal({ open, onClose }: { open: boolean; onClose: () => v
 
   const { mutate, isPending } = useMutation({
     mutationFn: () =>
-      api.post("/api/classifieds", { title, description, price, category, contactPhone }).then((r) => r.data),
+      api.post("/api/classifieds", {
+        title,
+        description,
+        price: category === "sell" && price ? Number(price) : undefined,
+        category,
+        contactPhone: contactPhone || undefined,
+      }).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["classifieds"] });
       setTitle(""); setDesc(""); setPrice(""); setCategory("sell"); setContact(""); setError("");
       onClose();
     },
-    onError: (e: Error & { response?: { data?: { error?: string } } }) => {
-      setError(e.response?.data?.error ?? "Failed to create listing.");
+    onError: (e) => {
+      setError(e instanceof ApiError ? e.message : "Failed to create listing.");
     },
   });
 
@@ -155,21 +161,30 @@ function ListingCard({
   isAdmin: boolean;
 }) {
   const qc = useQueryClient();
+  const [actionError, setActionError] = useState("");
 
   const { mutate: updateStatus, isPending: updatingStatus } = useMutation({
     mutationFn: (status: string) =>
       api.patch(`/api/classifieds/${listing.id}`, { status }).then((r) => r.data),
     onSuccess: () => {
+      setActionError("");
       qc.invalidateQueries({ queryKey: ["classifieds"] });
       qc.invalidateQueries({ queryKey: ["classifieds", "my"] });
+    },
+    onError: (e) => {
+      setActionError(e instanceof ApiError ? e.message : "Failed to update listing.");
     },
   });
 
   const { mutate: deleteListing, isPending: deleting } = useMutation({
     mutationFn: () => api.delete(`/api/classifieds/${listing.id}`).then((r) => r.data),
     onSuccess: () => {
+      setActionError("");
       qc.invalidateQueries({ queryKey: ["classifieds"] });
       qc.invalidateQueries({ queryKey: ["classifieds", "my"] });
+    },
+    onError: (e) => {
+      setActionError(e instanceof ApiError ? e.message : "Failed to delete listing.");
     },
   });
 
@@ -247,6 +262,9 @@ function ListingCard({
           </button>
         )}
       </div>
+      {actionError && (
+        <p className="text-xs text-[#B71C1C] font-medium mt-2">{actionError}</p>
+      )}
     </div>
   );
 }

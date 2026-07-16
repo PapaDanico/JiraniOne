@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import type { Chama } from "@shared/types";
 
@@ -23,6 +23,9 @@ export default function ChamaPage() {
   });
   const [contributeOpen, setContributeOpen] = useState<string | null>(null);
   const [contribAmount, setContribAmount] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [contributeError, setContributeError] = useState<string | null>(null);
 
   const { data: chamas, isLoading } = useQuery<Chama[]>({
     queryKey: ["chama"],
@@ -31,37 +34,45 @@ export default function ChamaPage() {
 
   const createMutation = useMutation({
     mutationFn: (body: typeof createForm) =>
-      api.get("/api/chama").then(() =>
-        fetch("/api/chama", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        })
-      ),
+      api.post("/api/chama", {
+        name: body.name,
+        description: body.description || undefined,
+        contributionAmount: Math.trunc(Number(body.contributionAmount)),
+        frequency: body.frequency,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["chama"] });
       setShowCreate(false);
+      setCreateError(null);
       setCreateForm({ name: "", description: "", contributionAmount: "", frequency: "monthly" });
+    },
+    onError: (err) => {
+      setCreateError(err instanceof ApiError ? err.message : "Failed to create chama. Please try again.");
     },
   });
 
   const joinMutation = useMutation({
-    mutationFn: (id: string) =>
-      fetch(`/api/chama/${id}/join`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["chama"] }),
+    mutationFn: (id: string) => api.post(`/api/chama/${id}/join`),
+    onSuccess: () => {
+      setJoinError(null);
+      qc.invalidateQueries({ queryKey: ["chama"] });
+    },
+    onError: (err) => {
+      setJoinError(err instanceof ApiError ? err.message : "Failed to join chama. Please try again.");
+    },
   });
 
   const contributeMutation = useMutation({
     mutationFn: ({ id, amount, periodLabel }: { id: string; amount: string; periodLabel: string }) =>
-      fetch(`/api/chama/${id}/contribute`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, periodLabel }),
-      }),
+      api.post(`/api/chama/${id}/contribute`, { amount: Math.trunc(Number(amount)), periodLabel }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["chama"] });
       setContributeOpen(null);
       setContribAmount("");
+      setContributeError(null);
+    },
+    onError: (err) => {
+      setContributeError(err instanceof ApiError ? err.message : "Failed to submit contribution. Please try again.");
     },
   });
 
@@ -134,6 +145,9 @@ export default function ChamaPage() {
               <option value="monthly">Monthly</option>
               <option value="weekly">Weekly</option>
             </select>
+            {createError && (
+              <p className="text-xs text-[#B71C1C] font-medium">{createError}</p>
+            )}
             <button
               type="submit"
               disabled={createMutation.isPending}
@@ -143,6 +157,9 @@ export default function ChamaPage() {
               {createMutation.isPending ? "Creating…" : "Create Chama"}
             </button>
           </form>
+        )}
+        {joinError && (
+          <p className="text-xs text-[#B71C1C] font-medium text-center">{joinError}</p>
         )}
 
         {/* Loading skeleton */}
@@ -265,6 +282,9 @@ export default function ChamaPage() {
                             Cancel
                           </button>
                         </div>
+                        {contributeOpen === chama.id && contributeError && (
+                          <p className="text-xs text-[#B71C1C] font-medium">{contributeError}</p>
+                        )}
                       </form>
                     )}
                   </>

@@ -29,16 +29,24 @@ export function QrScanner() {
   const checkInMutation = useMutation({
     mutationFn: (id: string) => api.post(`/api/visitors/${id}/check-in`),
     onSuccess: () => {
+      setError(null);
       qc.invalidateQueries({ queryKey: ["visitors"] });
       if (phone.trim()) lookupMutation.mutate({ phone: phone.trim() });
+    },
+    onError: (e: unknown) => {
+      setError(e instanceof Error ? e.message : "Check-in failed. Please try again.");
     },
   });
 
   const checkOutMutation = useMutation({
     mutationFn: (id: string) => api.post(`/api/visitors/${id}/check-out`),
     onSuccess: () => {
+      setError(null);
       qc.invalidateQueries({ queryKey: ["visitors"] });
       if (phone.trim()) lookupMutation.mutate({ phone: phone.trim() });
+    },
+    onError: (e: unknown) => {
+      setError(e instanceof Error ? e.message : "Check-out failed. Please try again.");
     },
   });
 

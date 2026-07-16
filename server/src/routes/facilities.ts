@@ -214,21 +214,51 @@ facilitiesRouter.patch("/bookings/:id", async (req, res) => {
   }
 
   if (status === "approved") {
-    // Re-run the overlap check: the create-time check only ran once, and a
-    // booking that was rejected/cancelled since then may have let a
-    // conflicting slot get approved in the meantime.
-    const conflicts = await db.select().from(bookings)
-      .where(and(
-        eq(bookings.facilityId, booking.facilityId),
-        eq(bookings.status, "approved"),
-        ne(bookings.id, booking.id),
-        lte(bookings.startTime, booking.endTime),
-        gte(bookings.endTime, booking.startTime),
-      )).limit(1);
-    if (conflicts.length > 0) {
-      res.status(409).json({ error: "Time slot conflicts with another approved booking" });
-      return;
+    try {
+      const updated = await dbTx.transaction(async (tx) => {
+        // Lock the facility row so two concurrent approvals for it
+        // serialize — without this, two admins approving two overlapping
+        // pending bookings can both pass the conflict check before either
+        // UPDATE commits (the same class of race the create-path already
+        // guards against with this same lock).
+        await tx.select().from(facilities)
+          .where(eq(facilities.id, booking.facilityId))
+          .for("update");
+
+        // Re-run the overlap check: the create-time check only ran once,
+        // and a booking that was rejected/cancelled since then may have let
+        // a conflicting slot get approved in the meantime.
+        const conflicts = await tx.select().from(bookings)
+          .where(and(
+            eq(bookings.facilityId, booking.facilityId),
+            eq(bookings.status, "approved"),
+            ne(bookings.id, booking.id),
+            lte(bookings.startTime, booking.endTime),
+            gte(bookings.endTime, booking.startTime),
+          )).limit(1);
+        if (conflicts.length > 0) {
+          throw Object.assign(
+            new Error("Time slot conflicts with another approved booking"),
+            { httpStatus: 409 },
+          );
+        }
+
+        const [row] = await tx.update(bookings)
+          .set({ status: status as never, updatedAt: new Date() })
+          .where(eq(bookings.id, req.params['id']!))
+          .returning();
+        return row;
+      });
+      res.json({ data: updated });
+    } catch (err) {
+      const httpStatus = (err as { httpStatus?: number }).httpStatus;
+      if (httpStatus) {
+        res.status(httpStatus).json({ error: (err as Error).message });
+        return;
+      }
+      throw err;
     }
+    return;
   }
 
   const [updated] = await db.update(bookings)

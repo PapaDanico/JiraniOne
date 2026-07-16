@@ -494,6 +494,7 @@ export const eventRsvps = pgTable(
   },
   (t) => ({
     eventIdIdx: index("event_rsvps_event_id_idx").on(t.eventId),
+    eventUserUq: uniqueIndex("event_rsvps_event_id_user_id_unique").on(t.eventId, t.userId),
   }),
 );
 

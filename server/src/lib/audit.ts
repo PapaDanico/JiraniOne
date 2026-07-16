@@ -3,6 +3,7 @@ import { db } from "../db.js";
 import { auditLogs } from "@shared/schema.js";
 import { newId } from "./ids.js";
 import { logger } from "./logger.js";
+import { getClientIp } from "./httpUtils.js";
 
 const log = logger.child({ component: "audit" });
 
@@ -34,7 +35,7 @@ export async function writeAudit(
       targetId: entry.targetId ?? null,
       estateId: actor?.estateId ?? null,
       metadata: entry.metadata ?? null,
-      ip: req.ip ?? null,
+      ip: getClientIp(req) || null,
     });
   } catch (err) {
     log.error({ event: "audit_write_failed", action: entry.action, err }, "audit log write failed");

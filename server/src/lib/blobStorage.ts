@@ -5,7 +5,13 @@ import path from "path";
 // photos can't live in a local `uploads/` dir once deployed there — use
 // Netlify Blobs instead. Local dev (`npm run dev`) keeps writing to disk
 // exactly as before, so day-to-day development needs no extra setup.
-const useBlobs = process.env.NETLIFY === "true";
+//
+// `NETLIFY=true` is only reliably set in Netlify's *build* environment, not
+// necessarily inside the deployed Function's runtime — `@netlify/blobs`
+// itself auto-configures off `NETLIFY_BLOBS_CONTEXT` (injected by the
+// Functions runtime whenever Blobs is available), so check that directly
+// instead of guessing at a proxy signal.
+const useBlobs = Boolean(process.env.NETLIFY_BLOBS_CONTEXT);
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 

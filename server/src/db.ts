@@ -14,7 +14,17 @@ const url = process.env.DATABASE_URL || "postgresql://localhost/jiranihub";
 // so server-side prepared statements can't be reused). `max: 1` keeps each
 // function instance holding at most one connection — Supavisor does the
 // actual pooling across concurrent invocations.
-const client = postgres(url, { prepare: false, max: 1 });
+// idle_timeout/max_lifetime release the one connection each warm function
+// container holds back to Supavisor once it's been idle/old a while — with
+// max:1 and neither set, a container that goes on to serve more invocations
+// keeps that connection open forever, and enough warm containers under a
+// traffic burst can exhaust Supavisor's own pool cap.
+const client = postgres(url, {
+  prepare: false,
+  max: 1,
+  idle_timeout: 20,
+  max_lifetime: 60 * 30,
+});
 
 export const db = drizzle(client, { schema });
 

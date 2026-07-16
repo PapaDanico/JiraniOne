@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createTicketSchema, type CreateTicketInput } from "@shared/validators";
-import { MAX_TICKET_PHOTOS } from "@shared/constants";
+import { MAX_TICKET_PHOTOS, MAX_TICKET_PHOTO_BYTES } from "@shared/constants";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,19 +46,29 @@ export function TicketForm({ open, onClose }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<FileList | null>(null);
   const [photoLimitWarning, setPhotoLimitWarning] = useState(false);
+  const [photoSizeWarning, setPhotoSizeWarning] = useState(false);
 
-  // The server caps uploads at MAX_TICKET_PHOTOS and rejects the rest of the
-  // request if more are sent — truncate client-side so the label's cap is
-  // actually enforced, not just aspirational copy.
+  // The server caps uploads at MAX_TICKET_PHOTOS/MAX_TICKET_PHOTO_BYTES and
+  // rejects the whole request if either is exceeded — filter/truncate
+  // client-side so a resident attaching a normal 3-8MB phone-camera photo
+  // gets an immediate, specific warning instead of a failed submission
+  // after the fact.
   const handlePhotoChange = (files: FileList | null) => {
-    if (!files || files.length <= MAX_TICKET_PHOTOS) {
+    if (!files) {
       setPhotoLimitWarning(false);
+      setPhotoSizeWarning(false);
       setPhotos(files);
       return;
     }
+
+    const withinSize = Array.from(files).filter((f) => f.size <= MAX_TICKET_PHOTO_BYTES);
+    setPhotoSizeWarning(withinSize.length < files.length);
+
+    const kept = withinSize.slice(0, MAX_TICKET_PHOTOS);
+    setPhotoLimitWarning(withinSize.length > MAX_TICKET_PHOTOS);
+
     const dt = new DataTransfer();
-    Array.from(files).slice(0, MAX_TICKET_PHOTOS).forEach((f) => dt.items.add(f));
-    setPhotoLimitWarning(true);
+    kept.forEach((f) => dt.items.add(f));
     setPhotos(dt.files);
   };
 
@@ -87,7 +97,7 @@ export function TicketForm({ open, onClose }: Props) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["maintenance", "my"] });
       reset();
-      setPhotos(null); setPhotoLimitWarning(false);
+      setPhotos(null); setPhotoLimitWarning(false); setPhotoSizeWarning(false);
       onClose();
     },
     onError: (err: unknown) => {
@@ -104,7 +114,7 @@ export function TicketForm({ open, onClose }: Props) {
   const priority = watch("priority");
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); setServerError(null); setPhotos(null); setPhotoLimitWarning(false); onClose(); } }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); setServerError(null); setPhotos(null); setPhotoLimitWarning(false); setPhotoSizeWarning(false); onClose(); } }}>
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-3 mt-2">
@@ -187,6 +197,11 @@ export function TicketForm({ open, onClose }: Props) {
             {photoLimitWarning && (
               <p className="text-xs text-[#B71C1C] mt-1">Only the first {MAX_TICKET_PHOTOS} photos were kept.</p>
             )}
+            {photoSizeWarning && (
+              <p className="text-xs text-[#B71C1C] mt-1">
+                Some photos were too large (max {Math.round(MAX_TICKET_PHOTO_BYTES / (1024 * 1024))}MB each) and were skipped.
+              </p>
+            )}
           </div>
 
           {serverError && (
@@ -197,7 +212,7 @@ export function TicketForm({ open, onClose }: Props) {
         </form>
 
         <DialogFooter>
-          <Button variant="secondary" onClick={() => { reset(); setServerError(null); setPhotos(null); setPhotoLimitWarning(false); onClose(); }}>
+          <Button variant="secondary" onClick={() => { reset(); setServerError(null); setPhotos(null); setPhotoLimitWarning(false); setPhotoSizeWarning(false); onClose(); }}>
             Cancel
           </Button>
           <Button

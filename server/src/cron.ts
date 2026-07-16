@@ -10,6 +10,7 @@ import {
 import { lucia } from "./auth.js";
 import { stkPushStatus } from "./lib/mpesa.js";
 import { logger } from "./lib/logger.js";
+import { settlePaymentById } from "./routes/payments.js";
 
 const log = logger.child({ component: "cron" });
 
@@ -45,20 +46,18 @@ export async function reconcilePendingPayments() {
       if (!status) continue;
 
       if (status.ResultCode === 0) {
-        // Daraja confirms success but our callback never arrived.
-        // Mark completed; we don't have the receipt number from this
-        // endpoint, so leave mpesaRef NULL — admin can reconcile from
-        // Safaricom dashboard if needed.
-        await db
-          .update(payments)
-          .set({ status: "completed", updatedAt: new Date() })
-          .where(eq(payments.id, p.id));
+        // Daraja confirms success but our callback never arrived. Settle via
+        // the same path the webhook uses — this creates the donation/chama
+        // contribution row and credits the campaign total, not just the
+        // payments.status flip (a prior version of this job only did the
+        // latter, silently losing the downstream record whenever a callback
+        // was lost). We don't have the receipt number from this endpoint,
+        // so mpesaRef stays NULL — admin can reconcile from the Safaricom
+        // dashboard if needed.
+        await settlePaymentById(p.id, { success: true, mpesaRef: null });
       } else if (status.ResultCode !== 1) {
         // Anything other than "still processing" (1) is terminal failure.
-        await db
-          .update(payments)
-          .set({ status: "failed", updatedAt: new Date() })
-          .where(eq(payments.id, p.id));
+        await settlePaymentById(p.id, { success: false, mpesaRef: null });
       }
     }
   } catch (err) {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Badge } from "@/components/ui/badge";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import type { FundraisingCampaign } from "@shared/types";
 
@@ -44,6 +44,9 @@ export default function HarambeePage() {
 
   const [donateId, setDonateId] = useState<string | null>(null);
   const [donateForm, setDonateForm] = useState({ amount: "", anonymous: false });
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [donateError, setDonateError] = useState<string | null>(null);
 
   const { data: campaigns, isLoading } = useQuery<FundraisingCampaign[]>({
     queryKey: ["harambee"],
@@ -52,18 +55,28 @@ export default function HarambeePage() {
 
   const createMut = useMutation({
     mutationFn: (body: typeof createForm) =>
-      api.post("/api/harambee", { ...body, goalAmount: Number(body.goalAmount) }),
+      api.post("/api/harambee", { ...body, goalAmount: Math.trunc(Number(body.goalAmount)) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["harambee"] });
       setShowCreate(false);
+      setCreateError(null);
       setCreateForm({ title: "", description: "", goalAmount: "", deadline: "" });
+    },
+    onError: (err) => {
+      setCreateError(err instanceof ApiError ? err.message : "Failed to create campaign. Please try again.");
     },
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.patch(`/api/harambee/${id}`, { status }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["harambee"] }),
+    onSuccess: () => {
+      setUpdateError(null);
+      qc.invalidateQueries({ queryKey: ["harambee"] });
+    },
+    onError: (err) => {
+      setUpdateError(err instanceof ApiError ? err.message : "Failed to update campaign. Please try again.");
+    },
   });
 
   const donateMut = useMutation({
@@ -73,6 +86,10 @@ export default function HarambeePage() {
       qc.invalidateQueries({ queryKey: ["harambee"] });
       setDonateId(null);
       setDonateForm({ amount: "", anonymous: false });
+      setDonateError(null);
+    },
+    onError: (err) => {
+      setDonateError(err instanceof ApiError ? err.message : "Donation failed to start. Please try again.");
     },
   });
 
@@ -104,6 +121,7 @@ export default function HarambeePage() {
                   onChange={(e) => setCreateForm((f) => ({ ...f, goalAmount: e.target.value }))} />
                 <input className={inputCls} type="date" placeholder="Deadline" value={createForm.deadline}
                   onChange={(e) => setCreateForm((f) => ({ ...f, deadline: e.target.value }))} />
+                {createError && <p className="text-xs text-[#B71C1C] font-medium">{createError}</p>}
                 <div className="flex gap-2">
                   <button className={btnPrimary} disabled={!createForm.title || !createForm.goalAmount || createMut.isPending}
                     onClick={() => createMut.mutate(createForm)}>
@@ -114,6 +132,9 @@ export default function HarambeePage() {
               </div>
             )}
           </div>
+        )}
+        {updateError && (
+          <p className="text-xs text-[#B71C1C] font-medium text-center">{updateError}</p>
         )}
 
         {/* Loading skeletons */}
@@ -183,12 +204,15 @@ export default function HarambeePage() {
                           onChange={(e) => setDonateForm((f) => ({ ...f, anonymous: e.target.checked }))} />
                         Donate anonymously
                       </label>
+                      {isDonating && donateError && (
+                        <p className="text-xs text-[#B71C1C] font-medium">{donateError}</p>
+                      )}
                       <div className="flex gap-2">
                         <button className={btnGold} disabled={!donateForm.amount || donateMut.isPending}
-                          onClick={() => donateMut.mutate({ id: c.id, amount: Number(donateForm.amount), anonymous: donateForm.anonymous })}>
+                          onClick={() => donateMut.mutate({ id: c.id, amount: Math.trunc(Number(donateForm.amount)), anonymous: donateForm.anonymous })}>
                           {donateMut.isPending ? "Sending…" : "Confirm"}
                         </button>
-                        <button className={btnGhost} onClick={() => { setDonateId(null); setDonateForm({ amount: "", anonymous: false }); }}>Cancel</button>
+                        <button className={btnGhost} onClick={() => { setDonateId(null); setDonateForm({ amount: "", anonymous: false }); setDonateError(null); }}>Cancel</button>
                       </div>
                     </div>
                   )}

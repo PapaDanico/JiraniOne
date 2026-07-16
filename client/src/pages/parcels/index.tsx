@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { SectionLoader } from "@/components/shared/loading";
 import { formatRelative } from "@/lib/utils";
 import type { Parcel } from "@shared/types";
@@ -51,8 +51,8 @@ function RegisterParcelModal({ open, onClose }: { open: boolean; onClose: () => 
       setDescription(""); setTrackingRef(""); setSender(""); setError("");
       onClose();
     },
-    onError: (e: Error & { response?: { data?: { error?: string } } }) => {
-      setError(e.response?.data?.error ?? "Failed to register parcel.");
+    onError: (e) => {
+      setError(e instanceof ApiError ? e.message : "Failed to register parcel.");
     },
   });
 
@@ -135,8 +135,8 @@ function MarkReceivedModal({
       setNotes(""); setError("");
       onClose();
     },
-    onError: (e: Error & { response?: { data?: { error?: string } } }) => {
-      setError(e.response?.data?.error ?? "Failed to update parcel.");
+    onError: (e) => {
+      setError(e instanceof ApiError ? e.message : "Failed to update parcel.");
     },
   });
 
@@ -192,6 +192,7 @@ function MarkReceivedModal({
 function ResidentParcels() {
   const qc = useQueryClient();
   const [showRegister, setShowRegister] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["parcels", "my"],
@@ -201,12 +202,14 @@ function ResidentParcels() {
   const { mutate: markCollected } = useMutation({
     mutationFn: (id: string) =>
       api.patch(`/api/parcels/${id}/collected`, {}).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["parcels", "my"] }),
+    onSuccess: () => { setActionError(""); qc.invalidateQueries({ queryKey: ["parcels", "my"] }); },
+    onError: (e) => setActionError(e instanceof ApiError ? e.message : "Failed to mark parcel collected."),
   });
 
   const { mutate: deleteParcel } = useMutation({
     mutationFn: (id: string) => api.delete(`/api/parcels/${id}`).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["parcels", "my"] }),
+    onSuccess: () => { setActionError(""); qc.invalidateQueries({ queryKey: ["parcels", "my"] }); },
+    onError: (e) => setActionError(e instanceof ApiError ? e.message : "Failed to delete parcel."),
   });
 
   const active   = data?.filter((p) => p.status !== "collected" && p.status !== "returned") ?? [];
@@ -224,6 +227,10 @@ function ResidentParcels() {
           <Plus className="h-3.5 w-3.5" /> Register
         </Button>
       </div>
+
+      {actionError && (
+        <p className="text-xs text-[#B71C1C] font-medium mb-3">{actionError}</p>
+      )}
 
       {isLoading ? (
         <SectionLoader />
@@ -266,6 +273,7 @@ function ResidentParcels() {
 function EstateParcels() {
   const qc = useQueryClient();
   const [receivingParcel, setReceivingParcel] = useState<Parcel | null>(null);
+  const [actionError, setActionError] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["parcels", "estate"],
@@ -276,7 +284,8 @@ function EstateParcels() {
   const { mutate: markCollected } = useMutation({
     mutationFn: (id: string) =>
       api.patch(`/api/parcels/${id}/collected`, {}).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["parcels", "estate"] }),
+    onSuccess: () => { setActionError(""); qc.invalidateQueries({ queryKey: ["parcels", "estate"] }); },
+    onError: (e) => setActionError(e instanceof ApiError ? e.message : "Failed to mark parcel collected."),
   });
 
   const pending   = data?.filter((p) => p.status === "expected" || p.status === "at_gate") ?? [];
@@ -285,6 +294,10 @@ function EstateParcels() {
   return (
     <>
       <p className="section-label mb-4">Estate Parcels</p>
+
+      {actionError && (
+        <p className="text-xs text-[#B71C1C] font-medium mb-3">{actionError}</p>
+      )}
 
       {isLoading ? (
         <SectionLoader />
