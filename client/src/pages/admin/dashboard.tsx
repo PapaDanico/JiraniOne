@@ -40,6 +40,12 @@ const MODULES = [
 // ─── CSS bar chart (no external dep) ─────────────────────────────────────────
 
 function BarChart({ data }: { data: { label: string; value: number }[] }) {
+  // Every month in range still produces a row (just value: 0) — so a
+  // brand-new estate with zero collections rendered a full row of
+  // invisible/flat bars instead of a clear empty state.
+  if (data.every((d) => d.value === 0)) {
+    return <p className="text-xs text-tribal-earth py-8 text-center">No collections yet.</p>;
+  }
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
     <div className="flex items-end gap-1.5 h-28">

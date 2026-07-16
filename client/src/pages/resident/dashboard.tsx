@@ -59,11 +59,14 @@ function ActionTile({ href, icon, label, desc, tone }: ActionTileProps) {
   );
 }
 
+// "Visitors" is deliberately not repeated here — it already has its own
+// bottom-nav tab and the "Invite Visitor" quick-action tile above, so a
+// third entry in this grid was pure redundancy with no added navigation
+// value.
 const MORE_TILES = [
   { href: "/parcels",      label: "Parcels",     Icon: Package,      bg: "bg-sky-100",     fg: "text-sky-700" },
   { href: "/classifieds",  label: "Noticeboard", Icon: Tag,          bg: "bg-green-100",   fg: "text-green-800" },
   { href: "/events",       label: "Events",      Icon: CalendarDays, bg: "bg-cyan-100",    fg: "text-cyan-700" },
-  { href: "/visitors",     label: "Visitors",    Icon: Users,        bg: "bg-indigo-100",  fg: "text-indigo-700" },
   { href: "/governance",   label: "Governance",  Icon: Vote,         bg: "bg-purple-100",  fg: "text-purple-700" },
   { href: "/bookings",     label: "Bookings",    Icon: BookOpen,     bg: "bg-pink-100",    fg: "text-pink-700" },
   { href: "/harambee",     label: "Harambee",    Icon: HandCoins,    bg: "bg-orange-100",  fg: "text-orange-700" },
