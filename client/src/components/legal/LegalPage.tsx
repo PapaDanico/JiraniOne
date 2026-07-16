@@ -5,7 +5,7 @@ export function LegalPage({ type }: { type: "privacy" | "terms" }) {
   const sections = LEGAL_SECTIONS[type === "privacy" ? "PRIVACY" : "TERMS"];
   const title = type === "privacy" ? "Privacy Policy" : "Terms of Use";
   const desc = type === "privacy"
-    ? "Complies with Kenya DPA 2019, GDPR, and ISO 27001"
+    ? "Designed in line with Kenya's Data Protection Act, 2019"
     : "Legal agreement for using JiraniHub";
 
   return (

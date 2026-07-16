@@ -66,8 +66,14 @@ carpoolRouter.get("/", async (_req, res) => {
       .map((b) => [b.offerId, b]),
   );
 
-  const data = offers.map((offer) => ({
+  // Shape into the nested `driver` object the client/CarpoolOffer type
+  // expects — the query above returns flat driverName/driverUnit columns
+  // (a leftJoin can't return a nested object), and shipping them flat here
+  // silently mismatched the type contract: every offer's card showed
+  // "Driver: Unknown" regardless of who actually posted it.
+  const data = offers.map(({ driverName, driverUnit, ...offer }) => ({
     ...offer,
+    driver: driverName ? { name: driverName, unitNumber: driverUnit } : undefined,
     myBooking: myBookingsByOfferId.get(offer.id) ?? null,
   }));
 

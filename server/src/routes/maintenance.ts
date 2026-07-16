@@ -159,7 +159,7 @@ maintenanceRouter.get("/:id", async (req, res) => {
 // Resident: submit ticket (with optional photos)
 maintenanceRouter.post(
   "/",
-  upload.array("photos", 5),
+  upload.array("photos", MAX_TICKET_PHOTOS),
   async (req, res) => {
     const user = res.locals.user!;
     if (!user.estateId) {

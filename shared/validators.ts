@@ -255,6 +255,13 @@ export const createClassifiedSchema = z.object({
   imageUrl: z.string().url().max(500).optional(),
 });
 
+export const updateClassifiedSchema = z.object({
+  status: z.enum(["active", "sold", "closed"]).optional(),
+  title: z.string().min(3).max(200).optional(),
+  description: z.string().min(10).max(5000).optional(),
+  price: z.number().min(0).max(10_000_000).nullable().optional(),
+});
+
 export const createCarpoolOfferSchema = z.object({
   origin: z.string().min(2).max(200),
   destination: z.string().min(2).max(200),

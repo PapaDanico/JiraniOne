@@ -2,7 +2,7 @@ import { Router } from "express";
 import { eq, and, desc, ne } from "drizzle-orm";
 import { db } from "../db.js";
 import { classifieds } from "@shared/schema.js";
-import { createClassifiedSchema } from "@shared/validators.js";
+import { createClassifiedSchema, updateClassifiedSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
@@ -82,12 +82,12 @@ classifiedsRouter.post("/", async (req, res) => {
 // Owner: update listing status / details
 classifiedsRouter.patch("/:id", async (req, res) => {
   const user = res.locals.user!;
-  const { status, title, description, price } = req.body as {
-    status?: string;
-    title?: string;
-    description?: string;
-    price?: string;
-  };
+  const parsed = updateClassifiedSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { status, title, description, price } = parsed.data;
 
   const [listing] = await db
     .select()
@@ -102,10 +102,10 @@ classifiedsRouter.patch("/:id", async (req, res) => {
   if (!isOwner && !isAdmin) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (status && ["active","sold","closed"].includes(status)) updates.status = status;
+  if (status) updates.status = status;
   if (title?.trim()) updates.title = title.trim();
   if (description?.trim()) updates.description = description.trim();
-  if (price !== undefined) updates.price = price ? String(parseFloat(price)) : null;
+  if (price !== undefined) updates.price = price === null ? null : String(price);
 
   const [updated] = await db
     .update(classifieds)

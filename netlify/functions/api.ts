@@ -10,4 +10,6 @@ if (missing.length > 0) {
   );
 }
 
-export const handler = serverless(createApp());
+export const handler = serverless(createApp(), {
+  basePath: "/.netlify/functions/api",
+});

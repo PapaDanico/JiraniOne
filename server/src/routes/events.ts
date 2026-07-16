@@ -84,22 +84,18 @@ eventsRouter.post("/:id/rsvp", async (req, res) => {
     .where(and(eq(events.id, req.params['id']!), eq(events.estateId, user.estateId!))).limit(1);
   if (!event) { res.status(404).json({ error: "Event not found" }); return; }
 
-  const [existing] = await db.select().from(eventRsvps)
-    .where(and(eq(eventRsvps.eventId, req.params['id']!), eq(eventRsvps.userId, user.id))).limit(1);
-
-  if (existing) {
-    const [updated] = await db.update(eventRsvps)
-      .set({ attending })
-      .where(eq(eventRsvps.id, existing.id))
-      .returning();
-    res.json({ data: updated });
-  } else {
-    const [row] = await db.insert(eventRsvps).values({
-      id: newId(),
-      eventId: req.params['id']!,
-      userId: user.id,
-      attending,
-    }).returning();
-    res.status(201).json({ data: row });
-  }
+  // Atomic upsert on the (eventId, userId) unique index — a plain
+  // check-then-insert here let a double-tap on a slow connection (the exact
+  // 3G scenario CLAUDE.md calls out) create two RSVP rows for one user,
+  // permanently over-counting rsvpCount.
+  const [row] = await db.insert(eventRsvps).values({
+    id: newId(),
+    eventId: req.params['id']!,
+    userId: user.id,
+    attending,
+  }).onConflictDoUpdate({
+    target: [eventRsvps.eventId, eventRsvps.userId],
+    set: { attending },
+  }).returning();
+  res.json({ data: row });
 });

@@ -1,5 +1,5 @@
 # 🔍 JiraniHub Comprehensive Audit & Bug Report
-**Date:** 2026-07-16
+**Date:** 2026-07-16 (Pass 1) / 2026-07-16 (Pass 2, post-Netlify/Supabase migration)
 **Version:** 2.0 (Clean Build)
 **Scope:** Full backend (`server/src`), frontend (`client/src`), and shared schema/validators, read in full — not a smoke test.
 
@@ -7,7 +7,38 @@ This supersedes the previous audit report, which was a feature-completeness pass
 
 ---
 
-## ✅ Fixed in this pass
+## Pass 2 — post-Netlify/Supabase migration audit
+
+Between Pass 1 and this pass, the whole app moved from Render (long-running Node process) to Netlify Functions (serverless-http + Netlify Blobs + Scheduled Functions), and the database moved from Neon to Supabase Postgres (postgres.js instead of Neon's HTTP/WS-pool driver). Three parallel reviews — migration code, backend business logic, frontend — re-read everything with that architecture change in mind. All items below are fixed and pushed.
+
+### Critical — production was completely broken
+1. **Every `/api/*` and `/uploads/*` request 404'd.** `serverless-http`'s AWS request builder uses the incoming path verbatim; it doesn't strip the `/.netlify/functions/api` prefix Netlify's redirects add, and Express's routers are mounted at `/api/auth` etc. (matching local dev). Without a `basePath` option the function saw `/.netlify/functions/api/auth/login` and nothing matched. **Fix:** `netlify/functions/api.ts` now passes `basePath: "/.netlify/functions/api"` to `serverless()`, and both `netlify.toml` redirects reconstruct the full original path (`/.netlify/functions/api/api/:splat`, `/.netlify/functions/api/uploads/:splat`) so that after the prefix is stripped, Express sees exactly the path it expects.
+2. **Ticket photo uploads likely 500'd in production.** `blobStorage.ts` picked Netlify Blobs vs. local disk off `process.env.NETLIFY === "true"`, but that variable is reliably set in Netlify's *build* environment, not necessarily inside the deployed Function's runtime — and a Lambda-based Function can't write to `process.cwd()/uploads` (read-only outside `/tmp`). **Fix:** switched to checking `NETLIFY_BLOBS_CONTEXT` (what `@netlify/blobs` itself uses to auto-configure), the actual runtime signal.
+
+### High — money silently vanished, security holes
+3. **Reconciliation cron dropped the donation/contribution record.** When a payment's real webhook callback was lost and the 5-minute cron settled it from Daraja's status instead, it only flipped `payments.status` — never inserted the `donations`/`chama_contributions` row or credited `fundraising_campaigns.current_amount`, unlike the webhook handler. A resident's M-PESA statement would show a debit with nothing to show for it anywhere in the app. **Fix:** extracted the webhook's settlement logic into `applyPaymentResult`/`settlePaymentById` (`server/src/routes/payments.ts`) and had `cron.ts` call the same path, so both settlement routes can't drift again.
+4. **Unauthenticated path traversal in `/uploads/:key`.** The disk-storage backend did `path.join(uploadsDir, key)` with `key` taken verbatim from the URL — `GET /uploads/..%2F..%2F..%2Fetc%2Fpasswd` could read arbitrary files. Live whenever disk storage is in play (local dev, and any non-Netlify deployment). **Fix:** `key` is now validated against the exact content-addressed format (`^[a-f0-9]+\.webp$`) `imageUpload.ts` actually generates — anything else is rejected with 400.
+5. **Facility double-booking race, reopened at approval time.** The create-path lock (Pass 1, #3) didn't cover the separate admin-approval transition, which re-checked conflicts with a plain unlocked `SELECT`. Two admins approving two overlapping pending bookings concurrently could both pass the check. **Fix:** approval now runs inside the same `FOR UPDATE`-locked transaction pattern as booking creation — `server/src/routes/facilities.ts`.
+6. **`PATCH /api/classifieds/:id` had zero validation.** A malformed `price` (e.g. `"abc"`) silently stored the literal string `"NaN"` in a numeric column instead of being rejected; a non-string `title` threw a 500 instead of a 400. **Fix:** added `updateClassifiedSchema` (zod) — `shared/validators.ts`, `server/src/routes/classifieds.ts`.
+7. **Event RSVP double-tap created duplicate, unremovable rows.** No unique constraint on `(event_id, user_id)` and a check-then-insert with no lock — a slow-connection double-tap (explicitly a CLAUDE.md target scenario) permanently over-counted `rsvpCount`. **Fix:** added a unique index (applied directly to the live Supabase project, since `db:push` can't reach the pooler port from this sandbox) and switched to an atomic `INSERT ... ON CONFLICT DO UPDATE` — `shared/schema.ts`, `server/src/routes/events.ts`.
+8. **Two non-atomic OTP counters could be raced past their limits.** `reset-password`'s attempt counter and `forgot-password`'s daily-cap check were both read-then-write, letting an attacker fire concurrent requests to exceed `OTP_MAX_ATTEMPTS`/`OTP_DAILY_PER_PHONE_CAP` (the exact class of bug already fixed for login lockout in Pass 1). **Fix:** attempt counter now increments via SQL (`attempts + 1` on the live row); the daily-cap check now runs inside a transaction with the user row locked `FOR UPDATE` — `server/src/routes/auth.ts`.
+
+### High — frontend: core create flows were completely non-functional
+9. **Chama create & contribute silently faked success.** Both sent raw numeric strings against server `z.number()` schemas with no coercion (guaranteed 400), and both used raw `fetch()` instead of the app's `api` helper — so the 400 was treated as a resolved promise and `onSuccess` fired anyway: dialog closes, "success" implied, nothing ever persisted. **Fix:** switched to `api.post` with `Math.trunc(Number(...))` coercion and real `onError` handling — `client/src/pages/chama/index.tsx`. (This also removed a dead discarded `GET` request that ran before every create.)
+10. **Carpool "Offer a Ride" failed whenever a fare was entered** (free rides worked; the common case of a paid ride did not) — same unconverted-string-vs-`z.number()` issue. **Fix:** coerce fare to an integer before sending; added error surfacing for create/book/cancel — `client/src/pages/carpool/index.tsx`.
+11. **Classifieds "Post Listing" always failed** — `price` sent as an empty/raw string against `z.number().optional()`. **Fix:** only send `price` when the category is `sell` and a value was entered, coerced to a number — `client/src/pages/classifieds/index.tsx`.
+
+### Medium
+12. **Audit log captured the wrong IP.** `writeAudit` used `req.ip` directly instead of the `getClientIp()` helper built for serverless-http's request shape (Pass 1 migration work) — every `audit_logs.ip` in production reflected Netlify's edge, not the real actor. **Fix:** now uses `getClientIp(req)` — `server/src/lib/audit.ts`.
+13. **Ticket photo size budget had zero headroom.** `3 photos × 1.5MB` inflates to *exactly* 6MB under base64 encoding — precisely AWS Lambda's synchronous payload ceiling, with nothing left over for multipart boundaries or the text fields. **Fix:** reduced to `3 × 1MB` (~4MB inflated), and the client now rejects individual oversized photos before submission instead of only truncating the count — `shared/constants.ts`, `client/src/components/maintenance/ticket-form.tsx`. Also fixed `maintenance.ts`'s `upload.array("photos", 5)` literal, which didn't match `MAX_TICKET_PHOTOS` (3) and would have silently reverted to 5 if the `multer` `limits.files` config ever changed independently.
+14. **No `idle_timeout`/`max_lifetime` on the pooled DB client.** With `max: 1` and neither set, a warm Netlify Function container holds its one Supavisor connection open indefinitely; enough concurrent containers under a traffic burst can exhaust Supavisor's own pool cap. **Fix:** added `idle_timeout: 20, max_lifetime: 1800` — `server/src/db.ts`.
+15. **Several money/security-critical actions failed with no visible feedback:** harambee donations, visitor check-in/check-out at the gate (a real physical-security gap on flaky 3G — the guard has no idea if the action actually happened), the admin dashboard's Overview tab (a fetch error rendered a blank tab, not an error state), and parcel collect/delete. **Fix:** added `onError`/`isError` handling and inline error messages to all of these.
+16. **Two `onError` handlers read an axios-shaped `.response.data.error`** that the app's real `ApiError` class never has (`classifieds.tsx`, `parcels.tsx`), so they always fell back to a generic hardcoded message regardless of what the server actually said. **Fix:** switched to `e instanceof ApiError ? e.message : ...`.
+17. **Security dashboard falsely claimed the gate scanner "works offline once loaded"** — it has no offline capability at all (consistent with the known no-offline-first gap below). **Fix:** corrected the copy.
+
+---
+
+## ✅ Fixed in Pass 1
 
 ### Critical — money / financial integrity
 1. **Forged donations, zero payment collected.** `POST /api/payments/campaigns/:id/donate` inserted a `donations` row and incremented `fundraising_campaigns.current_amount` straight from client input, with no M-PESA charge, no `campaign.status` check, and no relation to the STK-push flow at all. Any authenticated resident could inflate any campaign's total for free. The client never called this route (it uses `/api/harambee/:id/donate`, which does this correctly). **Fix:** removed the dead/dangerous endpoint entirely — `server/src/routes/payments.ts`.
@@ -55,17 +86,35 @@ These were identified and verified but require larger, riskier changes (schema m
 - **M-PESA callback race can orphan a payment.** If `stkPush()` succeeds but the follow-up `UPDATE payments SET checkout_request_id = ...` fails/is delayed, and Safaricom's callback arrives in that window, the callback's lookup (keyed on `checkout_request_id`) finds nothing and silently drops it — and the 5-minute reconciliation cron also requires a non-null `checkout_request_id`, so it can never recover the row either. Needs either writing `checkoutRequestId` before calling `stkPush`, or a secondary reconciliation path keyed on payment `id`.
 - **Generic `/stk-push` type values aren't guarded.** A client could call the generic STK endpoint with `type: "harambee_donation"` (instead of the dedicated `harambee.ts` endpoint) and have Safaricom genuinely charge the resident, but with no `metadata.campaignId` set, so the callback handler's special-case logic silently skips creating the donation record — real money collected, no fundraising credit given. Recommend rejecting reserved `type` values on the generic endpoint.
 - **No multi-provider SMS fallback**, despite CLAUDE.md describing Safaricom → Airtel → Telkom fallback. `lib/sms.ts` calls only Africa's Talking; an outage silently drops OTPs and alerts with no retry or secondary provider.
-- **No offline-first implementation exists** for emergency alerts, maintenance drafts, or visitor pre-registration, despite being an explicit CLAUDE.md requirement (IndexedDB queue, background sync). This is a substantial feature gap, not a small fix — needs its own design/implementation pass.
-- **Chama/carpool schema lacks unique constraints** (`chama_members(chama_id, user_id)` in particular) that would provide defense-in-depth against the races fixed above at the application layer. Since this environment has no `DATABASE_URL` to run `db:push` against, adding and verifying a migration wasn't safe to do blind — recommend adding `unique(chamaId, userId)` to `chamaMembers` in `shared/schema.ts` and pushing it in an environment with DB access.
+- **No offline-first implementation exists** for emergency alerts, maintenance drafts, or visitor pre-registration, despite being an explicit CLAUDE.md requirement (IndexedDB queue, background sync). This is a substantial feature gap, not a small fix — needs its own design/implementation pass. (Confirmed still true in Pass 2 — the security dashboard's false "works offline" claim, fixed above, was found while re-checking this.)
+
+**Resolved since Pass 1** (kept here for traceability): the `chama_members(chama_id, user_id)` unique constraint mentioned above was added and applied to the live database in the migration work between passes.
+
+### Additional known issues found in Pass 2 — not fixed
+
+- **M-PESA callback race can still orphan a payment** on the `checkout_request_id` write-timing window described in Pass 1 — this is a different failure mode than the reconciliation-cron gap fixed above (#3), and the underlying fix (write `checkoutRequestId` before calling `stkPush`, or add an `id`-keyed secondary reconciliation path) is unchanged and still outstanding.
+- **`imageUpload.ts` has no rollback on partial multi-photo failure.** Photos are saved to Blobs/disk one at a time inside the processing loop; if photo 2 of 3 fails MIME/sharp validation, photo 1 is already persisted but the whole request 400s and no ticket ever references it — an orphaned blob with no cleanup path. Low urgency (storage cost, not correctness) but worth a follow-up (delete-on-failure or a periodic orphan sweep).
+- **`server/src/index.ts`'s static/SPA-fallback routes are registered after `createApp()`'s error handler**, so errors thrown there bypass the app's 500 handler. Only affects the "traditional Node hosting" fallback path (not the primary Netlify Functions target), so low real-world impact today.
+- **Weather/traffic are hardcoded to one fixed location (Athi River)**, not estate-scoped — harmless with the current single-estate seed data, but a real multi-tenancy gap the moment a second estate (a different Kenyan town) onboards.
+- **`usePolling.ts` covers only 5 of ~20 active query-key families**, leaving payments, campaigns, facilities/bookings, marketplace, polls, carpool, harambee, chama, classifieds, events, analytics, and estate-users without background refresh (React Query's `refetchOnWindowFocus` provides partial recovery, but not for a tab left open and foregrounded). Flagged as a product-awareness item — deciding the right interval/scope per key is a product call, not purely a bug fix.
+- **A number of secondary mutations across the app still have no `onError`/`isError` handling** beyond what was fixed in this pass (governance poll create/vote, events create/RSVP, bookings approve/reject/cancel, marketplace provider verify, classifieds status-update/delete, notifications mark-read, visitor cancel, ticket comments). None of these are core money/security flows, so they were triaged behind the fixes above — worth a dedicated pass to bring the whole app to one consistent error-handling standard rather than fixing them piecemeal.
 
 ---
 
 ## Verification performed
 
+**Pass 1:**
 - `npm run typecheck` — clean, 0 errors.
 - `npm run test` — 50/50 passing (added a regression test for the new required `consent` field).
 - `npm run build` — production build succeeds (client + server bundles).
-- No live database was available in this environment (no `DATABASE_URL`), so none of the fixes could be exercised against a real Postgres instance — review the transaction/locking changes (`facilities.ts`, `carpool.ts`, `chama.ts`) with real concurrent load before relying on them in production.
+- No live database was available in this environment, so none of the fixes could be exercised against a real Postgres instance.
+
+**Pass 2:**
+- `npm run typecheck` — clean, 0 errors.
+- `npm run test` — 52/52 passing.
+- `npm run build` — production build succeeds; `netlify/functions/*.ts` additionally bundle-checked individually with esbuild (Netlify itself doesn't run in this sandbox, so this is the closest available substitute).
+- The new `event_rsvps` unique index was applied directly to the live Supabase project via the Supabase MCP `apply_migration` (confirmed present via `pg_indexes`) — `db:push` can't reach the Supavisor pooler port from this sandbox's network policy.
+- The routing fix (finding #1) could not be verified end-to-end against the actual deployed site: this sandbox's egress policy blocks all `*.netlify.app` hosts (confirmed via repeated `403`s, including against the PR's own deploy preview). **The user should confirm a real request (e.g. `GET /api/health` or logging in) succeeds against the deploy preview before merging** — this was the single highest-confidence fix in this pass (traced against `serverless-http`'s and Netlify's own source/docs) but is unverified live.
 
 ---
 

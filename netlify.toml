@@ -17,13 +17,20 @@
 # Order matters — first match wins. API and upload routes must be caught
 # before the SPA fallback, or every request would 200 with index.html.
 [[redirects]]
+  # The extra "api" segment below is deliberate, not a typo: serverless-http's
+  # basePath option (set in netlify/functions/api.ts) strips exactly
+  # "/.netlify/functions/api" from the incoming path before handing it to
+  # Express, and Express's routers are mounted at "/api/auth" etc (matching
+  # local dev, where requests arrive as "/api/..." directly). Without this
+  # extra segment the stripped path would be "/auth/login" instead of
+  # "/api/auth/login", and every route would 404.
   from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
+  to = "/.netlify/functions/api/api/:splat"
   status = 200
 
 [[redirects]]
   from = "/uploads/*"
-  to = "/.netlify/functions/api/:splat"
+  to = "/.netlify/functions/api/uploads/:splat"
   status = 200
 
 [[redirects]]

@@ -12,6 +12,7 @@ import type { Visitor } from "@shared/types";
 
 export function GateLog() {
   const [search, setSearch] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
   const qc = useQueryClient();
 
   const { data: visitors, isLoading } = useQuery({
@@ -22,12 +23,24 @@ export function GateLog() {
 
   const checkInMutation = useMutation({
     mutationFn: (id: string) => api.post(`/api/visitors/${id}/check-in`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["visitors"] }),
+    onSuccess: () => {
+      setActionError(null);
+      qc.invalidateQueries({ queryKey: ["visitors"] });
+    },
+    onError: (e: unknown) => {
+      setActionError(e instanceof Error ? e.message : "Check-in failed. Please try again.");
+    },
   });
 
   const checkOutMutation = useMutation({
     mutationFn: (id: string) => api.post(`/api/visitors/${id}/check-out`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["visitors"] }),
+    onSuccess: () => {
+      setActionError(null);
+      qc.invalidateQueries({ queryKey: ["visitors"] });
+    },
+    onError: (e: unknown) => {
+      setActionError(e instanceof Error ? e.message : "Check-out failed. Please try again.");
+    },
   });
 
   const filtered = visitors?.filter(
@@ -58,6 +71,12 @@ export function GateLog() {
           className="pl-9"
         />
       </div>
+
+      {actionError && (
+        <div className="bg-[#B71C1C]/10 border border-[#B71C1C]/20 rounded-xl px-4 py-3 text-sm text-[#B71C1C]">
+          {actionError}
+        </div>
+      )}
 
       {isLoading ? (
         <SectionLoader />

@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import { randomInt, createHash } from "crypto";
 import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
-import { db } from "../db.js";
+import { db, dbTx } from "../db.js";
 import { lucia } from "../auth.js";
 import { users, estates, passwordResetTokens, loginAttempts, userSetupTokens } from "@shared/schema.js";
 import {
@@ -190,23 +190,29 @@ authRouter.post("/forgot-password", async (req, res) => {
   if (user && !user.deletedAt) {
     // Per-phone daily cap: 3 OTP requests / 24h regardless of source IP.
     // Prevents an attacker rotating IPs from blasting SMS (smishing /
-    // SMS-cost amplification) at any victim's number.
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const countRows = await db
-      .select({ value: count() })
-      .from(passwordResetTokens)
-      .where(and(
-        eq(passwordResetTokens.userId, user.id),
-        gt(passwordResetTokens.createdAt, since),
-      ));
-    const recentCount = countRows[0]?.value ?? 0;
+    // SMS-cost amplification) at any victim's number. Locking the user row
+    // for the transaction's duration serializes concurrent forgot-password
+    // requests for the same phone — without it, the count check and the
+    // insert run as separate statements and concurrent requests can all
+    // read the same pre-insert count, letting the cap be exceeded.
+    const otp = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    const otpHash = await bcrypt.hash(otp, BCRYPT_COST);
+    const sent = await dbTx.transaction(async (tx) => {
+      await tx.execute(sql`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`);
 
-    if (recentCount < OTP_DAILY_PER_PHONE_CAP) {
-      const otp = String(randomInt(0, 1_000_000)).padStart(6, "0");
-      const otpHash = await bcrypt.hash(otp, BCRYPT_COST);
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const countRows = await tx
+        .select({ value: count() })
+        .from(passwordResetTokens)
+        .where(and(
+          eq(passwordResetTokens.userId, user.id),
+          gt(passwordResetTokens.createdAt, since),
+        ));
+      const recentCount = countRows[0]?.value ?? 0;
+      if (recentCount >= OTP_DAILY_PER_PHONE_CAP) return false;
 
       // Invalidate any prior unconsumed tokens for this user
-      await db
+      await tx
         .update(passwordResetTokens)
         .set({ consumedAt: new Date() })
         .where(and(
@@ -214,13 +220,16 @@ authRouter.post("/forgot-password", async (req, res) => {
           isNull(passwordResetTokens.consumedAt),
         ));
 
-      await db.insert(passwordResetTokens).values({
+      await tx.insert(passwordResetTokens).values({
         id: newId(),
         userId: user.id,
         otpHash,
         expiresAt: new Date(Date.now() + OTP_TTL_MS),
       });
+      return true;
+    });
 
+    if (sent) {
       await sendThrottledSms({
         userId: user.id,
         to: phone,
@@ -279,9 +288,14 @@ authRouter.post("/reset-password", async (req, res) => {
 
   const valid = await bcrypt.compare(otp, token.otpHash);
   if (!valid) {
+    // `attempts + 1` computed in SQL against the live row, not the JS-side
+    // value read earlier — two concurrent guesses for the same token would
+    // otherwise both compute off the same stale `token.attempts`, losing an
+    // increment and letting an attacker exceed OTP_MAX_ATTEMPTS by firing
+    // guesses in parallel (the same race already fixed for login lockout).
     await db
       .update(passwordResetTokens)
-      .set({ attempts: token.attempts + 1 })
+      .set({ attempts: sql`${passwordResetTokens.attempts} + 1` })
       .where(eq(passwordResetTokens.id, token.id));
     res.status(400).json({ error: "Invalid or expired reset code" });
     return;

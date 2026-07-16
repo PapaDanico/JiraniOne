@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { db, dbTx } from "../db.js";
 import { chamas, chamaMembers, chamaContributions, payments, users } from "@shared/schema.js";
 import {
@@ -34,11 +34,15 @@ chamaRouter.get("/", async (_req, res) => {
 
   const chamaIds = rows.map((c) => c.id);
 
-  // Fetch all memberships for these chamas
+  // Fetch all memberships for these chamas. `inArray` (not a raw
+  // `sql\`ANY(${chamaIds})\`` interpolation) — postgres.js doesn't
+  // auto-serialize a plain JS array into a Postgres array literal, and the
+  // raw form throws "malformed array literal" at runtime despite
+  // typechecking fine.
   const allMembers = await db
     .select()
     .from(chamaMembers)
-    .where(sql`${chamaMembers.chamaId} = ANY(${chamaIds})`);
+    .where(inArray(chamaMembers.chamaId, chamaIds));
 
   const countByChamaId = new Map<string, number>();
   const myMembershipByChamaId = new Map<string, typeof allMembers[number]>();

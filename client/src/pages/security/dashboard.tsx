@@ -79,7 +79,7 @@ export default function SecurityDashboard() {
           <QrCode className="h-12 w-12 mx-auto mb-3 text-brand-gold" />
           <p className="font-display font-extrabold text-xl">Scan visitor QR</p>
           <p className="text-sm text-white/70 mt-1">
-            Open the gate scanner — works offline once loaded
+            Open the gate scanner — search visitors by phone number
           </p>
         </Link>
 
