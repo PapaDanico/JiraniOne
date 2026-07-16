@@ -9,7 +9,6 @@ import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
 import { sendThrottledSms } from "../lib/sms.js";
 import { safeCsvCell, csvRow } from "../lib/csv.js";
-import { broadcastToEstate } from "../ws.js";
 
 export const visitorsRouter = Router();
 visitorsRouter.use(requireAuth);
@@ -202,12 +201,6 @@ visitorsRouter.post("/:id/check-in", requireRole("admin", "security"), async (re
     .where(eq(visitors.id, req.params['id']!))
     .returning();
 
-  broadcastToEstate(user.estateId!, {
-    type: "visitor:checked_in",
-    payload: updated,
-    estateId: user.estateId!,
-  });
-
   res.json({ data: updated });
 });
 
@@ -240,12 +233,6 @@ visitorsRouter.post("/:id/check-out", requireRole("admin", "security"), async (r
     })
     .where(eq(visitors.id, req.params['id']!))
     .returning();
-
-  broadcastToEstate(user.estateId!, {
-    type: "visitor:checked_out",
-    payload: updated,
-    estateId: user.estateId!,
-  });
 
   res.json({ data: updated });
 });

@@ -9,7 +9,6 @@ import {
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
-import { broadcastToEstate } from "../ws.js";
 import { createNotification } from "../lib/notify.js";
 
 export const parcelsRouter = Router();
@@ -115,12 +114,6 @@ parcelsRouter.patch("/:id/received", requireRole("admin", "security"), async (re
     body: `Your parcel (${parcel.description}) has arrived at the gate. Please collect it.`,
     type: "parcel",
     linkTo: "/parcels",
-  });
-
-  broadcastToEstate(user.estateId!, {
-    type: "notification:new" as const,
-    payload: { userId: parcel.residentId },
-    estateId: user.estateId!,
   });
 
   res.json({ data: updated });

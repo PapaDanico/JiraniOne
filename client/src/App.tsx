@@ -3,7 +3,7 @@ import { Switch, Route, Redirect } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { useWebSocket } from "@/hooks/useWebSocket";
+import { usePolling } from "@/hooks/usePolling";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { RoleGate } from "@/components/shared/role-gate";
 import { PageLoader } from "@/components/shared/loading";
@@ -47,7 +47,7 @@ const ChamaPage          = lazy(() => import("@/pages/chama/index"));
 
 function AppRoutes() {
   const { user, isLoading } = useAuth();
-  useWebSocket(!!user);
+  usePolling(!!user);
 
   if (isLoading) return <PageLoader />;
 

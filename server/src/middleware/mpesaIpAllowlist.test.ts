@@ -15,8 +15,8 @@ interface MockRes {
   jsonPayload?: unknown;
   json: (p: unknown) => MockRes;
 }
-function makeReqRes(ip?: string) {
-  const req = { ip, headers: { "user-agent": "test" } } as MockReq;
+function makeReqRes(ip?: string, headers?: Record<string, string>) {
+  const req = { ip, headers: { "user-agent": "test", ...headers } } as MockReq;
   const res = {
     jsonPayload: undefined as unknown,
     json(p: unknown) {
@@ -81,6 +81,28 @@ describe("mpesaIpAllowlist", () => {
     const middleware = await loadMiddleware();
     const next = vi.fn();
     const { req, res } = makeReqRes("::ffff:196.201.214.200");
+    middleware(req as never, res as never, next);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it("prefers Netlify's client-IP header over req.ip (no real socket under serverless-http)", async () => {
+    process.env.NODE_ENV = "production";
+    const middleware = await loadMiddleware();
+    const next = vi.fn();
+    const { req, res } = makeReqRes("9.9.9.9", {
+      "x-nf-client-connection-ip": "196.201.214.200",
+    });
+    middleware(req as never, res as never, next);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it("takes the first address when the Netlify header has multiple", async () => {
+    process.env.NODE_ENV = "production";
+    const middleware = await loadMiddleware();
+    const next = vi.fn();
+    const { req, res } = makeReqRes(undefined, {
+      "x-nf-client-connection-ip": "196.201.214.200, 10.0.0.1",
+    });
     middleware(req as never, res as never, next);
     expect(next).toHaveBeenCalledTimes(1);
   });

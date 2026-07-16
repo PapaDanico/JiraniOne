@@ -11,7 +11,6 @@ import { requireRole } from "../middleware/requireRole.js";
 import { mpesaIpAllowlist } from "../middleware/mpesaIpAllowlist.js";
 import { newId } from "../lib/ids.js";
 import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
-import { broadcastToEstate } from "../ws.js";
 import { writeAudit } from "../lib/audit.js";
 
 // ─── Public M-PESA callback router ───────────────────────────────────────────
@@ -39,7 +38,7 @@ mpesaCallbackRouter.post(
     };
 
     try {
-      const result = await dbTx.transaction(async (tx) => {
+      await dbTx.transaction(async (tx) => {
         // Lock the payment row for the duration of this transaction so
         // concurrent retries from Safaricom serialize on it.
         const rows = await tx.execute<{
@@ -57,19 +56,17 @@ mpesaCallbackRouter.post(
            FOR UPDATE
         `);
         const payment = rows.rows[0];
-        if (!payment) return { skipped: "unknown" as const };
+        if (!payment) return;
 
         // Idempotency guard: if the payment already settled, do nothing.
-        if (payment.status !== "pending") {
-          return { skipped: "already_settled" as const, estateId: payment.estate_id };
-        }
+        if (payment.status !== "pending") return;
 
         if (ResultCode !== 0) {
           await tx
             .update(payments)
             .set({ status: "failed", updatedAt: new Date() })
             .where(eq(payments.id, payment.id));
-          return { settled: "failed" as const, estateId: payment.estate_id };
+          return;
         }
 
         const items = CallbackMetadata?.Item ?? [];
@@ -119,26 +116,7 @@ mpesaCallbackRouter.post(
             });
           }
         }
-
-        return {
-          settled: "completed" as const,
-          estateId: payment.estate_id,
-          paymentId: payment.id,
-          mpesaRef,
-        };
       });
-
-      if (result && "settled" in result && result.settled === "completed") {
-        broadcastToEstate(result.estateId, {
-          type: "payment:confirmed",
-          payload: {
-            id: result.paymentId,
-            status: "completed",
-            mpesaRef: result.mpesaRef,
-          },
-          estateId: result.estateId,
-        });
-      }
     } catch (err) {
       // A unique-violation here means a concurrent callback already settled.
       // That is the desired idempotent outcome — log and ack.

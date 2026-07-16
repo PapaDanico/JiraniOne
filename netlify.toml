@@ -1,0 +1,31 @@
+[build]
+  # Idempotent (IF NOT EXISTS-style) migrations, then the client build.
+  # DATABASE_URL must be set in the Netlify site's environment variables.
+  command = "node migrate-new-features.mjs && node migrate-password-reset.mjs && node migrate-payment-integrity.mjs && node migrate-anonymous-polls.mjs && node migrate-setup-links.mjs && node migrate-payment-metadata.mjs && npm run build:client"
+  publish = "dist/public"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  # sharp and bcrypt are native addons — don't let the function bundler
+  # try to tree-shake/bundle their .node binaries.
+  external_node_modules = ["sharp", "bcrypt"]
+
+# Order matters — first match wins. API and upload routes must be caught
+# before the SPA fallback, or every request would 200 with index.html.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/uploads/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

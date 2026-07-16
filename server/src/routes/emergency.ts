@@ -6,7 +6,6 @@ import { emergencyAlertSchema, updateEmergencyStatusSchema } from "@shared/valid
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
-import { broadcastToEstate } from "../ws.js";
 
 export const emergencyRouter = Router();
 emergencyRouter.use(requireAuth);
@@ -32,16 +31,6 @@ emergencyRouter.post("/", async (req, res) => {
     locationLng: parsed.data.locationLng ? String(parsed.data.locationLng) : null,
     status: "active",
   }).returning();
-
-  broadcastToEstate(
-    user.estateId,
-    {
-      type: "emergency:alert",
-      payload: { ...alert, user: { name: user.name, phone: user.phone } },
-      estateId: user.estateId,
-    },
-    { roles: ["admin", "security"] },
-  );
 
   res.status(201).json({ data: alert });
 });
@@ -102,16 +91,6 @@ emergencyRouter.patch("/:id", requireRole("admin", "security"), async (req, res)
     })
     .where(eq(emergencyAlerts.id, req.params['id']!))
     .returning();
-
-  broadcastToEstate(
-    user.estateId!,
-    {
-      type: "emergency:alert",
-      payload: updated,
-      estateId: user.estateId!,
-    },
-    { roles: ["admin", "security"] },
-  );
 
   res.json({ data: updated });
 });

@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createTicketSchema, type CreateTicketInput } from "@shared/validators";
+import { MAX_TICKET_PHOTOS } from "@shared/constants";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +29,6 @@ const CATEGORIES = [
   { value: "other",       label: "📋 Other"              },
 ];
 
-const MAX_PHOTOS = 5;
-
 const PRIORITIES = [
   { value: "low",    label: "Low",    color: "text-[#6B5D45]" },
   { value: "medium", label: "Medium", color: "text-amber-700" },
@@ -48,17 +47,17 @@ export function TicketForm({ open, onClose }: Props) {
   const [photos, setPhotos] = useState<FileList | null>(null);
   const [photoLimitWarning, setPhotoLimitWarning] = useState(false);
 
-  // The server caps uploads at MAX_PHOTOS and rejects the rest of the
-  // request if more are sent — truncate client-side so the label's "up to
-  // 5" claim is actually enforced, not just aspirational copy.
+  // The server caps uploads at MAX_TICKET_PHOTOS and rejects the rest of the
+  // request if more are sent — truncate client-side so the label's cap is
+  // actually enforced, not just aspirational copy.
   const handlePhotoChange = (files: FileList | null) => {
-    if (!files || files.length <= MAX_PHOTOS) {
+    if (!files || files.length <= MAX_TICKET_PHOTOS) {
       setPhotoLimitWarning(false);
       setPhotos(files);
       return;
     }
     const dt = new DataTransfer();
-    Array.from(files).slice(0, MAX_PHOTOS).forEach((f) => dt.items.add(f));
+    Array.from(files).slice(0, MAX_TICKET_PHOTOS).forEach((f) => dt.items.add(f));
     setPhotoLimitWarning(true);
     setPhotos(dt.files);
   };
@@ -174,7 +173,7 @@ export function TicketForm({ open, onClose }: Props) {
           </div>
 
           <div>
-            <Label className="text-[#212121] font-semibold">Photos (optional, up to 5)</Label>
+            <Label className="text-[#212121] font-semibold">Photos (optional, up to {MAX_TICKET_PHOTOS})</Label>
             <input
               type="file"
               accept="image/*"
@@ -186,7 +185,7 @@ export function TicketForm({ open, onClose }: Props) {
               <p className="text-xs text-[#1B5E20] mt-1">✓ {photos.length} photo{photos.length !== 1 ? "s" : ""} selected</p>
             )}
             {photoLimitWarning && (
-              <p className="text-xs text-[#B71C1C] mt-1">Only the first {MAX_PHOTOS} photos were kept.</p>
+              <p className="text-xs text-[#B71C1C] mt-1">Only the first {MAX_TICKET_PHOTOS} photos were kept.</p>
             )}
           </div>
 

@@ -12,17 +12,17 @@ import {
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
-import { broadcastToEstate } from "../ws.js";
 import { processUploadedImages } from "../lib/imageUpload.js";
 import { writeAudit } from "../lib/audit.js";
 import { createNotification } from "../lib/notify.js";
+import { MAX_TICKET_PHOTOS, MAX_TICKET_PHOTO_BYTES } from "@shared/constants.js";
 
 export const maintenanceRouter = Router();
 maintenanceRouter.use(requireAuth);
 
 const upload = multer({
-  dest: "uploads/",
-  limits: { fileSize: 5 * 1024 * 1024, files: 5 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_TICKET_PHOTO_BYTES, files: MAX_TICKET_PHOTOS },
   fileFilter: (_req, file, cb) => {
     const allowed = [".jpg", ".jpeg", ".png", ".webp"];
     cb(null, allowed.includes(path.extname(file.originalname).toLowerCase()));
@@ -198,12 +198,6 @@ maintenanceRouter.post(
       })
       .returning();
 
-    broadcastToEstate(user.estateId, {
-      type: "ticket:created",
-      payload: ticket,
-      estateId: user.estateId,
-    });
-
     void writeAudit(req, {
       action: "ticket.created",
       targetType: "maintenance_ticket",
@@ -305,12 +299,6 @@ maintenanceRouter.patch(
       });
     }
 
-    broadcastToEstate(user.estateId!, {
-      type: "ticket:updated",
-      payload: updated,
-      estateId: user.estateId!,
-    });
-
     void writeAudit(req, {
       action: "ticket.updated",
       targetType: "maintenance_ticket",
@@ -373,12 +361,6 @@ maintenanceRouter.post("/:id/comments", async (req, res) => {
       linkTo: `/maintenance`,
     });
   }
-
-  broadcastToEstate(ticket.estateId, {
-    type: "ticket:updated",
-    payload: { ticketId: ticket.id, comment },
-    estateId: ticket.estateId,
-  });
 
   res.status(201).json({ data: comment });
 });
