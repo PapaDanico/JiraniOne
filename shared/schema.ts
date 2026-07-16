@@ -870,6 +870,10 @@ export const chamaMembers = pgTable(
   (t) => ({
     chamaIdIdx: index("chama_members_chama_id_idx").on(t.chamaId),
     userIdIdx: index("chama_members_user_id_idx").on(t.userId),
+    // DB-level backstop for the join race fixed at the app layer (row lock
+    // on the chama in chama.ts's POST /:id/join) — there's no leave/rejoin
+    // flow, so a member can only ever appear once.
+    chamaUserUq: uniqueIndex("chama_members_chama_id_user_id_unique").on(t.chamaId, t.userId),
   }),
 );
 
