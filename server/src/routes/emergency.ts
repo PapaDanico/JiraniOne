@@ -2,7 +2,7 @@ import { Router } from "express";
 import { eq, desc, and } from "drizzle-orm";
 import { db } from "../db.js";
 import { emergencyAlerts, users } from "@shared/schema.js";
-import { emergencyAlertSchema } from "@shared/validators.js";
+import { emergencyAlertSchema, updateEmergencyStatusSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
@@ -33,11 +33,15 @@ emergencyRouter.post("/", async (req, res) => {
     status: "active",
   }).returning();
 
-  broadcastToEstate(user.estateId, {
-    type: "emergency:alert",
-    payload: { ...alert, user: { name: user.name, phone: user.phone } },
-    estateId: user.estateId,
-  });
+  broadcastToEstate(
+    user.estateId,
+    {
+      type: "emergency:alert",
+      payload: { ...alert, user: { name: user.name, phone: user.phone } },
+      estateId: user.estateId,
+    },
+    { roles: ["admin", "security"] },
+  );
 
   res.status(201).json({ data: alert });
 });
@@ -75,7 +79,12 @@ emergencyRouter.get("/", requireRole("admin", "security"), async (_req, res) => 
 // Admin/Security: update alert status
 emergencyRouter.patch("/:id", requireRole("admin", "security"), async (req, res) => {
   const user = res.locals.user!;
-  const { status } = req.body as { status: "active" | "responding" | "resolved" };
+  const parsed = updateEmergencyStatusSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { status } = parsed.data;
 
   const [existing] = await db.select().from(emergencyAlerts)
     .where(and(
@@ -94,11 +103,15 @@ emergencyRouter.patch("/:id", requireRole("admin", "security"), async (req, res)
     .where(eq(emergencyAlerts.id, req.params['id']!))
     .returning();
 
-  broadcastToEstate(user.estateId!, {
-    type: "emergency:alert",
-    payload: updated,
-    estateId: user.estateId!,
-  });
+  broadcastToEstate(
+    user.estateId!,
+    {
+      type: "emergency:alert",
+      payload: updated,
+      estateId: user.estateId!,
+    },
+    { roles: ["admin", "security"] },
+  );
 
   res.json({ data: updated });
 });

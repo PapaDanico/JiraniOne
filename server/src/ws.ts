@@ -2,13 +2,18 @@ import { WebSocketServer, WebSocket } from "ws";
 import type { IncomingMessage } from "http";
 import type { Server } from "http";
 import { lucia } from "./auth.js";
-import type { WsEvent } from "@shared/types.js";
+import type { WsEvent, UserRole } from "@shared/types.js";
 import { logger } from "./lib/logger.js";
 
 const log = logger.child({ component: "ws" });
 
+interface AliveSocket extends WebSocket {
+  isAlive?: boolean;
+  role?: UserRole;
+}
+
 // Map estateId → Set of connected sockets
-const estateConnections = new Map<string, Set<WebSocket>>();
+const estateConnections = new Map<string, Set<AliveSocket>>();
 
 // Heartbeat: every HEARTBEAT_MS the server pings every socket. The
 // `isAlive` flag is reset to true on pong; sockets that miss two pings
@@ -16,10 +21,6 @@ const estateConnections = new Map<string, Set<WebSocket>>();
 // never close cleanly, leaving zombie sockets that broadcasts keep
 // trying to write to.
 const HEARTBEAT_MS = 30_000;
-
-interface AliveSocket extends WebSocket {
-  isAlive?: boolean;
-}
 
 function originAllowed(req: IncomingMessage): boolean {
   const isProd = process.env.NODE_ENV === "production";
@@ -36,11 +37,20 @@ function originAllowed(req: IncomingMessage): boolean {
   return allowed.includes(origin);
 }
 
-export function broadcastToEstate(estateId: string, event: WsEvent) {
+// `roles`, when given, restricts delivery to sockets whose authenticated
+// role is in the list — e.g. emergency alerts carry GPS coordinates and a
+// phone number that a vendor account has no business receiving just
+// because it shares an estate with the resident who raised the alert.
+export function broadcastToEstate(
+  estateId: string,
+  event: WsEvent,
+  opts?: { roles?: UserRole[] },
+) {
   const conns = estateConnections.get(estateId);
   if (!conns) return;
   const payload = JSON.stringify(event);
   for (const ws of conns) {
+    if (opts?.roles && (!ws.role || !opts.roles.includes(ws.role))) continue;
     if (ws.readyState === WebSocket.OPEN) ws.send(payload);
   }
 }
@@ -84,6 +94,7 @@ export function createWsServer(httpServer: Server) {
     }
     estateConnections.get(estateId)!.add(ws);
 
+    ws.role = user.role;
     ws.isAlive = true;
     ws.on("pong", () => {
       ws.isAlive = true;

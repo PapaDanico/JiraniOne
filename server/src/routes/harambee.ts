@@ -230,6 +230,18 @@ harambeeRouter.post("/:id/donate", async (req, res) => {
     .returning();
 
   if (!isMpesaConfigured()) {
+    // Dev stub only — never in production (see payments.ts /stk-push for
+    // why: a missing Daraja env var must fail loudly, not silently
+    // auto-complete a real donation for free).
+    if (process.env.NODE_ENV === "production") {
+      await db
+        .update(payments)
+        .set({ status: "failed", updatedAt: new Date() })
+        .where(eq(payments.id, paymentId));
+      res.status(503).json({ error: "Payments are temporarily unavailable. Please try again shortly." });
+      return;
+    }
+
     // Dev stub: credit immediately without waiting for a real callback.
     await db
       .update(payments)

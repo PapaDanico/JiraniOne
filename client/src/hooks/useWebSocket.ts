@@ -37,6 +37,9 @@ export function useWebSocket(enabled = true) {
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     const wsUrl = `${protocol}://${window.location.host}/ws`;
 
+    let stopped = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+
     const connect = () => {
       const socket = new WebSocket(wsUrl);
       ws.current = socket;
@@ -51,9 +54,13 @@ export function useWebSocket(enabled = true) {
       };
 
       socket.onclose = () => {
-        // reconnect after 3s unless intentionally closed
-        setTimeout(() => {
-          if (ws.current?.readyState === WebSocket.CLOSED) connect();
+        // Reconnect after 3s unless this effect was torn down (logout,
+        // unmount) — checking ws.current's readyState isn't enough since
+        // an intentionally-closed socket also reports CLOSED, which
+        // previously caused reconnects for sessions that had logged out.
+        if (stopped) return;
+        reconnectTimer = setTimeout(() => {
+          if (!stopped) connect();
         }, 3000);
       };
     };
@@ -61,6 +68,8 @@ export function useWebSocket(enabled = true) {
     connect();
 
     return () => {
+      stopped = true;
+      clearTimeout(reconnectTimer);
       ws.current?.close();
     };
   }, [enabled, handleEvent]);

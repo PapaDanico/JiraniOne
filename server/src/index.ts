@@ -9,6 +9,13 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
+// Express 4 does not forward rejected promises from `async (req,res)=>{}`
+// handlers to error middleware on its own. Without this, a thrown error in
+// any route (e.g. an invalid-enum DB write) becomes an unhandledRejection
+// that only gets logged — the client's request just hangs until timeout
+// instead of receiving the 500 from the handler below. Must be imported
+// before any router that defines async handlers.
+import "express-async-errors";
 import express from "express";
 import { createServer } from "http";
 import cors from "cors";

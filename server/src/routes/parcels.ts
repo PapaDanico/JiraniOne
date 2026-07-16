@@ -149,6 +149,13 @@ parcelsRouter.patch("/:id/collected", async (req, res) => {
     return;
   }
 
+  if (parcel.status !== "at_gate") {
+    res.status(400).json({
+      error: "Parcel must be received at the gate before it can be marked collected",
+    });
+    return;
+  }
+
   const [updated] = await db
     .update(parcels)
     .set({ status: "collected", collectedAt: new Date(), updatedAt: new Date() })

@@ -28,6 +28,8 @@ const CATEGORIES = [
   { value: "other",       label: "📋 Other"              },
 ];
 
+const MAX_PHOTOS = 5;
+
 const PRIORITIES = [
   { value: "low",    label: "Low",    color: "text-[#6B5D45]" },
   { value: "medium", label: "Medium", color: "text-amber-700" },
@@ -44,6 +46,22 @@ export function TicketForm({ open, onClose }: Props) {
   const qc = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<FileList | null>(null);
+  const [photoLimitWarning, setPhotoLimitWarning] = useState(false);
+
+  // The server caps uploads at MAX_PHOTOS and rejects the rest of the
+  // request if more are sent — truncate client-side so the label's "up to
+  // 5" claim is actually enforced, not just aspirational copy.
+  const handlePhotoChange = (files: FileList | null) => {
+    if (!files || files.length <= MAX_PHOTOS) {
+      setPhotoLimitWarning(false);
+      setPhotos(files);
+      return;
+    }
+    const dt = new DataTransfer();
+    Array.from(files).slice(0, MAX_PHOTOS).forEach((f) => dt.items.add(f));
+    setPhotoLimitWarning(true);
+    setPhotos(dt.files);
+  };
 
   const {
     register,
@@ -70,7 +88,7 @@ export function TicketForm({ open, onClose }: Props) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["maintenance", "my"] });
       reset();
-      setPhotos(null);
+      setPhotos(null); setPhotoLimitWarning(false);
       onClose();
     },
     onError: (err: unknown) => {
@@ -87,7 +105,7 @@ export function TicketForm({ open, onClose }: Props) {
   const priority = watch("priority");
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); setServerError(null); setPhotos(null); onClose(); } }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); setServerError(null); setPhotos(null); setPhotoLimitWarning(false); onClose(); } }}>
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-3 mt-2">
@@ -162,10 +180,13 @@ export function TicketForm({ open, onClose }: Props) {
               accept="image/*"
               multiple
               className="w-full text-sm text-[#6B5D45] mt-1 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[#1B5E20]/10 file:text-[#1B5E20] hover:file:bg-[#1B5E20]/15 transition-colors"
-              onChange={(e) => setPhotos(e.target.files)}
+              onChange={(e) => handlePhotoChange(e.target.files)}
             />
             {photos && photos.length > 0 && (
               <p className="text-xs text-[#1B5E20] mt-1">✓ {photos.length} photo{photos.length !== 1 ? "s" : ""} selected</p>
+            )}
+            {photoLimitWarning && (
+              <p className="text-xs text-[#B71C1C] mt-1">Only the first {MAX_PHOTOS} photos were kept.</p>
             )}
           </div>
 
@@ -177,7 +198,7 @@ export function TicketForm({ open, onClose }: Props) {
         </form>
 
         <DialogFooter>
-          <Button variant="secondary" onClick={() => { reset(); setServerError(null); setPhotos(null); onClose(); }}>
+          <Button variant="secondary" onClick={() => { reset(); setServerError(null); setPhotos(null); setPhotoLimitWarning(false); onClose(); }}>
             Cancel
           </Button>
           <Button

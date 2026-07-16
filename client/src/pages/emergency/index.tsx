@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ShieldAlert, Phone, AlertTriangle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,9 +47,29 @@ function RaiseAlertDialog({ onClose }: { onClose: () => void }) {
   const [type, setType] = useState("medical");
   const [description, setDescription] = useState("");
   const [done, setDone] = useState(false);
+  const [coords, setCoords] = useState<{ lat?: number; lng?: number }>({});
+
+  // Best-effort GPS capture, requested as soon as the dialog opens so it's
+  // likely ready by the time the resident hits Send. Never blocks or fails
+  // the alert if permission is denied or the fix times out — a panic
+  // button must never wait on GPS to notify security.
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
+    );
+  }, []);
 
   const mutation = useMutation({
-    mutationFn: () => api.post("/api/emergency", { type, description: description || undefined }),
+    mutationFn: () =>
+      api.post("/api/emergency", {
+        type,
+        description: description || undefined,
+        locationLat: coords.lat,
+        locationLng: coords.lng,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["emergency"] });
       setDone(true);
@@ -114,6 +134,12 @@ function RaiseAlertDialog({ onClose }: { onClose: () => void }) {
                   rows={3}
                 />
               </div>
+              {mutation.isError && (
+                <div className="rounded-xl bg-[#B71C1C]/10 border border-[#B71C1C]/30 px-3 py-2.5 text-sm text-[#B71C1C]">
+                  Couldn't send the alert — check your connection and try again, or call
+                  security directly at 0722 000 000.
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="secondary" onClick={onClose}>Cancel</Button>

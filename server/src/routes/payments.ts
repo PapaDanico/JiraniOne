@@ -5,7 +5,6 @@ import { payments, fundraisingCampaigns, donations, chamaContributions } from "@
 import {
   initiatePaymentSchema,
   createCampaignSchema,
-  donateSchema,
 } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
@@ -196,6 +195,18 @@ paymentsRouter.post("/stk-push", async (req, res) => {
     .returning();
 
   if (!isMpesaConfigured()) {
+    // Dev stub only. Gated on NODE_ENV, not just missing config — an unset
+    // Daraja env var in production (typo, botched secret rotation) must
+    // never silently auto-complete a real resident's payment for free.
+    if (process.env.NODE_ENV === "production") {
+      await db
+        .update(payments)
+        .set({ status: "failed", updatedAt: new Date() })
+        .where(eq(payments.id, id));
+      res.status(503).json({ error: "Payments are temporarily unavailable. Please try again shortly." });
+      return;
+    }
+
     // Dev stub: leave mpesaRef NULL (the partial unique index ignores nulls)
     // and mark completed immediately so dev flows continue to work.
     const [updated] = await db
@@ -319,71 +330,9 @@ paymentsRouter.post("/campaigns", requireRole("admin"), async (req, res) => {
   res.status(201).json({ data: row });
 });
 
-// Donate to campaign — atomic insert + increment in a single transaction.
-// NOTE: still stub-credits the balance pending real M-PESA STK Push wiring
-// (tracked in the readiness audit as a P1).
-paymentsRouter.post("/campaigns/:id/donate", async (req, res) => {
-  const user = res.locals.user!;
-  if (!user.estateId) {
-    res.status(400).json({ error: "No estate assigned" });
-    return;
-  }
-
-  const parsed = donateSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res
-      .status(400)
-      .json({ error: "Invalid input", details: parsed.error.flatten() });
-    return;
-  }
-  const { amount, anonymous } = parsed.data;
-
-  const [campaign] = await db
-    .select()
-    .from(fundraisingCampaigns)
-    .where(
-      and(
-        eq(fundraisingCampaigns.id, req.params["id"]!),
-        eq(fundraisingCampaigns.estateId, user.estateId),
-      ),
-    )
-    .limit(1);
-
-  if (!campaign) {
-    res.status(404).json({ error: "Campaign not found" });
-    return;
-  }
-
-  const donation = await dbTx.transaction(async (tx) => {
-    const [d] = await tx
-      .insert(donations)
-      .values({
-        id: newId(),
-        campaignId: campaign.id,
-        donorId: user.id,
-        amount: String(amount),
-        anonymous,
-      })
-      .returning();
-
-    // SQL-side increment — no read-modify-write race.
-    await tx
-      .update(fundraisingCampaigns)
-      .set({
-        currentAmount: sql`${fundraisingCampaigns.currentAmount} + ${amount}`,
-        updatedAt: new Date(),
-      })
-      .where(eq(fundraisingCampaigns.id, campaign.id));
-
-    return d;
-  });
-
-  void writeAudit(req, {
-    action: "campaign.donated",
-    targetType: "fundraising_campaign",
-    targetId: campaign.id,
-    metadata: { amount, anonymous, donationId: donation!.id },
-  });
-
-  res.status(201).json({ data: donation });
-});
+// Donations are only ever recorded after a real M-PESA payment settles —
+// see harambeeRouter's POST /:id/donate (initiates STK push; the donation
+// row + campaign total increment happen in the callback handler above once
+// ResultCode === 0). A direct "donate" endpoint here previously let any
+// authenticated resident credit arbitrary amounts with no payment collected
+// at all — removed as a critical financial integrity bug, not reimplemented.

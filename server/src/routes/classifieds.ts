@@ -98,7 +98,7 @@ classifiedsRouter.patch("/:id", async (req, res) => {
   if (!listing) { res.status(404).json({ error: "Listing not found" }); return; }
 
   const isOwner = listing.userId === user.id;
-  const isAdmin = user.role === "admin";
+  const isAdmin = user.role === "admin" && listing.estateId === user.estateId;
   if (!isOwner && !isAdmin) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -136,7 +136,7 @@ classifiedsRouter.delete("/:id", async (req, res) => {
   if (!listing) { res.status(404).json({ error: "Not found" }); return; }
 
   const isOwner = listing.userId === user.id;
-  const isAdmin = user.role === "admin";
+  const isAdmin = user.role === "admin" && listing.estateId === user.estateId;
   if (!isOwner && !isAdmin) { res.status(403).json({ error: "Forbidden" }); return; }
 
   await db.delete(classifieds).where(eq(classifieds.id, listing.id));

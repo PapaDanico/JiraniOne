@@ -243,6 +243,24 @@ maintenanceRouter.patch(
       return;
     }
 
+    if (parsed.data.assignedToId) {
+      const [assignee] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(
+          and(
+            eq(users.id, parsed.data.assignedToId),
+            eq(users.estateId, user.estateId!),
+            isNull(users.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (!assignee) {
+        res.status(400).json({ error: "Assignee must belong to this estate" });
+        return;
+      }
+    }
+
     const updates: Partial<typeof existing> = {
       ...parsed.data,
       updatedAt: new Date(),

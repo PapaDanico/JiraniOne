@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { SectionLoader } from "@/components/shared/loading";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { formatDateTime, formatDate } from "@/lib/utils";
 import type { Payment, FundraisingCampaign } from "@shared/types";
 
@@ -33,20 +33,25 @@ function PayDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: () =>
       api.post<{ message?: string; stub?: boolean }>("/api/payments/stk-push", {
-        amount: Number(amount),
+        amount: Math.trunc(Number(amount)),
         type: "levy",
         description: "Monthly levy",
       }),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["payments"] });
+      setError(null);
       setMsg(
         res.data.message ??
         (res.data.stub ? "Test mode: payment recorded." : "Check your phone for the M-PESA prompt."),
       );
+    },
+    onError: (err) => {
+      setError(err instanceof ApiError ? err.message : "Payment failed to start. Please try again.");
     },
   });
 
@@ -82,6 +87,11 @@ function PayDialog({ onClose }: { onClose: () => void }) {
           {msg && (
             <div className="bg-[#1B5E20]/8 border border-[#1B5E20]/20 rounded-xl px-4 py-3 text-sm text-[#1B5E20] font-medium">
               ✓ {msg}
+            </div>
+          )}
+          {error && (
+            <div className="bg-[#B71C1C]/10 border border-[#B71C1C]/30 rounded-xl px-4 py-3 text-sm text-[#B71C1C] font-medium">
+              {error}
             </div>
           )}
         </div>

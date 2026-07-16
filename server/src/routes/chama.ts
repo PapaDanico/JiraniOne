@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, desc, and, sql } from "drizzle-orm";
-import { db } from "../db.js";
+import { db, dbTx } from "../db.js";
 import { chamas, chamaMembers, chamaContributions, payments, users } from "@shared/schema.js";
 import {
   createChamaSchema,
@@ -109,54 +109,73 @@ chamaRouter.post("/:id/join", async (req, res) => {
     return;
   }
 
-  const [chama] = await db
-    .select()
-    .from(chamas)
-    .where(
-      and(
-        eq(chamas.id, req.params.id!),
-        eq(chamas.estateId, user.estateId),
-      ),
-    )
-    .limit(1);
+  try {
+    const member = await dbTx.transaction(async (tx) => {
+      // Lock the chama row so two concurrent joins by the same user
+      // serialize — without this, both requests can pass the membership
+      // check before either INSERT commits, creating duplicate rows.
+      const [chama] = await tx
+        .select()
+        .from(chamas)
+        .where(
+          and(
+            eq(chamas.id, req.params.id!),
+            eq(chamas.estateId, user.estateId!),
+          ),
+        )
+        .for("update")
+        .limit(1);
 
-  if (!chama) {
-    res.status(404).json({ error: "Chama not found" });
-    return;
+      if (!chama) {
+        throw Object.assign(new Error("Chama not found"), { httpStatus: 404 });
+      }
+      if (chama.status !== "active") {
+        throw Object.assign(
+          new Error("Chama is not accepting new members"),
+          { httpStatus: 400 },
+        );
+      }
+
+      const [existing] = await tx
+        .select()
+        .from(chamaMembers)
+        .where(
+          and(
+            eq(chamaMembers.chamaId, chama.id),
+            eq(chamaMembers.userId, user.id),
+          ),
+        )
+        .limit(1);
+
+      if (existing) {
+        throw Object.assign(
+          new Error("Already a member of this chama"),
+          { httpStatus: 400 },
+        );
+      }
+
+      const [inserted] = await tx
+        .insert(chamaMembers)
+        .values({
+          id: newId(),
+          chamaId: chama.id,
+          userId: user.id,
+          role: "member",
+        })
+        .returning();
+
+      return inserted;
+    });
+
+    res.status(201).json({ data: member });
+  } catch (err) {
+    const httpStatus = (err as { httpStatus?: number }).httpStatus;
+    if (httpStatus) {
+      res.status(httpStatus).json({ error: (err as Error).message });
+      return;
+    }
+    throw err;
   }
-  if (chama.status !== "active") {
-    res.status(400).json({ error: "Chama is not accepting new members" });
-    return;
-  }
-
-  // Check existing membership
-  const [existing] = await db
-    .select()
-    .from(chamaMembers)
-    .where(
-      and(
-        eq(chamaMembers.chamaId, chama.id),
-        eq(chamaMembers.userId, user.id),
-      ),
-    )
-    .limit(1);
-
-  if (existing) {
-    res.status(400).json({ error: "Already a member of this chama" });
-    return;
-  }
-
-  const [member] = await db
-    .insert(chamaMembers)
-    .values({
-      id: newId(),
-      chamaId: chama.id,
-      userId: user.id,
-      role: "member",
-    })
-    .returning();
-
-  res.status(201).json({ data: member });
 });
 
 // POST /:id/contribute — resident contributes to a chama (M-PESA stub in dev)
@@ -224,7 +243,18 @@ chamaRouter.post("/:id/contribute", async (req, res) => {
     .returning();
 
   if (!isMpesaConfigured()) {
-    // Dev stub: record contribution immediately.
+    // Dev stub only — never in production (see payments.ts /stk-push for
+    // why: a missing Daraja env var must fail loudly, not silently
+    // auto-complete a real contribution for free).
+    if (process.env.NODE_ENV === "production") {
+      await db
+        .update(payments)
+        .set({ status: "failed", updatedAt: new Date() })
+        .where(eq(payments.id, paymentId));
+      res.status(503).json({ error: "Payments are temporarily unavailable. Please try again shortly." });
+      return;
+    }
+
     await db
       .update(payments)
       .set({ status: "completed", mpesaRef: "DEV_STUB", updatedAt: new Date() })
