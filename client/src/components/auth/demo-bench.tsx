@@ -15,7 +15,7 @@ const DEMO_ACCOUNTS: Array<{
   name: string;
 }> = [
   { role: "resident", phone: "+254700000002", displayPhone: "0700 000 002", name: "Aisha Kamau" },
-  { role: "admin",    phone: "+254700000001", displayPhone: "0700 000 001", name: "Daniel Ng'ong'a" },
+  { role: "admin",    phone: "+254700000001", displayPhone: "0700 000 001", name: "Estate Admin" },
   { role: "security", phone: "+254700000003", displayPhone: "0700 000 003", name: "James Otieno" },
   { role: "vendor",   phone: "+254700000004", displayPhone: "0700 000 004", name: "Grace Wanjiku" },
 ];
