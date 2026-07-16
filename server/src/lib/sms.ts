@@ -59,7 +59,7 @@ async function incrementUserQuota(userId: string): Promise<number> {
            updated_at = NOW()
     RETURNING sent_count
   `);
-  return rows.rows[0]?.sent_count ?? 0;
+  return rows[0]?.sent_count ?? 0;
 }
 
 async function decrementUserQuota(userId: string): Promise<void> {
@@ -83,7 +83,7 @@ async function incrementGlobalQuota(): Promise<number> {
            updated_at = NOW()
     RETURNING sent_count
   `);
-  return rows.rows[0]?.sent_count ?? 0;
+  return rows[0]?.sent_count ?? 0;
 }
 
 async function decrementGlobalQuota(): Promise<void> {

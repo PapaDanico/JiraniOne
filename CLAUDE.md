@@ -38,8 +38,9 @@ accordingly.
 - Netlify Scheduled Functions (cron-equivalent jobs — no in-process scheduler)
 
 ### Database
-- PostgreSQL via Neon (serverless, cloud-hosted)
-- Drizzle migrations (version-controlled schema)
+- PostgreSQL via Supabase (cloud-hosted), accessed through Supabase's
+  Transaction pooler (Supavisor) for serverless-friendly connection pooling
+- Drizzle ORM, schema pushed declaratively via `npm run db:push`
 
 ### Payments
 - M-PESA Daraja API (STK Push, C2B, B2C)

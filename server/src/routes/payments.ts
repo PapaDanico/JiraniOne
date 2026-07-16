@@ -55,7 +55,7 @@ mpesaCallbackRouter.post(
            WHERE checkout_request_id = ${CheckoutRequestID}
            FOR UPDATE
         `);
-        const payment = rows.rows[0];
+        const payment = rows[0];
         if (!payment) return;
 
         // Idempotency guard: if the payment already settled, do nothing.

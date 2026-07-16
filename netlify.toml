@@ -1,19 +1,13 @@
 [build]
-  # PR/branch previews only need the client build — they don't touch the
-  # database. Migrations run for production only (see [context.production]
-  # below), so a preview build never needs DATABASE_URL and can't run
-  # schema changes against the real DB just because a PR was opened.
+  # Schema changes are pushed deliberately via `npm run db:push` (Drizzle's
+  # declarative push), not as an automatic build step — so build behaves
+  # identically for previews and production, and no build needs DATABASE_URL.
   command = "npm run build:client"
   publish = "dist/public"
   functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"
-
-[context.production]
-  # Idempotent (IF NOT EXISTS-style) migrations, then the client build.
-  # DATABASE_URL must be set in the Netlify site's environment variables.
-  command = "node migrate-new-features.mjs && node migrate-password-reset.mjs && node migrate-payment-integrity.mjs && node migrate-anonymous-polls.mjs && node migrate-setup-links.mjs && node migrate-payment-metadata.mjs && npm run build:client"
 
 [functions]
   # sharp and bcrypt are native addons — don't let the function bundler
