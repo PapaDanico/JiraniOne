@@ -6,6 +6,7 @@ import {
   visitors,
   smsQuotas,
   smsGlobalQuota,
+  auditLogs,
 } from "@shared/schema.js";
 import { lucia } from "./auth.js";
 import { stkPushStatus } from "./lib/mpesa.js";
@@ -98,6 +99,18 @@ export async function runDailyCleanup() {
         lt(
           smsGlobalQuota.day,
           new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        ),
+      );
+
+    // Audit log retention (2 years, matching the published Privacy Policy —
+    // this job previously didn't exist, so audit_logs grew unbounded and
+    // the "2 years" retention promise was unenforced).
+    await db
+      .delete(auditLogs)
+      .where(
+        lt(
+          auditLogs.createdAt,
+          new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000),
         ),
       );
   } catch (err) {

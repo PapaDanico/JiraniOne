@@ -1,17 +1,17 @@
 // Token-efficient legal content - centralized data structure
 export const LEGAL_SECTIONS = {
   PRIVACY: [
-    { title: "1. Who We Are", content: "JiraniHub Ltd., registered in Kenya, complies with DPA 2019, GDPR, and ISO 27001. Data Protection Officer: dpo@jiranihub.co.ke" },
+    { title: "1. Who We Are", content: "JiraniHub Ltd., registered in Kenya. We design and operate this platform in line with the Kenya Data Protection Act (2019). Data Protection queries: privacy@jiranihub.co.ke" },
     { title: "2. Data We Collect", content: "Phone, name, estate, unit, role, visitor info, tickets, payments, location (emergency only), service logs, usage data, device info, session data." },
     { title: "3. Why We Collect It", content: "To deliver the platform: visitors, maintenance, payments, announcements, governance, bookings, emergency alerts. We never sell or share data for marketing." },
-    { title: "4. Who We Share With", content: "Estate admins/security (your data only), M-PESA (Safaricom), SMS (Africa's Talking), hosting (Neon/Render). Law enforcement with court orders only." },
+    { title: "4. Who We Share With", content: "Estate admins/security (your data only), M-PESA (Safaricom), SMS (Africa's Talking), hosting and database infrastructure (Netlify, Supabase). Law enforcement with court orders only." },
     { title: "5. How Long We Keep It", content: "Active accounts: while active + 30 days. Payments: 7 years (tax law). Audit logs: 2 years. Visitor records: anonymized after 90 days. Error logs: 90 days." },
     { title: "6. Your Rights", content: "Access (GET /api/users/me/data), Correct (profile), Erase (POST /api/users/me/erase), Export (JSON), Complain (ODPC). All requests answered within 30 days." },
-    { title: "7. Security", content: "HTTPS/TLS encryption, bcrypt hashing (12 rounds), AES-256 at rest, SQL injection prevention (Drizzle ORM), XSS protection (CSP), CSRF tokens, rate limiting (200/15min), M-PESA IP allowlist." },
+    { title: "7. Security", content: "HTTPS/TLS encryption, bcrypt hashing (12 rounds), SQL injection prevention (Drizzle ORM), XSS protection (CSP), CSRF tokens, rate limiting (200/15min), M-PESA IP allowlist." },
     { title: "8. Cookies", content: "Session cookie (30 days, HTTP-only). Analytics optional (disable in Preferences). No third-party tracking." },
     { title: "9. Data Breaches", content: "Notification within 24 hours via email, SMS, in-app. Reported to Kenya DPA and authorities if required by law." },
-    { title: "10. International Transfers", content: "Data stored in Africa (Neon US East region). If transferred, Standard Contractual Clauses (GDPR compliance) apply." },
-    { title: "11. Contact Us", content: "Privacy: privacy@jiranihub.co.ke | DPO: dpo@jiranihub.co.ke | Support: support@jiranihub.co.ke | Kenya DPA: complaints@odpc.go.ke" },
+    { title: "10. International Transfers", content: "Data is stored with our infrastructure providers (Supabase, in the EU). We only use processors that meet Kenya DPA 2019 requirements for data leaving Kenya." },
+    { title: "11. Contact Us", content: "Privacy: privacy@jiranihub.co.ke | Support: support@jiranihub.co.ke | Kenya DPA: complaints@odpc.go.ke" },
   ],
   TERMS: [
     { title: "1. Acceptance of Terms", content: "By using JiraniHub, you agree to these Terms of Use. If you disagree, do not use the platform." },
