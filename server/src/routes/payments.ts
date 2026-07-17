@@ -12,6 +12,7 @@ import { mpesaIpAllowlist } from "../middleware/mpesaIpAllowlist.js";
 import { newId } from "../lib/ids.js";
 import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
 import { writeAudit } from "../lib/audit.js";
+import { isProduction } from "../lib/env.js";
 
 // Shared by the public M-PESA callback handler below AND the reconciliation
 // cron job (server/src/cron.ts) — both settle a pending payment the same
@@ -234,7 +235,7 @@ paymentsRouter.post("/stk-push", async (req, res) => {
     // Dev stub only. Gated on NODE_ENV, not just missing config — an unset
     // Daraja env var in production (typo, botched secret rotation) must
     // never silently auto-complete a real resident's payment for free.
-    if (process.env.NODE_ENV === "production") {
+    if (isProduction()) {
       await db
         .update(payments)
         .set({ status: "failed", updatedAt: new Date() })

@@ -17,15 +17,17 @@
 
 import pino from "pino";
 import * as Sentry from "@sentry/node";
+import { isProduction } from "./env.js";
 
-const isProd = process.env.NODE_ENV === "production";
+const isProd = isProduction();
+const envLabel = isProd ? "production" : (process.env.NODE_ENV ?? "development");
 
 // Initialize Sentry only when a DSN is provided. Calling Sentry.init() with
 // no DSN is documented as a no-op but we skip it to avoid noise in dev.
 if (process.env.SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
-    environment: process.env.NODE_ENV ?? "development",
+    environment: envLabel,
     // Sample 10% of transactions in prod, 100% elsewhere — adjust upward
     // once we have prod traffic and SENTRY_TRACE_SAMPLE_RATE is set.
     tracesSampleRate: parseFloat(process.env.SENTRY_TRACE_SAMPLE_RATE ?? (isProd ? "0.1" : "1.0")),
@@ -59,6 +61,6 @@ export const logger = pino({
   timestamp: pino.stdTimeFunctions.isoTime,
   base: {
     service: "jiranihub",
-    env: process.env.NODE_ENV ?? "development",
+    env: envLabel,
   },
 });

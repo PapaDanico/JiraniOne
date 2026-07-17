@@ -293,20 +293,41 @@ If referencing the Replit export for logic, SKIP these entirely:
   time, so an env var update alone does not reach an already-running
   function. `GET /api/health` pings the DB directly and is a fast way to
   confirm DB connectivity after a rotation.
-- **Gotcha — `NODE_ENV` must be set explicitly, and drives more than logging
-  verbosity**: `createApp()`'s `isProd` flag (`NODE_ENV === "production"`)
-  picks `ALLOWED_ORIGINS` for both the `cors()` middleware and the
-  origin/CSRF check. If `NODE_ENV` is unset on the live Netlify Function,
-  `isProd` is `false`, `ALLOWED_ORIGINS` silently falls back to the
-  localhost dev list, and `cors()` rejects every request whose real
-  `Origin` header isn't in it — a fast, synchronous 500 on every mutating
-  request (login, register, any POST/PUT/PATCH/DELETE) that looks
-  identical to a generic crash, while GETs without an Origin header keep
-  working. This caused a real production login outage: `NODE_ENV` was
-  never actually set on the live site despite an earlier PR's description
-  claiming it was. `netlify/functions/api.ts` now fails loudly at cold
-  start if `NODE_ENV` is missing, specifically to catch this class of bug
-  immediately instead of as a silent, hard-to-trace CORS rejection.
+- **Gotcha — `NODE_ENV` cannot be set for Netlify Functions; use `isProduction()`
+  instead**: `NODE_ENV` is a reserved key for Netlify Functions — setting it
+  via the dashboard or env-var API silently no-ops (confirmed directly: an
+  "upserted" `NODE_ENV` never actually appeared in the site's stored env
+  vars, and the live function kept reporting it missing). Every
+  environment-sensitive check in the codebase (CORS allowlist, session
+  cookie `Secure` flag, M-PESA sandbox-vs-production API base URL, M-PESA
+  callback IP allowlist enforcement, the "never silently auto-complete a
+  payment when Daraja isn't configured" guards) MUST go through
+  `isProduction()` in `server/src/lib/env.ts`, never a raw
+  `process.env.NODE_ENV === "production"` check. That helper reads
+  Netlify's automatically-provided `CONTEXT` variable
+  (`"production"` / `"deploy-preview"` / `"branch-deploy"` / `"dev"` — set
+  by the platform itself for every build and function invocation, zero
+  configuration needed) as well as `NODE_ENV`, so it works correctly both
+  on Netlify and in local dev / traditional Node hosting (where `CONTEXT`
+  doesn't exist but `NODE_ENV` does).
+  - A raw `NODE_ENV` check inside a request handler (evaluated fresh per
+    call) would have picked up a value if one were ever actually set. The
+    versions worth watching for in review are ones captured as a
+    **module-load-time constant** (`const isProd = process.env.NODE_ENV
+    === "production"` at a file's top level) — those get frozen at import
+    time, before any reactive fix could run, which is exactly what broke
+    `server/src/auth.ts`'s Lucia session-cookie config.
+  - This caused two real production incidents discovered together on
+    2026-07-17: (1) a full login outage — `ALLOWED_ORIGINS` silently fell
+    back to the localhost-only dev list, so `cors()` rejected every
+    mutating request (login, register, ...) whose real `Origin` header
+    wasn't in it, a fast synchronous 500 indistinguishable from a generic
+    crash; (2) resident levy payments, chama contributions, and harambee
+    donations were silently auto-completing for free instead of failing
+    loudly whenever M-PESA wasn't configured, because the "never silently
+    succeed in production" guard never detected production. The M-PESA
+    callback IP allowlist was also unenforced the whole time, for the
+    same reason.
 
 ### Domain
 - Custom domain: jiranihub.co.ke (or similar .co.ke)

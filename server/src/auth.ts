@@ -3,13 +3,14 @@ import { DrizzlePostgreSQLAdapter } from "@lucia-auth/adapter-drizzle";
 import { db } from "./db.js";
 import { sessions, users } from "@shared/schema.js";
 import type { UserRole } from "@shared/types.js";
+import { isProduction } from "./lib/env.js";
 
 const adapter = new DrizzlePostgreSQLAdapter(db, sessions, users);
 
 export const lucia = new Lucia(adapter, {
   sessionCookie: {
     attributes: {
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction(),
       sameSite: "lax",
     },
   },

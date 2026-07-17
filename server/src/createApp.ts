@@ -36,9 +36,10 @@ import { analyticsRouter } from "./routes/analytics.js";
 import { uploadsRouter } from "./routes/uploads.js";
 import { logger, captureException } from "./lib/logger.js";
 import { getClientIp } from "./lib/httpUtils.js";
+import { isProduction } from "./lib/env.js";
 
 export function createApp(): express.Express {
-  const isProd = process.env.NODE_ENV === "production";
+  const isProd = isProduction();
   const app = express();
 
   // Structured request logging — every request gets a per-request logger

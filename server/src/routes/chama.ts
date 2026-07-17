@@ -10,6 +10,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { newId } from "../lib/ids.js";
 import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
 import { logger } from "../lib/logger.js";
+import { isProduction } from "../lib/env.js";
 
 const log = logger.child({ component: "chama" });
 
@@ -264,7 +265,7 @@ chamaRouter.post("/:id/contribute", async (req, res) => {
     // Dev stub only — never in production (see payments.ts /stk-push for
     // why: a missing Daraja env var must fail loudly, not silently
     // auto-complete a real contribution for free).
-    if (process.env.NODE_ENV === "production") {
+    if (isProduction()) {
       await db
         .update(payments)
         .set({ status: "failed", updatedAt: new Date() })

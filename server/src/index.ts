@@ -14,6 +14,7 @@ import { createServer } from "http";
 import path from "path";
 import { createApp } from "./createApp.js";
 import { logger, captureException } from "./lib/logger.js";
+import { isProduction } from "./lib/env.js";
 
 // This entry point is for local dev (`npm run dev`) and any traditional
 // Node hosting fallback — not used by the deployed Netlify Function, which
@@ -22,7 +23,7 @@ import { logger, captureException } from "./lib/logger.js";
 // than in createApp() because they don't apply to a stateless function
 // invocation.
 
-const isProd = process.env.NODE_ENV === "production";
+const isProd = isProduction();
 const PORT = Number(process.env.PORT ?? 5000);
 
 const app = createApp();
