@@ -48,7 +48,7 @@ export default function VendorDashboard() {
               <h1 className="font-display font-extrabold text-xl leading-tight">
                 {user?.name}
               </h1>
-              <p className="font-serif italic text-sm text-white/70">JiraniHub Marketplace</p>
+              <p className="font-medium text-sm text-white/70">JiraniHub Marketplace</p>
             </div>
           </div>
           <div className="mt-4 flag-bar w-24 relative z-10" />

@@ -1,12 +1,14 @@
 import { Link } from "wouter";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { ShieldCheck, Smartphone, Wifi } from "lucide-react";
 import { AuthGate } from "@/components/shared/role-gate";
 import { LoginForm, type LoginFormHandle } from "@/components/auth/login-form";
 import { DemoBench } from "@/components/auth/demo-bench";
+import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const formRef = useRef<LoginFormHandle | null>(null);
+  const [audience, setAudience] = useState<"resident" | "staff">("resident");
 
   return (
     <AuthGate>
@@ -23,7 +25,7 @@ export default function LoginPage() {
                 }}
               >
                 <img
-                  src="/logo.svg"
+                  src="/brand/logo-mark.webp"
                   alt="JiraniHub"
                   className="h-14 w-14 object-contain"
                   onError={(e) => {
@@ -44,7 +46,7 @@ export default function LoginPage() {
             <h1 className="font-display font-extrabold text-3xl text-white tracking-tight">
               JiraniHub
             </h1>
-            <p className="font-serif italic text-base text-brand-gold mt-1">
+            <p className="font-medium text-base text-brand-gold mt-1">
               Smart estate management · Kenya
             </p>
           </div>
@@ -61,9 +63,31 @@ export default function LoginPage() {
                 <h2 className="font-display font-extrabold text-2xl text-tribal-charcoal mt-0.5">
                   Welcome back
                 </h2>
-                <p className="text-sm text-tribal-earth mt-1.5 leading-snug">
-                  Use your Kenyan phone number to continue. Your role (resident,
-                  admin, security, or vendor) was set when your account was created.
+
+                <div className="flex gap-2 mt-3" role="tablist" aria-label="Sign in as">
+                  {(["resident", "staff"] as const).map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      role="tab"
+                      aria-selected={audience === a}
+                      onClick={() => setAudience(a)}
+                      className={cn(
+                        "flex-1 rounded-xl border px-3 py-2 text-xs font-bold uppercase tracking-wide transition-colors min-h-[40px]",
+                        audience === a
+                          ? "border-brand-green bg-brand-green text-white"
+                          : "border-tribal-border bg-white text-tribal-earth hover:bg-tribal-cream-dark",
+                      )}
+                    >
+                      {a === "resident" ? "Resident" : "Estate Staff"}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-sm text-tribal-earth mt-3 leading-snug">
+                  {audience === "resident"
+                    ? "Use the Kenyan phone number you registered with. New here? Create a resident account below."
+                    : "For estate admins, security guards, and vendors — sign in with the phone number your estate admin registered for you."}
                 </p>
               </div>
 
@@ -76,20 +100,32 @@ export default function LoginPage() {
                 }}
               />
 
-              <div className="mt-6 flex items-center gap-3">
-                <div className="flex-1 h-px bg-tribal-border" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-tribal-muted">
-                  New here
-                </span>
-                <div className="flex-1 h-px bg-tribal-border" />
-              </div>
+              {audience === "resident" ? (
+                <>
+                  <div className="mt-6 flex items-center gap-3">
+                    <div className="flex-1 h-px bg-tribal-border" />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-tribal-muted">
+                      New here
+                    </span>
+                    <div className="flex-1 h-px bg-tribal-border" />
+                  </div>
 
-              <Link
-                href="/register"
-                className="mt-4 w-full inline-flex items-center justify-center px-4 py-3 rounded-xl border border-tribal-border bg-white text-brand-green font-semibold text-sm hover:bg-tribal-cream-dark transition-colors min-h-[48px]"
-              >
-                Create a resident account
-              </Link>
+                  <Link
+                    href="/register"
+                    className="mt-4 w-full inline-flex items-center justify-center px-4 py-3 rounded-xl border border-tribal-border bg-white text-brand-green font-semibold text-sm hover:bg-tribal-cream-dark transition-colors min-h-[48px]"
+                  >
+                    Create a resident account
+                  </Link>
+                </>
+              ) : (
+                <p className="mt-5 text-xs text-tribal-earth text-center leading-snug">
+                  Staff accounts are created by your estate admin. Need one set up?{" "}
+                  <a href="mailto:support@jiranihub.co.ke" className="text-brand-green font-bold underline">
+                    Contact support
+                  </a>
+                  .
+                </p>
+              )}
             </div>
           </div>
 

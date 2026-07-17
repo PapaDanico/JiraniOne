@@ -80,7 +80,7 @@ export default function RegisterPage() {
               }}
             >
               <img
-                src="/logo.svg"
+                src="/brand/logo-mark.webp"
                 alt="JiraniHub"
                 className="h-12 w-12 object-contain"
                 onError={(e) => {
@@ -101,7 +101,7 @@ export default function RegisterPage() {
           <h1 className="font-display font-extrabold text-2xl text-white tracking-tight">
             JiraniHub
           </h1>
-          <p className="font-serif italic text-base text-brand-gold mt-1">
+          <p className="font-medium text-base text-brand-gold mt-1">
             Create your resident account
           </p>
         </div>

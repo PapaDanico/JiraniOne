@@ -136,7 +136,7 @@ export default function AdminDashboard() {
               <h1 className="font-display font-extrabold text-2xl tracking-tight">
                 {user?.name}
               </h1>
-              <p className="font-serif italic text-base text-white/70 mt-0.5 truncate">
+              <p className="font-medium text-base text-white/70 mt-0.5 truncate">
                 {estate?.name ?? "Loading…"}
               </p>
             </div>

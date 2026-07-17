@@ -113,6 +113,11 @@ export const updateProfileSchema = z.object({
   name: z.string().min(2).max(100),
 });
 
+export const setEstateSchema = z.object({
+  estateId: z.string().min(1, "Select your estate"),
+  unitNumber: z.string().max(20).optional(),
+});
+
 export const createVisitorSchema = z.object({
   name: z.string().min(2).max(100),
   phone: kenyanPhone,
