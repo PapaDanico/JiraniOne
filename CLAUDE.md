@@ -283,6 +283,19 @@ If referencing the Replit export for logic, SKIP these entirely:
 - Environment variables (including `DATABASE_URL`) managed in the Netlify
   site dashboard — needed at both build time (pre-build migration scripts)
   and function runtime
+- **Gotcha — per-context env var values**: Netlify stores env vars scoped
+  per deploy context (`production`, `deploy-preview`, `branch-deploy`,
+  `dev`, `dev-server`) as independent values, not one shared value. Setting
+  `DATABASE_URL` (or any secret) for one context — e.g. while testing via
+  `dev` — does NOT set it for `production`. A mismatch here fails fast and
+  generically ("Internal server error") on every DB-touching request,
+  since Postgres rejects a bad password at the auth handshake almost
+  instantly rather than timing out. When rotating any secret, set it
+  explicitly for every context that matters (at minimum `production`), and
+  always trigger a fresh deploy afterward — Netlify Functions bake env
+  vars in at deploy time, so an env var update alone does not reach an
+  already-running function. `GET /api/health` pings the DB directly and is
+  the fastest way to confirm connectivity after a rotation.
 
 ### Domain
 - Custom domain: jiranihub.co.ke (or similar .co.ke)
