@@ -18,7 +18,11 @@ const buttonVariants = cva(
       },
       size: {
         default: "px-4 py-2.5",
-        sm:      "px-3 py-2 text-xs min-h-[36px]",
+        // Denser padding/type than "default", but the tap target itself
+        // still meets the 44px minimum (inherited from the base class) —
+        // budget Android touch accuracy doesn't get better just because
+        // the button is labeled "secondary action".
+        sm:      "px-3 py-2 text-xs",
         lg:      "px-6 py-3 text-base",
         icon:    "p-2 min-h-[44px] min-w-[44px]",
       },
