@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Wrench, AlertCircle, Clock, CheckCircle, ChevronDown, ChevronUp, Send } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,6 +39,7 @@ function TicketCard({ ticket }: TicketCardProps) {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [commentBody, setCommentBody] = useState("");
+  const [commentError, setCommentError] = useState<string | null>(null);
 
   const cfg = STATUS_MAP[ticket.status];
   const pri = PRIORITY_MAP[ticket.priority];
@@ -49,7 +50,11 @@ function TicketCard({ ticket }: TicketCardProps) {
       api.post(`/api/maintenance/${ticket.id}/comments`, { body: commentBody }),
     onSuccess: () => {
       setCommentBody("");
+      setCommentError(null);
       qc.invalidateQueries({ queryKey: ["maintenance", "my"] });
+    },
+    onError: (err) => {
+      setCommentError(err instanceof ApiError ? err.message : "Failed to post comment. Please try again.");
     },
   });
 
@@ -136,6 +141,9 @@ function TicketCard({ ticket }: TicketCardProps) {
                 <Send className="h-3 w-3" />
               </Button>
             </div>
+            {commentError && (
+              <p className="text-xs text-[#B71C1C] font-medium">{commentError}</p>
+            )}
           </div>
         )}
       </CardContent>

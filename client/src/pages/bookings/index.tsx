@@ -15,7 +15,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SectionLoader } from "@/components/shared/loading";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import type { Facility, Booking } from "@shared/types";
 
@@ -156,6 +156,9 @@ function AddFacilityDialog({ onClose }: { onClose: () => void }) {
             <Label className="text-[#212121] font-semibold">Max booking hours</Label>
             <Input type="number" min={1} max={24} value={maxHours} onChange={(e) => setMaxHours(e.target.value)} />
           </div>
+          {mutation.isError && (
+            <p className="text-sm text-[#B71C1C]">{(mutation.error as Error).message}</p>
+          )}
         </div>
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
@@ -183,16 +186,23 @@ export default function BookingsPage() {
     queryFn: () => api.get<Booking[]>("/api/facilities/bookings").then((r) => r.data),
   });
 
+  const [bookingActionError, setBookingActionError] = useState<string | null>(null);
   const updateBooking = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.patch(`/api/facilities/bookings/${id}`, { status }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["bookings"] }),
+    onSuccess: () => { setBookingActionError(null); qc.invalidateQueries({ queryKey: ["bookings"] }); },
+    onError: (err) => {
+      setBookingActionError(err instanceof ApiError ? err.message : "Failed to update booking. Please try again.");
+    },
   });
 
   return (
     <div className="page-wrap">
       <TopBar title="Facilities" />
       <main className="max-w-lg mx-auto px-4 pt-4 page-content">
+        {bookingActionError && (
+          <p className="text-xs text-[#B71C1C] font-medium mb-3">{bookingActionError}</p>
+        )}
         <Tabs defaultValue="facilities">
           <TabsList className="w-full mb-4">
             <TabsTrigger value="facilities" className="flex-1">Facilities</TabsTrigger>

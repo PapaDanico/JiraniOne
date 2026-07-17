@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, QrCode, Clock, CheckCircle, XCircle, Ban, Users } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,9 +34,13 @@ export function VisitorList() {
     queryFn: () => api.get<Visitor[]>("/api/visitors/my").then((r) => r.data),
   });
 
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const cancelMutation = useMutation({
     mutationFn: (id: string) => api.post(`/api/visitors/${id}/cancel`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["visitors", "my"] }),
+    onSuccess: () => { setCancelError(null); qc.invalidateQueries({ queryKey: ["visitors", "my"] }); },
+    onError: (err) => {
+      setCancelError(err instanceof ApiError ? err.message : "Failed to cancel visitor pass. Please try again.");
+    },
   });
 
   if (isLoading) return <SectionLoader />;
@@ -55,6 +59,10 @@ export function VisitorList() {
           <Plus className="h-4 w-4" /> New Pass
         </Button>
       </div>
+
+      {cancelError && (
+        <p className="text-xs text-[#B71C1C] font-medium">{cancelError}</p>
+      )}
 
       {visitors?.length === 0 ? (
         <div className="tribal-card p-10 text-center">

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { SectionLoader } from "@/components/shared/loading";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import type { Event } from "@shared/types";
 
@@ -19,10 +19,14 @@ function CreateEventDialog({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({
     title: "", description: "", location: "", startTime: "", endTime: "",
   });
+  const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: () => api.post("/api/events", form),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); onClose(); },
+    onError: (err) => {
+      setError(err instanceof ApiError ? err.message : "Failed to create event. Please try again.");
+    },
   });
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -61,6 +65,9 @@ function CreateEventDialog({ onClose }: { onClose: () => void }) {
               <Input type="datetime-local" value={form.endTime} onChange={(e) => set("endTime", e.target.value)} />
             </div>
           </div>
+          {error && (
+            <p className="text-sm text-[#B71C1C] bg-[#B71C1C]/8 rounded-lg px-3 py-2">{error}</p>
+          )}
         </div>
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
@@ -87,10 +94,14 @@ export default function EventsPage() {
     queryFn: () => api.get<Event[]>("/api/events").then((r) => r.data),
   });
 
+  const [rsvpError, setRsvpError] = useState<string | null>(null);
   const rsvp = useMutation({
     mutationFn: ({ id, attending }: { id: string; attending: boolean }) =>
       api.post(`/api/events/${id}/rsvp`, { attending }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["events"] }),
+    onSuccess: () => { setRsvpError(null); qc.invalidateQueries({ queryKey: ["events"] }); },
+    onError: (err) => {
+      setRsvpError(err instanceof ApiError ? err.message : "Failed to update your RSVP. Please try again.");
+    },
   });
 
   return (
@@ -105,6 +116,10 @@ export default function EventsPage() {
             </Button>
           )}
         </div>
+
+        {rsvpError && (
+          <p className="text-xs text-[#B71C1C] font-medium mb-3">{rsvpError}</p>
+        )}
 
         {isLoading ? (
           <SectionLoader />
