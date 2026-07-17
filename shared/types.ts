@@ -345,6 +345,7 @@ export interface Chama {
   createdAt: string;
   updatedAt: string;
   memberCount?: number;
+  totalContributed?: number;
   myMembership?: { id: string; role: string } | null;
   myContributions?: ChamaContribution[];
 }

@@ -39,10 +39,13 @@ chamaRouter.get("/", async (_req, res) => {
   // auto-serialize a plain JS array into a Postgres array literal, and the
   // raw form throws "malformed array literal" at runtime despite
   // typechecking fine.
-  const allMembers = await db
-    .select()
-    .from(chamaMembers)
-    .where(inArray(chamaMembers.chamaId, chamaIds));
+  const [allMembers, allContributions] = await Promise.all([
+    db.select().from(chamaMembers).where(inArray(chamaMembers.chamaId, chamaIds)),
+    db
+      .select({ chamaId: chamaContributions.chamaId, amount: chamaContributions.amount })
+      .from(chamaContributions)
+      .where(inArray(chamaContributions.chamaId, chamaIds)),
+  ]);
 
   const countByChamaId = new Map<string, number>();
   const myMembershipByChamaId = new Map<string, typeof allMembers[number]>();
@@ -54,9 +57,20 @@ chamaRouter.get("/", async (_req, res) => {
     }
   }
 
+  // The point of a chama is the pot — showing member count without the
+  // total saved was the actual gap, not a missing endpoint (the detail
+  // /:id/contributions and /:id/members routes already existed but the
+  // client never surfaced them). Summing here keeps the list endpoint a
+  // single round trip instead of N+1 requests per chama.
+  const totalByChamaId = new Map<string, number>();
+  for (const c of allContributions) {
+    totalByChamaId.set(c.chamaId, (totalByChamaId.get(c.chamaId) ?? 0) + Number(c.amount));
+  }
+
   const data = rows.map((chama) => ({
     ...chama,
     memberCount: countByChamaId.get(chama.id) ?? 0,
+    totalContributed: totalByChamaId.get(chama.id) ?? 0,
     myMembership: myMembershipByChamaId.get(chama.id) ?? null,
   }));
 
@@ -366,7 +380,17 @@ chamaRouter.get("/:id/contributions", async (req, res) => {
     .where(eq(chamaContributions.chamaId, chama.id))
     .orderBy(desc(chamaContributions.createdAt));
 
-  res.json({ data: rows });
+  // Nested `user` object, not flat contributorName/contributorUnit — matches
+  // the ChamaContribution type and the pattern every other joined-user list
+  // in this app uses (carpool's flat/nested mismatch caused a real
+  // "Driver: Unknown" display bug earlier; fixing the shape here before any
+  // client code consumes this endpoint rather than after).
+  const data = rows.map(({ contributorName, contributorUnit, ...r }) => ({
+    ...r,
+    user: { name: contributorName, unitNumber: contributorUnit },
+  }));
+
+  res.json({ data });
 });
 
 // GET /:id/members — list members of a chama
