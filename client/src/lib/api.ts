@@ -8,14 +8,26 @@ export class ApiError extends Error {
   }
 }
 
+// On a dead or badly degraded connection (common on Kenyan 3G), fetch()
+// doesn't reject quickly — it can hang for tens of seconds waiting on TCP
+// retries before ever surfacing a network error. Without a bound, callers
+// that treat "the request never left the device" as a signal (e.g. the
+// maintenance form's offline-draft fallback) would never see it. 20s is
+// generous enough for a multi-photo upload on 3G, but not unbounded.
+const REQUEST_TIMEOUT_MS = 20_000;
+
 async function request<T>(
   method: string,
   url: string,
   body?: unknown,
 ): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
   const init: RequestInit = {
     method,
     credentials: "include",
+    signal: controller.signal,
     headers: body instanceof FormData ? {} : { "Content-Type": "application/json" },
   };
 
@@ -23,7 +35,12 @@ async function request<T>(
     init.body = body instanceof FormData ? body : JSON.stringify(body);
   }
 
-  const res = await fetch(url, init);
+  let res: Response;
+  try {
+    res = await fetch(url, init);
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { TicketForm } from "./ticket-form";
 import { SectionLoader } from "@/components/shared/loading";
 import { formatRelative } from "@/lib/utils";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
 import type { MaintenanceTicket, TicketStatus, TicketPriority } from "@shared/types";
 
 const STATUS_MAP: Record<TicketStatus, { label: string; variant: string; icon: React.ReactNode; bar: string }> = {
@@ -153,6 +154,7 @@ function TicketCard({ ticket }: TicketCardProps) {
 
 export function TicketList() {
   const [formOpen, setFormOpen] = useState(false);
+  const { pendingCount, syncing } = useOfflineSync();
 
   const { data: tickets, isLoading } = useQuery({
     queryKey: ["maintenance", "my"],
@@ -171,6 +173,15 @@ export function TicketList() {
           <Plus className="h-4 w-4" /> Report Issue
         </Button>
       </div>
+
+      {pendingCount > 0 && (
+        <div className="rounded-xl bg-[#D47A00]/10 border border-[#D47A00]/20 px-3 py-2.5 text-sm text-[#D47A00] flex items-center gap-2">
+          <Send className="h-4 w-4 shrink-0" />
+          {syncing
+            ? "Syncing offline reports…"
+            : `${pendingCount} report${pendingCount > 1 ? "s" : ""} saved offline — will submit automatically once you're back online.`}
+        </div>
+      )}
 
       {!tickets?.length ? (
         <div className="tribal-card p-10 text-center">

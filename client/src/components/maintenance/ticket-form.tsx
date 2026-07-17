@@ -4,7 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createTicketSchema, type CreateTicketInput } from "@shared/validators";
 import { MAX_TICKET_PHOTOS, MAX_TICKET_PHOTO_BYTES } from "@shared/constants";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { saveDraft, MAINTENANCE_DRAFTS_STORE } from "@/lib/offlineDb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +45,7 @@ interface Props {
 export function TicketForm({ open, onClose }: Props) {
   const qc = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [savedOffline, setSavedOffline] = useState(false);
   const [photos, setPhotos] = useState<FileList | null>(null);
   const [photoLimitWarning, setPhotoLimitWarning] = useState(false);
   const [photoSizeWarning, setPhotoSizeWarning] = useState(false);
@@ -119,13 +121,39 @@ export function TicketForm({ open, onClose }: Props) {
       setPhotos(null); setPhotoLimitWarning(false); setPhotoSizeWarning(false);
       onClose();
     },
-    onError: (err: unknown) => {
-      setServerError(err instanceof Error ? err.message : "Failed to submit ticket. Please try again.");
+    onError: async (err: unknown, data) => {
+      // An ApiError means the server was reached and rejected the request
+      // (validation, auth, etc.) — that's a real error to show. Anything
+      // else (fetch itself throwing) means the request never left the
+      // device, which on a 3G/offline connection is the expected case this
+      // app is meant to handle gracefully: save the draft locally instead
+      // of losing the resident's report.
+      if (err instanceof ApiError) {
+        setServerError(err.message);
+        return;
+      }
+      try {
+        await saveDraft(MAINTENANCE_DRAFTS_STORE, {
+          id: crypto.randomUUID(),
+          title: data.title,
+          description: data.description,
+          category: data.category,
+          priority: data.priority,
+          photos: photos ? Array.from(photos) : [],
+          createdAt: Date.now(),
+        });
+        setSavedOffline(true);
+        reset();
+        setPhotos(null); setPhotoLimitWarning(false); setPhotoSizeWarning(false);
+      } catch {
+        setServerError("You appear to be offline and this device can't save drafts. Please try again once you're back online.");
+      }
     },
   });
 
   const onSubmit = (data: CreateTicketInput) => {
     setServerError(null);
+    setSavedOffline(false);
     mutation.mutate(data);
   };
 
@@ -133,7 +161,7 @@ export function TicketForm({ open, onClose }: Props) {
   const priority = watch("priority");
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); setServerError(null); setPhotos(null); setPhotoLimitWarning(false); setPhotoSizeWarning(false); onClose(); } }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); setServerError(null); setSavedOffline(false); setPhotos(null); setPhotoLimitWarning(false); setPhotoSizeWarning(false); onClose(); } }}>
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-3 mt-2">
@@ -246,18 +274,25 @@ export function TicketForm({ open, onClose }: Props) {
               {serverError}
             </div>
           )}
+          {savedOffline && (
+            <div className="rounded-xl bg-[#1B5E20]/10 border border-[#1B5E20]/20 px-3 py-2.5 text-sm text-[#1B5E20]">
+              You're offline — this report was saved on your device and will submit automatically once you're back online.
+            </div>
+          )}
         </form>
 
         <DialogFooter>
-          <Button variant="secondary" onClick={() => { reset(); setServerError(null); setPhotos(null); setPhotoLimitWarning(false); setPhotoSizeWarning(false); onClose(); }}>
-            Cancel
+          <Button variant="secondary" onClick={() => { reset(); setServerError(null); setSavedOffline(false); setPhotos(null); setPhotoLimitWarning(false); setPhotoSizeWarning(false); onClose(); }}>
+            {savedOffline ? "Close" : "Cancel"}
           </Button>
-          <Button
-            onClick={handleSubmit(onSubmit)}
-            loading={isSubmitting || mutation.isPending}
-          >
-            Submit Ticket
-          </Button>
+          {!savedOffline && (
+            <Button
+              onClick={handleSubmit(onSubmit)}
+              loading={isSubmitting || mutation.isPending}
+            >
+              Submit Ticket
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

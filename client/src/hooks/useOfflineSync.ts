@@ -1,0 +1,64 @@
+import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import {
+  MAINTENANCE_DRAFTS_STORE, getDrafts, deleteDraft, type MaintenanceDraft,
+} from "@/lib/offlineDb";
+
+// Flushes maintenance-ticket drafts saved to IndexedDB (by ticket-form.tsx,
+// when a submission fails while offline) back to the server once the
+// device regains connectivity. Runs on mount and on every "online" event;
+// exposes pendingCount so the UI can show a "N drafts waiting to sync" banner.
+export function useOfflineSync() {
+  const qc = useQueryClient();
+  const [pendingCount, setPendingCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+
+  const refreshCount = useCallback(async () => {
+    try {
+      const drafts = await getDrafts<MaintenanceDraft>(MAINTENANCE_DRAFTS_STORE);
+      setPendingCount(drafts.length);
+    } catch {
+      // IndexedDB unavailable (private browsing, old browser) — treat as
+      // no drafts rather than crash the app.
+      setPendingCount(0);
+    }
+  }, []);
+
+  const flush = useCallback(async () => {
+    if (!navigator.onLine) return;
+    setSyncing(true);
+    try {
+      const drafts = await getDrafts<MaintenanceDraft>(MAINTENANCE_DRAFTS_STORE);
+      for (const draft of drafts) {
+        try {
+          const formData = new FormData();
+          formData.append("title", draft.title);
+          formData.append("description", draft.description);
+          formData.append("category", draft.category);
+          formData.append("priority", draft.priority);
+          draft.photos.forEach((f) => formData.append("photos", f));
+          await api.upload("/api/maintenance", formData);
+          await deleteDraft(MAINTENANCE_DRAFTS_STORE, draft.id);
+        } catch {
+          // Still offline or the server rejected it — leave the draft in
+          // place and retry on the next flush rather than losing it.
+        }
+      }
+      qc.invalidateQueries({ queryKey: ["maintenance", "my"] });
+    } finally {
+      setSyncing(false);
+      refreshCount();
+    }
+  }, [qc, refreshCount]);
+
+  useEffect(() => {
+    refreshCount();
+    flush();
+    window.addEventListener("online", flush);
+    return () => window.removeEventListener("online", flush);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return { pendingCount, syncing, flush };
+}
