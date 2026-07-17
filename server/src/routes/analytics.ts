@@ -43,10 +43,11 @@ analyticsRouter.get("/", async (_req, res) => {
     parcelThisMonth,
     emergencyActive,
     emergencyThisMonth,
+    payersThisMonth,
   ] = await Promise.all([
     // All non-deleted users for this estate
     db
-      .select({ id: users.id, role: users.role })
+      .select({ id: users.id, role: users.role, name: users.name, unitNumber: users.unitNumber })
       .from(users)
       .where(and(eq(users.estateId, estateId), isNull(users.deletedAt))),
 
@@ -138,6 +139,21 @@ analyticsRouter.get("/", async (_req, res) => {
         ),
       )
       .then((r) => r[0]?.value ?? 0),
+
+    // Residents who've paid their levy this month — cross-referenced
+    // against the resident roster below to find who hasn't. Distinct
+    // userId in case someone pays twice in the same month.
+    db
+      .selectDistinct({ userId: payments.userId })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.estateId, estateId),
+          eq(payments.type, "levy"),
+          eq(payments.status, "completed"),
+          gte(payments.createdAt, startOfMonth),
+        ),
+      ),
   ]);
 
   // ── Residents ──────────────────────────────────────────────────────────────
@@ -187,10 +203,24 @@ analyticsRouter.get("/", async (_req, res) => {
     total: Math.round(total * 100) / 100,
   }));
 
+  // ── Levy collection status (this month) ───────────────────────────────────
+  const paidUserIds = new Set(payersThisMonth.map((p) => p.userId));
+  const residentUsers = allUsers.filter((u) => u.role === "resident");
+  const unpaidResidents = residentUsers
+    .filter((u) => !paidUserIds.has(u.id))
+    .map((u) => ({ id: u.id, name: u.name, unitNumber: u.unitNumber }));
+
+  const levyStatus = {
+    paidCount: residentUsers.length - unpaidResidents.length,
+    totalResidents: residentUsers.length,
+    unpaidResidents,
+  };
+
   const paymentsAnalytics = {
     totalCollected: Math.round(totalCollected * 100) / 100,
     monthlyTotals,
     byType,
+    levyStatus,
   };
 
   // ── Maintenance ────────────────────────────────────────────────────────────

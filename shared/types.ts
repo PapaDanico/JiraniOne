@@ -365,7 +365,16 @@ export interface ChamaContribution {
 
 export interface EstateAnalytics {
   residents: { total: number; byRole: Record<string, number> };
-  payments: { totalCollected: number; monthlyTotals: { month: string; total: number }[]; byType: Record<string, number> };
+  payments: {
+    totalCollected: number;
+    monthlyTotals: { month: string; total: number }[];
+    byType: Record<string, number>;
+    levyStatus: {
+      paidCount: number;
+      totalResidents: number;
+      unpaidResidents: { id: string; name: string; unitNumber: string | null }[];
+    };
+  };
   maintenance: { total: number; open: number; inProgress: number; resolved: number; byCategory: Record<string, number> };
   visitors: { total: number; thisMonth: number };
   parcels: { atGate: number; thisMonth: number };
