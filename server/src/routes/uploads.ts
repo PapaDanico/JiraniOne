@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { readImage } from "../lib/blobStorage.js";
+import { readFile } from "../lib/blobStorage.js";
 
 // Filenames are content-addressed (random hex from imageUpload.ts), so we
 // can long-cache and mark immutable. nosniff prevents browser MIME-type
@@ -22,7 +22,7 @@ uploadsRouter.get("/:key", async (req, res) => {
     return;
   }
 
-  const image = await readImage(key);
+  const image = await readFile(key);
   if (!image) {
     res.status(404).json({ error: "Not found" });
     return;

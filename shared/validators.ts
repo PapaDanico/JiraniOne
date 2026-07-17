@@ -310,6 +310,10 @@ export const claimSetupSchema = z.object({
   password: strongPassword,
 });
 
+export const createDocumentSchema = z.object({
+  title: z.string().min(3).max(200),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;

@@ -470,6 +470,11 @@ export const events = pgTable(
     startTime: timestamp("start_time").notNull(),
     endTime: timestamp("end_time").notNull(),
     recurring: boolean("recurring").notNull().default(false),
+    // Idempotency guards for the reminder cron (netlify/functions/event-
+    // reminders.ts) — null until that reminder tier has actually been
+    // sent, so a job that runs every 15 minutes doesn't double-notify.
+    reminder24hSentAt: timestamp("reminder_24h_sent_at"),
+    reminder1hSentAt: timestamp("reminder_1h_sent_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

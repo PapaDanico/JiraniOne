@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   Users, Wrench, Megaphone, AlertCircle, CreditCard, CalendarDays, Vote,
   BookOpen, Store, ShieldAlert, UserCog, Package, Tag, HandCoins, Car,
-  Coins, BarChart3, TrendingUp, Activity, FileText, Building2,
+  Coins, BarChart3, TrendingUp, Activity, FileText, Building2, FolderOpen,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEstate } from "@/hooks/useEstate";
@@ -13,6 +13,7 @@ import { RoleBanner } from "@/components/shared/role-banner";
 import { SectionTitle } from "@/components/shared/section-title";
 import { KpiTile } from "@/components/shared/kpi-tile";
 import { InfoBox } from "@/components/shared/info-box";
+import { OnboardingChecklist } from "@/components/admin/onboarding-checklist";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import type { EstateAnalytics } from "@shared/types";
@@ -35,6 +36,7 @@ const MODULES = [
   { href: "/chama",         label: "Chama",         Icon: Coins,        bg: "bg-yellow-100",      fg: "text-yellow-700" },
   { href: "/marketplace",   label: "Marketplace",   Icon: Store,        bg: "bg-amber-100",       fg: "text-amber-700" },
   { href: "/admin/users",   label: "Residents",     Icon: UserCog,      bg: "bg-slate-100",       fg: "text-slate-700" },
+  { href: "/documents",     label: "Documents",     Icon: FolderOpen,   bg: "bg-lime-100",        fg: "text-lime-700" },
 ];
 
 // ─── CSS bar chart (no external dep) ─────────────────────────────────────────
@@ -185,6 +187,7 @@ export default function AdminDashboard() {
             ) : (
               analytics && (
                 <>
+                  <OnboardingChecklist />
                   <section>
                     <SectionTitle icon={<Activity className="h-4 w-4" />}>
                       Estate at a glance

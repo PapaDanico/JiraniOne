@@ -2,9 +2,10 @@ import { promises as fs } from "fs";
 import path from "path";
 
 // Netlify Functions have no durable/shared filesystem, so uploaded ticket
-// photos can't live in a local `uploads/` dir once deployed there — use
-// Netlify Blobs instead. Local dev (`npm run dev`) keeps writing to disk
-// exactly as before, so day-to-day development needs no extra setup.
+// photos and estate documents can't live in a local `uploads/` dir once
+// deployed there — use Netlify Blobs instead. Local dev (`npm run dev`)
+// keeps writing to disk exactly as before, so day-to-day development needs
+// no extra setup.
 //
 // `NETLIFY=true` is only reliably set in Netlify's *build* environment, not
 // necessarily inside the deployed Function's runtime — `@netlify/blobs`
@@ -15,7 +16,13 @@ const useBlobs = Boolean(process.env.NETLIFY_BLOBS_CONTEXT);
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 
-export async function saveImage(
+// Disk storage has no metadata sidecar the way Blobs does, so contentType
+// is persisted in a small `.meta` companion file next to the payload.
+function metaPath(filePath: string): string {
+  return `${filePath}.meta`;
+}
+
+export async function saveFile(
   buffer: Buffer,
   key: string,
   contentType: string,
@@ -32,10 +39,12 @@ export async function saveImage(
   }
 
   await fs.mkdir(uploadsDir, { recursive: true });
-  await fs.writeFile(path.join(uploadsDir, key), buffer);
+  const filePath = path.join(uploadsDir, key);
+  await fs.writeFile(filePath, buffer);
+  await fs.writeFile(metaPath(filePath), contentType, "utf-8");
 }
 
-export async function readImage(
+export async function readFile(
   key: string,
 ): Promise<{ buffer: Buffer; contentType: string } | null> {
   if (useBlobs) {
@@ -49,8 +58,12 @@ export async function readImage(
   }
 
   try {
-    const buffer = await fs.readFile(path.join(uploadsDir, key));
-    return { buffer, contentType: "image/webp" };
+    const filePath = path.join(uploadsDir, key);
+    const buffer = await fs.readFile(filePath);
+    const contentType = await fs
+      .readFile(metaPath(filePath), "utf-8")
+      .catch(() => "application/octet-stream");
+    return { buffer, contentType };
   } catch {
     return null;
   }
