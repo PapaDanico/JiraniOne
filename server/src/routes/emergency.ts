@@ -1,11 +1,21 @@
 import { Router } from "express";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { db } from "../db.js";
 import { emergencyAlerts, users } from "@shared/schema.js";
 import { emergencyAlertSchema, updateEmergencyStatusSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
+import { sendThrottledSms } from "../lib/sms.js";
+import { logger } from "../lib/logger.js";
+
+const ALERT_LABEL: Record<string, string> = {
+  medical: "MEDICAL",
+  fire: "FIRE",
+  security: "SECURITY",
+  accident: "ACCIDENT",
+  other: "EMERGENCY",
+};
 
 export const emergencyRouter = Router();
 emergencyRouter.use(requireAuth);
@@ -33,6 +43,37 @@ emergencyRouter.post("/", async (req, res) => {
   }).returning();
 
   res.status(201).json({ data: alert });
+
+  // SMS fallback for admin/security — the app polls every ~5s for active
+  // alerts, but on Netlify Functions there's no push channel, and this is
+  // exactly the case (someone in danger, possibly with no data connection
+  // of their own) CLAUDE.md's "SMS fallback for all critical notifications"
+  // principle exists for. Fired after responding to the reporter so their
+  // confirmation isn't held up by SMS latency, but still awaited (not
+  // fire-and-forget) since a serverless function can be frozen the instant
+  // after the response is sent.
+  try {
+    const responders = await db
+      .select({ id: users.id, phone: users.phone })
+      .from(users)
+      .where(and(eq(users.estateId, user.estateId), inArray(users.role, ["admin", "security"])));
+
+    if (responders.length > 0) {
+      const label = ALERT_LABEL[parsed.data.type] ?? "EMERGENCY";
+      const message = `JiraniHub ALERT: ${label} reported by ${user.name} (${user.phone}). Check the app now.`;
+      await Promise.all(
+        responders.map((r) =>
+          sendThrottledSms({ userId: r.id, to: r.phone, message, systemMessage: true })
+            .catch((err) => {
+              logger.error({ err, userId: r.id }, "emergency alert sms failed");
+              return null;
+            }),
+        ),
+      );
+    }
+  } catch (err) {
+    logger.error({ err, alertId: alert!.id }, "emergency alert sms fan-out failed");
+  }
 });
 
 // Admin/Security: list active alerts

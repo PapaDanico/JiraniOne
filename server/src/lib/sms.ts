@@ -36,10 +36,17 @@ const PER_USER_CAP = () =>
 const GLOBAL_CAP = () =>
   parseInt(process.env.SMS_GLOBAL_DAILY_CAP ?? "5000", 10);
 
-function today(): Date {
+// Returns an ISO date string ("YYYY-MM-DD..."), not a raw Date — passing a
+// JS Date directly as a tagged-sql parameter here fails ("must be of type
+// string or an instance of Buffer or ArrayBuffer. Received an instance of
+// Date"), because these are hand-written sql`` queries via db.execute(),
+// not values passed through Drizzle's column-aware query builder (which
+// does serialize Date objects itself). Postgres casts the string to the
+// day column's timestamp type implicitly.
+function today(): string {
   const d = new Date();
   d.setUTCHours(0, 0, 0, 0);
-  return d;
+  return d.toISOString();
 }
 
 // Atomic per-user counter increment. Returns the count AFTER increment.
