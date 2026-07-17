@@ -37,6 +37,13 @@
   * { -webkit-tap-highlight-color: transparent; }
 
   html {
+    /* JiraniHub has one fixed light theme, no dark-mode design. Without
+     * this, browsers infer color-scheme from the OS and re-theme native
+     * form controls (inputs, selects) to dark defaults — on a device in
+     * dark mode that renders white-on-white text inside our explicitly
+     * light (bg-white) inputs, since Tailwind's class-based darkMode
+     * config has no effect on native UA form-control coloring. */
+    color-scheme: light;
     font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
