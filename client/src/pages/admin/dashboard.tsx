@@ -235,6 +235,56 @@ export default function AdminDashboard() {
                     </section>
                   )}
 
+                  {analytics.payments.levyStatus.totalResidents > 0 && (
+                    <section>
+                      <SectionTitle icon={<CreditCard className="h-4 w-4" />}>
+                        Levy Collection This Month
+                      </SectionTitle>
+                      <div className="ibox space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-tribal-charcoal">
+                            {analytics.payments.levyStatus.paidCount} of {analytics.payments.levyStatus.totalResidents} residents paid
+                          </span>
+                          <span className="font-display text-lg font-extrabold text-brand-green">
+                            {Math.round(
+                              (analytics.payments.levyStatus.paidCount /
+                                analytics.payments.levyStatus.totalResidents) * 100,
+                            )}%
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-tribal-cream-dark overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-brand-green transition-all"
+                            style={{
+                              width: `${Math.round(
+                                (analytics.payments.levyStatus.paidCount /
+                                  analytics.payments.levyStatus.totalResidents) * 100,
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                        {analytics.payments.levyStatus.unpaidResidents.length > 0 && (
+                          <details className="pt-1">
+                            <summary className="text-xs font-bold text-brand-red cursor-pointer">
+                              {analytics.payments.levyStatus.unpaidResidents.length} haven't paid yet
+                            </summary>
+                            <ul className="mt-2 space-y-1.5 max-h-56 overflow-y-auto">
+                              {analytics.payments.levyStatus.unpaidResidents.map((r) => (
+                                <li
+                                  key={r.id}
+                                  className="flex items-center justify-between text-sm px-2.5 py-1.5 rounded-lg bg-brand-red/5"
+                                >
+                                  <span className="text-tribal-charcoal">{r.name}</span>
+                                  <span className="text-tribal-earth text-xs">{r.unitNumber ?? "—"}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                      </div>
+                    </section>
+                  )}
+
                   <section>
                     <SectionTitle icon={<Wrench className="h-4 w-4" />}>
                       Maintenance
