@@ -10,6 +10,8 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
 import { createNotification } from "../lib/notify.js";
+import { sendThrottledSms } from "../lib/sms.js";
+import { logger } from "../lib/logger.js";
 
 export const parcelsRouter = Router();
 parcelsRouter.use(requireAuth);
@@ -101,13 +103,6 @@ parcelsRouter.patch("/:id/received", requireRole("admin", "security"), async (re
     .where(eq(parcels.id, parcel.id))
     .returning();
 
-  // Notify the resident
-  const [resident] = await db
-    .select({ name: users.name })
-    .from(users)
-    .where(eq(users.id, parcel.residentId))
-    .limit(1);
-
   await createNotification({
     userId: parcel.residentId,
     title: "📦 Parcel at Gate",
@@ -117,6 +112,32 @@ parcelsRouter.patch("/:id/received", requireRole("admin", "security"), async (re
   });
 
   res.json({ data: updated });
+
+  // SMS fallback — a parcel sitting at the gate is time-sensitive (security
+  // may want it cleared) and actionable, unlike most in-app notifications,
+  // so per CLAUDE.md's "SMS fallback for all critical notifications"
+  // principle this shouldn't wait on the resident happening to open the
+  // app. Fired after responding so the security officer's confirmation
+  // isn't held up by SMS latency, but still awaited (not fire-and-forget)
+  // since a serverless function can be frozen right after the response.
+  try {
+    const [resident] = await db
+      .select({ phone: users.phone })
+      .from(users)
+      .where(eq(users.id, parcel.residentId))
+      .limit(1);
+
+    if (resident) {
+      await sendThrottledSms({
+        userId: parcel.residentId,
+        to: resident.phone,
+        message: `JiraniHub: Your parcel (${parcel.description}) has arrived at the gate. Please collect it.`,
+        systemMessage: true,
+      });
+    }
+  } catch (err) {
+    logger.error({ err, parcelId: parcel.id }, "parcel arrival sms failed");
+  }
 });
 
 // Resident / Security: mark parcel collected

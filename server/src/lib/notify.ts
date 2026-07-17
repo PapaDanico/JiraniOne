@@ -18,3 +18,26 @@ export async function createNotification(opts: {
     linkTo: opts.linkTo ?? null,
   });
 }
+
+// Same in-app notification fanned out to many users in one INSERT, for
+// estate-wide broadcasts (announcements) instead of one round-trip per
+// recipient.
+export async function createNotifications(opts: {
+  userIds: string[];
+  title: string;
+  body: string;
+  type: string;
+  linkTo?: string;
+}) {
+  if (opts.userIds.length === 0) return;
+  await db.insert(notifications).values(
+    opts.userIds.map((userId) => ({
+      id: newId(),
+      userId,
+      title: opts.title,
+      body: opts.body,
+      type: opts.type,
+      linkTo: opts.linkTo ?? null,
+    })),
+  );
+}

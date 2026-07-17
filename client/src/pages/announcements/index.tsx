@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Megaphone, Volume2 } from "lucide-react";
+import { Plus, Megaphone, Volume2, MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -149,7 +149,14 @@ export default function AnnouncementsPage() {
                           <Badge variant={cfg.variant} className="text-xs">{cfg.label}</Badge>
                         </div>
                         <p className="text-sm text-[#6B5D45] leading-relaxed">{a.body}</p>
-                        <p className="text-xs text-[#D4C9A8] mt-2">{formatRelative(a.createdAt)}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <p className="text-xs text-[#D4C9A8]">{formatRelative(a.createdAt)}</p>
+                          {a.priority === "urgent" && a.smsSent && (
+                            <span className="flex items-center gap-1 text-xs text-[#1B5E20] font-medium">
+                              <MessageSquare className="h-3 w-3" /> SMS sent to residents
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </CardContent>

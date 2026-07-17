@@ -82,6 +82,7 @@ export interface Announcement {
   title: string;
   body: string;
   priority: AnnouncementPriority;
+  smsSent: boolean;
   createdAt: string;
   author?: { name: string };
 }
