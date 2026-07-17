@@ -137,7 +137,7 @@ export default function ResidentDashboard() {
               <h1 className="font-display font-extrabold text-2xl text-white tracking-tight">
                 {firstName}
               </h1>
-              <p className="font-serif italic text-base text-white/70 mt-0.5">
+              <p className="font-medium text-base text-white/70 mt-0.5">
                 {estate
                   ? `${estate.name}${user?.unitNumber ? ` · Unit ${user.unitNumber}` : ""}`
                   : "Welcome to JiraniHub"}

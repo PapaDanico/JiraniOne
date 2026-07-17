@@ -64,7 +64,7 @@ export default function SecurityDashboard() {
             <h1 className="font-display font-extrabold text-2xl tracking-tight">
               Estate Gate
             </h1>
-            <p className="font-serif italic text-base text-white/70 mt-0.5">
+            <p className="font-medium text-base text-white/70 mt-0.5">
               {user?.name} · Gate Officer
             </p>
             <div className="mt-4 flag-bar w-24" />

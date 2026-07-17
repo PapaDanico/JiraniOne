@@ -303,7 +303,7 @@ export function TopBar({ title }: { title?: string }) {
           {/* Brand */}
           <Link href={`/dashboard/${user.role}`} className="flex items-center gap-2.5 shrink-0">
             <img
-              src="/logo.svg"
+              src="/brand/logo-mark.webp"
               alt="JiraniHub"
               className="h-8 w-8 object-contain"
               onError={(e) => {

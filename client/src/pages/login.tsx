@@ -25,7 +25,7 @@ export default function LoginPage() {
                 }}
               >
                 <img
-                  src="/logo.svg"
+                  src="/brand/logo-mark.webp"
                   alt="JiraniHub"
                   className="h-14 w-14 object-contain"
                   onError={(e) => {
@@ -46,7 +46,7 @@ export default function LoginPage() {
             <h1 className="font-display font-extrabold text-3xl text-white tracking-tight">
               JiraniHub
             </h1>
-            <p className="font-serif italic text-base text-brand-gold mt-1">
+            <p className="font-medium text-base text-brand-gold mt-1">
               Smart estate management · Kenya
             </p>
           </div>
