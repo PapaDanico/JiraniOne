@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import {
   MAINTENANCE_DRAFTS_STORE, getDrafts, deleteDraft, type MaintenanceDraft,
 } from "@/lib/offlineDb";
@@ -40,9 +40,15 @@ export function useOfflineSync() {
           draft.photos.forEach((f) => formData.append("photos", f));
           await api.upload("/api/maintenance", formData);
           await deleteDraft(MAINTENANCE_DRAFTS_STORE, draft.id);
-        } catch {
-          // Still offline or the server rejected it — leave the draft in
-          // place and retry on the next flush rather than losing it.
+        } catch (err) {
+          // ApiError means the server was reached and definitively rejected
+          // the draft (e.g. stale validation) — retrying it forever would
+          // just leave a dead entry cluttering the pending-sync count, so
+          // drop it. Anything else means the request never landed (still
+          // offline/flaky connection) — leave the draft to retry next time.
+          if (err instanceof ApiError) {
+            await deleteDraft(MAINTENANCE_DRAFTS_STORE, draft.id);
+          }
         }
       }
       qc.invalidateQueries({ queryKey: ["maintenance", "my"] });
