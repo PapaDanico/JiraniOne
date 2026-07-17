@@ -19,11 +19,13 @@ import type { Announcement, MaintenanceTicket, Notification, Parcel } from "@sha
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Swahili time-of-day greeting (CLAUDE.md: Swahili labels where relevant)
+// — universally understood across Kenya regardless of first language.
 function greeting() {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
+  if (h < 12) return "Habari za asubuhi";
+  if (h < 17) return "Habari za mchana";
+  return "Habari za jioni";
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
