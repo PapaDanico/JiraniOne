@@ -52,7 +52,12 @@ function CreatePollDialog({ onClose }: { onClose: () => void }) {
         <div className="px-6 pb-2 space-y-4">
           <div>
             <Label className="text-[#212121] font-semibold">Question</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What would you like to ask?" />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="What would you like to ask?"
+              error={title.length > 0 && title.trim().length < 3 ? "At least 3 characters" : undefined}
+            />
           </div>
           <div>
             <Label className="text-[#212121] font-semibold">Description (optional)</Label>
@@ -87,7 +92,7 @@ function CreatePollDialog({ onClose }: { onClose: () => void }) {
           <Button
             onClick={() => mutation.mutate()}
             loading={mutation.isPending}
-            disabled={!title || options.filter(Boolean).length < 2}
+            disabled={title.trim().length < 3 || options.filter(Boolean).length < 2}
           >
             Create Poll
           </Button>

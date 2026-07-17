@@ -45,7 +45,12 @@ function CreateEventDialog({ onClose }: { onClose: () => void }) {
         <div className="px-6 pb-2 space-y-3">
           <div>
             <Label className="text-[#212121] font-semibold">Event Name</Label>
-            <Input value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Event title" />
+            <Input
+              value={form.title}
+              onChange={(e) => set("title", e.target.value)}
+              placeholder="Event title"
+              error={form.title.length > 0 && form.title.trim().length < 3 ? "At least 3 characters" : undefined}
+            />
           </div>
           <div>
             <Label className="text-[#212121] font-semibold">Description</Label>
@@ -74,7 +79,7 @@ function CreateEventDialog({ onClose }: { onClose: () => void }) {
           <Button
             onClick={() => mutation.mutate()}
             loading={mutation.isPending}
-            disabled={!form.title || !form.startTime || !form.endTime}
+            disabled={form.title.trim().length < 3 || !form.startTime || !form.endTime}
           >
             Create
           </Button>

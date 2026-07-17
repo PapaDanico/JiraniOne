@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import type { CarpoolOffer } from "@shared/types";
@@ -47,6 +48,7 @@ export default function CarpoolPage() {
   const [form, setForm] = useState<OfferForm>(defaultForm);
   const [formError, setFormError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [confirmTarget, setConfirmTarget] = useState<{ type: "booking" | "offer"; id: string } | null>(null);
 
   const { data: offers = [], isLoading } = useQuery<CarpoolOffer[]>({
     queryKey: ["carpool"],
@@ -65,7 +67,7 @@ export default function CarpoolPage() {
 
   const cancelOffer = useMutation({
     mutationFn: (id: string) => api.delete(`/api/carpool/${id}`),
-    onSuccess: () => { setActionError(""); invalidate(); },
+    onSuccess: () => { setActionError(""); setConfirmTarget(null); invalidate(); },
     onError: (e) => onActionError(e, "Failed to cancel ride offer."),
   });
 
@@ -77,7 +79,7 @@ export default function CarpoolPage() {
 
   const cancelBooking = useMutation({
     mutationFn: (id: string) => api.delete(`/api/carpool/${id}/book`),
-    onSuccess: () => { setActionError(""); invalidate(); },
+    onSuccess: () => { setActionError(""); setConfirmTarget(null); invalidate(); },
     onError: (e) => onActionError(e, "Failed to cancel booking."),
   });
 
@@ -119,19 +121,26 @@ export default function CarpoolPage() {
             {[
               { label: "From (origin)", field: "origin" as const, type: "text", required: true },
               { label: "To (destination)", field: "destination" as const, type: "text", required: true },
-            ].map(({ label, field, type, required }) => (
-              <div key={field}>
-                <label className="block text-xs font-medium mb-1" style={{ color: "#6B5D45" }}>{label}</label>
-                <input
-                  type={type}
-                  value={form[field] as string}
-                  onChange={set(field)}
-                  required={required}
-                  className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2"
-                  style={{ borderColor: "#D4A017", color: "#6B5D45" }}
-                />
-              </div>
-            ))}
+            ].map(({ label, field, type, required }) => {
+              const val = form[field] as string;
+              const tooShort = val.length > 0 && val.trim().length < 2;
+              return (
+                <div key={field}>
+                  <label className="block text-xs font-medium mb-1" style={{ color: "#6B5D45" }}>{label}</label>
+                  <input
+                    type={type}
+                    value={val}
+                    onChange={set(field)}
+                    required={required}
+                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2"
+                    style={{ borderColor: tooShort ? "#B71C1C" : "#D4A017", color: "#6B5D45" }}
+                  />
+                  {tooShort && (
+                    <p className="text-xs mt-1" style={{ color: "#B71C1C" }}>At least 2 characters</p>
+                  )}
+                </div>
+              );
+            })}
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: "#6B5D45" }}>Departure Time</label>
               <input
@@ -276,7 +285,7 @@ export default function CarpoolPage() {
                 )}
                 {canCancelBooking && (
                   <button
-                    onClick={() => cancelBooking.mutate(offer.id)}
+                    onClick={() => setConfirmTarget({ type: "booking", id: offer.id })}
                     disabled={cancelBooking.isPending}
                     className="flex-1 py-1.5 rounded-lg text-xs font-semibold border disabled:opacity-60"
                     style={{ borderColor: "#D4A017", color: "#6B5D45" }}
@@ -286,7 +295,7 @@ export default function CarpoolPage() {
                 )}
                 {isDriver && offer.status === "active" && (
                   <button
-                    onClick={() => cancelOffer.mutate(offer.id)}
+                    onClick={() => setConfirmTarget({ type: "offer", id: offer.id })}
                     disabled={cancelOffer.isPending}
                     className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-red-300 text-red-600 disabled:opacity-60"
                   >
@@ -299,6 +308,24 @@ export default function CarpoolPage() {
         })}
       </main>
       <BottomNav />
+      <ConfirmDialog
+        open={!!confirmTarget}
+        onOpenChange={(v) => { if (!v) setConfirmTarget(null); }}
+        title={confirmTarget?.type === "offer" ? "Cancel this ride offer?" : "Cancel your booking?"}
+        description={
+          confirmTarget?.type === "offer"
+            ? "Any passengers who booked a seat will lose their booking. This can't be undone."
+            : "You'll give up your seat on this ride."
+        }
+        confirmLabel={confirmTarget?.type === "offer" ? "Cancel Offer" : "Cancel Booking"}
+        cancelLabel="Keep it"
+        loading={cancelOffer.isPending || cancelBooking.isPending}
+        onConfirm={() => {
+          if (!confirmTarget) return;
+          if (confirmTarget.type === "offer") cancelOffer.mutate(confirmTarget.id);
+          else cancelBooking.mutate(confirmTarget.id);
+        }}
+      />
     </div>
   );
 }

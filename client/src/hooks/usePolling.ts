@@ -14,11 +14,37 @@ import { useQueryClient } from "@tanstack/react-query";
 const STANDARD_INTERVAL_MS = 15_000;
 const EMERGENCY_INTERVAL_MS = 5_000;
 
+// Originally only these 4 keys — extended to cover every other page's data
+// so switching tabs (or leaving one open) shows other residents'/admin's
+// changes without a manual reload. Deliberately excludes:
+//   - ["weather"] / ["traffic"]: external-API-backed and already
+//     staleTime-controlled (10min/5min) — event-driven polling doesn't
+//     apply, the data itself only changes that often.
+//   - ["auth", "me"] / ["estates-public"]: session identity and the
+//     public registration estate list, neither changes from other users'
+//     actions in a way that matters to re-poll.
+// invalidateQueries only actually refetches a key if it has an active
+// observer (a mounted useQuery) — so invalidating this whole list on every
+// tick is cheap; only whatever page is currently on screen re-fetches.
 const STANDARD_KEYS = [
   ["visitors"],
   ["maintenance"],
   ["announcements"],
   ["notifications"],
+  ["payments"],
+  ["campaigns"],
+  ["facilities"],
+  ["bookings"],
+  ["services"],
+  ["polls"],
+  ["carpool"],
+  ["harambee"],
+  ["chama"],
+  ["classifieds"],
+  ["events"],
+  ["parcels"],
+  ["analytics"],
+  ["estate-users"],
 ];
 const EMERGENCY_KEY = ["emergency"];
 

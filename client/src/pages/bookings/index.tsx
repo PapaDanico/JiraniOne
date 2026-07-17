@@ -15,6 +15,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SectionLoader } from "@/components/shared/loading";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api, ApiError } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import type { Facility, Booking } from "@shared/types";
@@ -136,7 +137,12 @@ function AddFacilityDialog({ onClose }: { onClose: () => void }) {
         <div className="px-6 pb-2 space-y-3">
           <div>
             <Label className="text-[#212121] font-semibold">Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Clubhouse, Pool" />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Clubhouse, Pool"
+              error={name.length > 0 && name.trim().length < 2 ? "At least 2 characters" : undefined}
+            />
           </div>
           <div>
             <Label className="text-[#212121] font-semibold">Description</Label>
@@ -162,7 +168,7 @@ function AddFacilityDialog({ onClose }: { onClose: () => void }) {
         </div>
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} loading={mutation.isPending} disabled={!name}>Add</Button>
+          <Button onClick={() => mutation.mutate()} loading={mutation.isPending} disabled={name.trim().length < 2}>Add</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -187,10 +193,15 @@ export default function BookingsPage() {
   });
 
   const [bookingActionError, setBookingActionError] = useState<string | null>(null);
+  const [confirmBooking, setConfirmBooking] = useState<{ id: string; status: "cancelled" | "rejected" } | null>(null);
   const updateBooking = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.patch(`/api/facilities/bookings/${id}`, { status }),
-    onSuccess: () => { setBookingActionError(null); qc.invalidateQueries({ queryKey: ["bookings"] }); },
+    onSuccess: () => {
+      setBookingActionError(null);
+      setConfirmBooking(null);
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+    },
     onError: (err) => {
       setBookingActionError(err instanceof ApiError ? err.message : "Failed to update booking. Please try again.");
     },
@@ -278,7 +289,7 @@ export default function BookingsPage() {
                               size="sm"
                               variant="ghost"
                               className="text-[#B71C1C] h-6 text-xs px-2"
-                              onClick={() => updateBooking.mutate({ id: b.id, status: "cancelled" })}
+                              onClick={() => setConfirmBooking({ id: b.id, status: "cancelled" })}
                             >
                               Cancel
                             </Button>
@@ -328,7 +339,7 @@ export default function BookingsPage() {
                                   size="sm"
                                   variant="secondary"
                                   className="h-6 text-xs px-2"
-                                  onClick={() => updateBooking.mutate({ id: b.id, status: "rejected" })}
+                                  onClick={() => setConfirmBooking({ id: b.id, status: "rejected" })}
                                 >
                                   Reject
                                 </Button>
@@ -348,6 +359,20 @@ export default function BookingsPage() {
 
       {bookFacility && <BookDialog facility={bookFacility} onClose={() => setBookFacility(null)} />}
       {addFacility && <AddFacilityDialog onClose={() => setAddFacility(false)} />}
+      <ConfirmDialog
+        open={!!confirmBooking}
+        onOpenChange={(v) => { if (!v) setConfirmBooking(null); }}
+        title={confirmBooking?.status === "rejected" ? "Reject this booking?" : "Cancel this booking?"}
+        description={
+          confirmBooking?.status === "rejected"
+            ? "The resident will be notified their booking was rejected."
+            : "This booking will be cancelled."
+        }
+        confirmLabel={confirmBooking?.status === "rejected" ? "Reject" : "Cancel Booking"}
+        cancelLabel="Keep it"
+        loading={updateBooking.isPending}
+        onConfirm={() => confirmBooking && updateBooking.mutate(confirmBooking)}
+      />
       <BottomNav />
     </div>
   );

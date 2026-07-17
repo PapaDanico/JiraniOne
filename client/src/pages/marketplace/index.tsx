@@ -57,7 +57,12 @@ function AddProviderDialog({ onClose }: { onClose: () => void }) {
         <div className="px-6 pb-2 space-y-3">
           <div>
             <Label className="text-[#212121] font-semibold">Name</Label>
-            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Full name" />
+            <Input
+              value={form.name}
+              onChange={(e) => set("name", e.target.value)}
+              placeholder="Full name"
+              error={form.name.length > 0 && form.name.trim().length < 2 ? "At least 2 characters" : undefined}
+            />
           </div>
           <div>
             <Label className="text-[#212121] font-semibold">Service Type</Label>

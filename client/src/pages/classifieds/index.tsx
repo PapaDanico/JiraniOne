@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api, ApiError } from "@/lib/api";
 import { SectionLoader } from "@/components/shared/loading";
 import { formatRelative } from "@/lib/utils";
@@ -66,9 +67,12 @@ function CreateListingModal({ open, onClose }: { open: boolean; onClose: () => v
     },
   });
 
+  const titleHint = title.length > 0 && title.trim().length < 3 ? "At least 3 characters" : undefined;
+  const descHint = description.length > 0 && description.trim().length < 10 ? "At least 10 characters" : undefined;
+
   function handleSubmit() {
-    if (!title.trim() || !description.trim()) {
-      setError("Title and description are required.");
+    if (title.trim().length < 3 || description.trim().length < 10) {
+      setError("Title needs at least 3 characters and description at least 10.");
       return;
     }
     setError("");
@@ -106,7 +110,7 @@ function CreateListingModal({ open, onClose }: { open: boolean; onClose: () => v
 
           <div className="space-y-1.5">
             <Label htmlFor="title">Title *</Label>
-            <Input id="title" placeholder="e.g. Baby stroller, almost new" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <Input id="title" placeholder="e.g. Baby stroller, almost new" value={title} onChange={(e) => setTitle(e.target.value)} error={titleHint} />
           </div>
 
           <div className="space-y-1.5">
@@ -118,6 +122,7 @@ function CreateListingModal({ open, onClose }: { open: boolean; onClose: () => v
               onChange={(e) => setDesc(e.target.value)}
               rows={3}
               className="resize-none"
+              error={descHint}
             />
           </div>
 
@@ -162,6 +167,7 @@ function ListingCard({
 }) {
   const qc = useQueryClient();
   const [actionError, setActionError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const { mutate: updateStatus, isPending: updatingStatus } = useMutation({
     mutationFn: (status: string) =>
@@ -180,6 +186,7 @@ function ListingCard({
     mutationFn: () => api.delete(`/api/classifieds/${listing.id}`).then((r) => r.data),
     onSuccess: () => {
       setActionError("");
+      setConfirmDelete(false);
       qc.invalidateQueries({ queryKey: ["classifieds"] });
       qc.invalidateQueries({ queryKey: ["classifieds", "my"] });
     },
@@ -254,7 +261,7 @@ function ListingCard({
         {canManage && (
           <button
             disabled={deleting}
-            onClick={() => deleteListing()}
+            onClick={() => setConfirmDelete(true)}
             className="flex items-center gap-1.5 text-xs text-[#B71C1C] bg-[#B71C1C]/8 hover:bg-[#B71C1C]/15 rounded-lg px-2.5 py-1.5 font-semibold transition-colors disabled:opacity-50 ml-auto"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -265,6 +272,15 @@ function ListingCard({
       {actionError && (
         <p className="text-xs text-[#B71C1C] font-medium mt-2">{actionError}</p>
       )}
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete this listing?"
+        description={`"${listing.title}" will be removed from the noticeboard. This can't be undone.`}
+        confirmLabel="Delete"
+        loading={deleting}
+        onConfirm={() => deleteListing()}
+      />
     </div>
   );
 }

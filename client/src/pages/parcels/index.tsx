@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api, ApiError } from "@/lib/api";
 import { SectionLoader } from "@/components/shared/loading";
 import { formatRelative } from "@/lib/utils";
@@ -193,6 +194,7 @@ function ResidentParcels() {
   const qc = useQueryClient();
   const [showRegister, setShowRegister] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["parcels", "my"],
@@ -206,9 +208,13 @@ function ResidentParcels() {
     onError: (e) => setActionError(e instanceof ApiError ? e.message : "Failed to mark parcel collected."),
   });
 
-  const { mutate: deleteParcel } = useMutation({
+  const { mutate: deleteParcel, isPending: deletingParcel } = useMutation({
     mutationFn: (id: string) => api.delete(`/api/parcels/${id}`).then((r) => r.data),
-    onSuccess: () => { setActionError(""); qc.invalidateQueries({ queryKey: ["parcels", "my"] }); },
+    onSuccess: () => {
+      setActionError("");
+      setConfirmDeleteId(null);
+      qc.invalidateQueries({ queryKey: ["parcels", "my"] });
+    },
     onError: (e) => setActionError(e instanceof ApiError ? e.message : "Failed to delete parcel."),
   });
 
@@ -247,7 +253,7 @@ function ResidentParcels() {
               key={p.id}
               parcel={p}
               onCollect={() => markCollected(p.id)}
-              onDelete={() => deleteParcel(p.id)}
+              onDelete={() => setConfirmDeleteId(p.id)}
               isResident
             />
           ))}
@@ -264,6 +270,15 @@ function ResidentParcels() {
       )}
 
       <RegisterParcelModal open={showRegister} onClose={() => setShowRegister(false)} />
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        onOpenChange={(v) => { if (!v) setConfirmDeleteId(null); }}
+        title="Delete this parcel?"
+        description="This removes the parcel record entirely. This can't be undone."
+        confirmLabel="Delete"
+        loading={deletingParcel}
+        onConfirm={() => confirmDeleteId && deleteParcel(confirmDeleteId)}
+      />
     </>
   );
 }
