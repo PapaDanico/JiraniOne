@@ -116,7 +116,11 @@ function PollCard({ poll }: { poll: Poll }) {
   });
 
   const total = poll.totalVotes ?? 0;
-  const hasVoted = !!poll.myVoteOptionId;
+  // Anonymous polls null out myVoteOptionId server-side (that's the point —
+  // no one, including this UI, can tell which option an anonymous voter
+  // picked), so hasVoted can't be inferred from it. iHaveVoted comes from
+  // the separate vote_eligibility record and stays accurate either way.
+  const hasVoted = poll.iHaveVoted ?? !!poll.myVoteOptionId;
 
   return (
     <Card>

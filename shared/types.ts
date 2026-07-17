@@ -165,6 +165,7 @@ export interface Poll {
   createdAt: string;
   options?: PollOption[];
   myVoteOptionId?: string | null;
+  iHaveVoted?: boolean;
   totalVotes?: number;
 }
 

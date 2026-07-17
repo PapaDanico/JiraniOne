@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
 import { api } from "@/lib/api";
 import { formatRelative } from "@/lib/utils";
-import type { Announcement, MaintenanceTicket, Notification, Parcel } from "@shared/types";
+import type { Announcement, MaintenanceTicket, Notification, Parcel, Poll } from "@shared/types";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -114,10 +114,17 @@ export default function ResidentDashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: polls = [] } = useQuery<Poll[]>({
+    queryKey: ["polls"],
+    queryFn: () => api.get<Poll[]>("/api/polls").then((r) => r.data),
+    staleTime: 2 * 60 * 1000,
+  });
+
   const openTickets = tickets.filter((t) => t.status !== "resolved" && t.status !== "closed").length;
   const atGate      = parcels.filter((p) => p.status === "at_gate").length;
   const unread      = notifications.filter((n) => !n.read).length;
   const latestAnn   = announcements.slice(0, 3);
+  const openPolls   = polls.filter((p) => !p.iHaveVoted && (!p.closesAt || new Date(p.closesAt) > new Date()));
   const hasAlert    = atGate > 0 || unread > 0;
 
   return (
@@ -251,6 +258,35 @@ export default function ResidentDashboard() {
             </div>
           )}
         </section>
+
+        {/* ── Community Voice (governance) ─────────────────────── */}
+        {openPolls.length > 0 && (
+          <section>
+            <SectionTitle
+              icon={<Vote className="h-4 w-4" />}
+              action={
+                <Link href="/governance" className="text-xs text-brand-green font-semibold hover:underline">
+                  View all →
+                </Link>
+              }
+            >
+              Community Voice
+            </SectionTitle>
+            <div className="space-y-2">
+              {openPolls.slice(0, 2).map((poll) => (
+                <Link key={poll.id} href="/governance">
+                  <div className="tribal-card px-4 py-3 flex items-center justify-between gap-2 hover:shadow-card-lg transition-shadow border-l-4 border-l-purple-400">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-tribal-charcoal truncate">{poll.title}</p>
+                      <p className="text-xs text-tribal-earth mt-0.5">Awaiting your vote</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-tribal-muted shrink-0" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── More Services ────────────────────────────────────── */}
         <section>

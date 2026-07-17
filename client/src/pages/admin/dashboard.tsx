@@ -14,6 +14,7 @@ import { SectionTitle } from "@/components/shared/section-title";
 import { KpiTile } from "@/components/shared/kpi-tile";
 import { InfoBox } from "@/components/shared/info-box";
 import { OnboardingChecklist } from "@/components/admin/onboarding-checklist";
+import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import type { EstateAnalytics } from "@shared/types";
@@ -188,6 +189,12 @@ export default function AdminDashboard() {
               analytics && (
                 <>
                   <OnboardingChecklist />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <WeatherWidget />
+                    <TrafficWidget />
+                  </div>
+
                   <section>
                     <SectionTitle icon={<Activity className="h-4 w-4" />}>
                       Estate at a glance
