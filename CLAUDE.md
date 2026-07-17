@@ -286,16 +286,27 @@ If referencing the Replit export for logic, SKIP these entirely:
 - **Gotcha — per-context env var values**: Netlify stores env vars scoped
   per deploy context (`production`, `deploy-preview`, `branch-deploy`,
   `dev`, `dev-server`) as independent values, not one shared value. Setting
-  `DATABASE_URL` (or any secret) for one context — e.g. while testing via
-  `dev` — does NOT set it for `production`. A mismatch here fails fast and
-  generically ("Internal server error") on every DB-touching request,
-  since Postgres rejects a bad password at the auth handshake almost
-  instantly rather than timing out. When rotating any secret, set it
-  explicitly for every context that matters (at minimum `production`), and
-  always trigger a fresh deploy afterward — Netlify Functions bake env
-  vars in at deploy time, so an env var update alone does not reach an
-  already-running function. `GET /api/health` pings the DB directly and is
-  the fastest way to confirm connectivity after a rotation.
+  a secret for one context — e.g. while testing via `dev` — does NOT set
+  it for `production`; verify the value under the exact context that
+  matters (at minimum `production`) after any rotation, and always trigger
+  a fresh deploy afterward — Netlify Functions bake env vars in at deploy
+  time, so an env var update alone does not reach an already-running
+  function. `GET /api/health` pings the DB directly and is a fast way to
+  confirm DB connectivity after a rotation.
+- **Gotcha — `NODE_ENV` must be set explicitly, and drives more than logging
+  verbosity**: `createApp()`'s `isProd` flag (`NODE_ENV === "production"`)
+  picks `ALLOWED_ORIGINS` for both the `cors()` middleware and the
+  origin/CSRF check. If `NODE_ENV` is unset on the live Netlify Function,
+  `isProd` is `false`, `ALLOWED_ORIGINS` silently falls back to the
+  localhost dev list, and `cors()` rejects every request whose real
+  `Origin` header isn't in it — a fast, synchronous 500 on every mutating
+  request (login, register, any POST/PUT/PATCH/DELETE) that looks
+  identical to a generic crash, while GETs without an Origin header keep
+  working. This caused a real production login outage: `NODE_ENV` was
+  never actually set on the live site despite an earlier PR's description
+  claiming it was. `netlify/functions/api.ts` now fails loudly at cold
+  start if `NODE_ENV` is missing, specifically to catch this class of bug
+  immediately instead of as a silent, hard-to-trace CORS rejection.
 
 ### Domain
 - Custom domain: jiranihub.co.ke (or similar .co.ke)
