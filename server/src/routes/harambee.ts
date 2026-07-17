@@ -13,6 +13,7 @@ import { newId } from "../lib/ids.js";
 import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
 import { writeAudit } from "../lib/audit.js";
 import { logger } from "../lib/logger.js";
+import { isProduction } from "../lib/env.js";
 
 const log = logger.child({ component: "harambee" });
 
@@ -233,7 +234,7 @@ harambeeRouter.post("/:id/donate", async (req, res) => {
     // Dev stub only — never in production (see payments.ts /stk-push for
     // why: a missing Daraja env var must fail loudly, not silently
     // auto-complete a real donation for free).
-    if (process.env.NODE_ENV === "production") {
+    if (isProduction()) {
       await db
         .update(payments)
         .set({ status: "failed", updatedAt: new Date() })

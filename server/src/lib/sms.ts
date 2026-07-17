@@ -14,6 +14,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { smsQuotas, smsGlobalQuota } from "@shared/schema.js";
+import { isProduction } from "./env.js";
 
 interface SmsOptions {
   to: string;
@@ -109,7 +110,7 @@ export async function sendSmsRaw({ to, message }: SmsOptions): Promise<boolean> 
   const username = process.env.SMS_USERNAME;
 
   if (!apiKey || !username || apiKey === "your_africastalking_api_key") {
-    if (process.env.NODE_ENV !== "production") {
+    if (!isProduction()) {
       console.info(`[SMS STUB] To: ${to}\n${message}`);
     }
     return true;

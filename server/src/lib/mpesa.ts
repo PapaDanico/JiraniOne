@@ -1,7 +1,8 @@
-const BASE =
-  process.env.NODE_ENV === "production"
-    ? "https://api.safaricom.co.ke"
-    : "https://sandbox.safaricom.co.ke";
+import { isProduction } from "./env.js";
+
+const BASE = isProduction()
+  ? "https://api.safaricom.co.ke"
+  : "https://sandbox.safaricom.co.ke";
 
 let tokenCache: { token: string; expiresAt: number } | null = null;
 

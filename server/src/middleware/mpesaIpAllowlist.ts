@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { logger } from "../lib/logger.js";
 import { getClientIp } from "../lib/httpUtils.js";
+import { isProduction } from "../lib/env.js";
 
 const log = logger.child({ component: "mpesa_ip_allowlist" });
 
@@ -39,7 +40,7 @@ export function mpesaIpAllowlist(
   next: NextFunction,
 ) {
   // In dev/sandbox we don't enforce — Safaricom sandbox IPs vary.
-  if (process.env.NODE_ENV !== "production") {
+  if (!isProduction()) {
     next();
     return;
   }
