@@ -103,6 +103,11 @@ export const estates = pgTable(
     id: text("id").primaryKey(),
     name: varchar("name", { length: 150 }).notNull(),
     location: varchar("location", { length: 200 }).notNull(),
+    // Nullable — weather/traffic widgets fall back to a Nairobi-area default
+    // when unset rather than failing, but every estate should eventually set
+    // its own so those widgets aren't showing a different estate's weather.
+    lat: decimal("lat", { precision: 9, scale: 6 }),
+    lng: decimal("lng", { precision: 9, scale: 6 }),
     adminId: text("admin_id"),
     subscriptionTier: subscriptionTierEnum("subscription_tier")
       .notNull()

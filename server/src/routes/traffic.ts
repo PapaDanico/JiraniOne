@@ -1,21 +1,46 @@
 import { Router } from "express";
+import { eq } from "drizzle-orm";
+import { db } from "../db.js";
+import { estates } from "@shared/schema.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import type { TrafficData } from "@shared/types.js";
 
 export const trafficRouter = Router();
 trafficRouter.use(requireAuth);
 
-// Athi River → Nairobi CBD via Mombasa Road
-// Origin: Athi River roundabout  |  Destination: Kencom House, Nairobi
-const ORIGIN = "-1.467,36.983";
-const DEST   = "-1.284,36.823";
+// Destination: Kencom House, Nairobi CBD — a reasonable default commute
+// target for any estate on this platform so far (all satellite-town
+// estates commuting toward Nairobi). Per-estate custom destinations would
+// need a settings UI; not worth it until a second, differently-situated
+// estate actually needs it.
+const DEST = "-1.284,36.823";
 
-// Normal drive time (baseline, minutes) — ~42 km via A109
+// Athi River roundabout — fallback origin for estates without coordinates
+// set yet (mirrors weather.ts's default).
+const DEFAULT_ORIGIN = "-1.4667,36.9833";
+
+// Normal drive time (baseline, minutes) — ~42 km via A109. Used both as the
+// static fallback when GOOGLE_MAPS_API_KEY isn't configured, and as the
+// distance/duration shown even when it is, if the estate itself is Athi
+// River (same numbers either way).
 const NORMAL_MINS = 45;
 const DISTANCE_KM = 42;
 
-trafficRouter.get("/", async (_req, res) => {
+trafficRouter.get("/", async (req, res) => {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+  const user = res.locals.user!;
+  let origin = DEFAULT_ORIGIN;
+  if (user.estateId) {
+    const [estate] = await db
+      .select({ lat: estates.lat, lng: estates.lng })
+      .from(estates)
+      .where(eq(estates.id, user.estateId))
+      .limit(1);
+    if (estate?.lat && estate?.lng) {
+      origin = `${estate.lat},${estate.lng}`;
+    }
+  }
 
   if (!apiKey) {
     // No API key — return static baseline with a flag
@@ -34,7 +59,7 @@ trafficRouter.get("/", async (_req, res) => {
   try {
     const url =
       `https://maps.googleapis.com/maps/api/distancematrix/json` +
-      `?origins=${ORIGIN}&destinations=${DEST}` +
+      `?origins=${origin}&destinations=${DEST}` +
       `&mode=driving&departure_time=now&traffic_model=best_guess` +
       `&key=${apiKey}`;
 
