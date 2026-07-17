@@ -10,9 +10,14 @@
   NODE_VERSION = "20"
 
 [functions]
-  # sharp and bcrypt are native addons — don't let the function bundler
-  # try to tree-shake/bundle their .node binaries.
-  external_node_modules = ["sharp", "bcrypt"]
+  # sharp is a native addon — don't let the function bundler try to
+  # tree-shake/bundle its .node binary. bcrypt was replaced with bcryptjs
+  # (pure JS) specifically because a native-module load failure in the
+  # Lambda runtime is a plausible cause of the "Internal server error" on
+  # login — every login call hits bcrypt.compare, so any load/bundling
+  # mismatch there fails every single login. bcryptjs is a drop-in,
+  # hash-format-compatible replacement with no native binary to break.
+  external_node_modules = ["sharp"]
 
 # Order matters — first match wins. API and upload routes must be caught
 # before the SPA fallback, or every request would 200 with index.html.
