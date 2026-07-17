@@ -82,6 +82,7 @@ export interface Announcement {
   title: string;
   body: string;
   priority: AnnouncementPriority;
+  smsSent: boolean;
   createdAt: string;
   author?: { name: string };
 }
@@ -165,6 +166,7 @@ export interface Poll {
   createdAt: string;
   options?: PollOption[];
   myVoteOptionId?: string | null;
+  iHaveVoted?: boolean;
   totalVotes?: number;
 }
 

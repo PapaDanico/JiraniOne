@@ -1,5 +1,5 @@
 import { Router } from "express";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { eq, and, isNull, sql } from "drizzle-orm";
 import { db } from "../db.js";
