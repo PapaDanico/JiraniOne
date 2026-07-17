@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { SectionLoader } from "@/components/shared/loading";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { displayPhone } from "@/lib/utils";
 import type { ServiceProvider } from "@shared/types";
 
@@ -57,7 +57,12 @@ function AddProviderDialog({ onClose }: { onClose: () => void }) {
         <div className="px-6 pb-2 space-y-3">
           <div>
             <Label className="text-[#212121] font-semibold">Name</Label>
-            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Full name" />
+            <Input
+              value={form.name}
+              onChange={(e) => set("name", e.target.value)}
+              placeholder="Full name"
+              error={form.name.length > 0 && form.name.trim().length < 2 ? "At least 2 characters" : undefined}
+            />
           </div>
           <div>
             <Label className="text-[#212121] font-semibold">Service Type</Label>
@@ -122,9 +127,13 @@ export default function MarketplacePage() {
     queryFn: () => api.get<ServiceProvider[]>("/api/services").then((r) => r.data),
   });
 
+  const [verifyError, setVerifyError] = useState<string | null>(null);
   const verify = useMutation({
     mutationFn: (id: string) => api.patch(`/api/services/${id}`, { verified: true }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["services"] }),
+    onSuccess: () => { setVerifyError(null); qc.invalidateQueries({ queryKey: ["services"] }); },
+    onError: (err) => {
+      setVerifyError(err instanceof ApiError ? err.message : "Failed to verify provider. Please try again.");
+    },
   });
 
   const filtered = providers?.filter((p) =>
@@ -142,6 +151,9 @@ export default function MarketplacePage() {
     <div className="page-wrap">
       <TopBar title="Marketplace" />
       <main className="max-w-lg mx-auto px-4 pt-4 space-y-4 page-content">
+        {verifyError && (
+          <p className="text-xs text-[#B71C1C] font-medium">{verifyError}</p>
+        )}
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B5D45]" />

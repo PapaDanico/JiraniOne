@@ -11,6 +11,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SectionLoader } from "@/components/shared/loading";
 import { api } from "@/lib/api";
 
@@ -181,6 +182,7 @@ export default function AdminUsersPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editUser, setEditUser] = useState<EstateUser | null>(null);
   const [search, setSearch] = useState("");
+  const [confirmRemove, setConfirmRemove] = useState<EstateUser | null>(null);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["estate-users"],
@@ -189,7 +191,7 @@ export default function AdminUsersPage() {
 
   const deactivate = useMutation({
     mutationFn: (id: string) => api.delete(`/api/users/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["estate-users"] }),
+    onSuccess: () => { setConfirmRemove(null); qc.invalidateQueries({ queryKey: ["estate-users"] }); },
     onError: (err) => alert(err instanceof Error ? err.message : "Failed to remove user."),
   });
 
@@ -277,9 +279,7 @@ export default function AdminUsersPage() {
                             size="sm"
                             variant="ghost"
                             className="h-8 w-8 p-0 text-[#B71C1C]"
-                            onClick={() => {
-                              if (confirm(`Remove ${u.name}?`)) deactivate.mutate(u.id);
-                            }}
+                            onClick={() => setConfirmRemove(u)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -296,6 +296,16 @@ export default function AdminUsersPage() {
 
       {addOpen && <AddUserDialog onClose={() => setAddOpen(false)} />}
       {editUser && <EditUserDialog user={editUser} onClose={() => setEditUser(null)} />}
+      <ConfirmDialog
+        open={!!confirmRemove}
+        onOpenChange={(v) => { if (!v) setConfirmRemove(null); }}
+        title="Remove this user?"
+        description={confirmRemove ? `${confirmRemove.name} will lose access to JiraniHub immediately.` : ""}
+        confirmLabel="Remove"
+        cancelLabel="Keep them"
+        loading={deactivate.isPending}
+        onConfirm={() => confirmRemove && deactivate.mutate(confirmRemove.id)}
+      />
       <BottomNav />
     </div>
   );

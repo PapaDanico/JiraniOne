@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import type { FundraisingCampaign } from "@shared/types";
@@ -47,6 +48,7 @@ export default function HarambeePage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [donateError, setDonateError] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
 
   const { data: campaigns, isLoading } = useQuery<FundraisingCampaign[]>({
     queryKey: ["harambee"],
@@ -72,6 +74,7 @@ export default function HarambeePage() {
       api.patch(`/api/harambee/${id}`, { status }),
     onSuccess: () => {
       setUpdateError(null);
+      setConfirmCancelId(null);
       qc.invalidateQueries({ queryKey: ["harambee"] });
     },
     onError: (err) => {
@@ -115,6 +118,9 @@ export default function HarambeePage() {
                 <h3 className="font-semibold text-[#1B5E20]">Create Campaign</h3>
                 <input className={inputCls} placeholder="Title *" value={createForm.title}
                   onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))} />
+                {createForm.title.length > 0 && createForm.title.trim().length < 3 && (
+                  <p className="text-xs" style={{ color: "#B71C1C" }}>At least 3 characters</p>
+                )}
                 <textarea className={inputCls} placeholder="Description" rows={2} value={createForm.description}
                   onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} />
                 <input className={inputCls} type="number" placeholder="Goal Amount (KES) *" value={createForm.goalAmount}
@@ -123,7 +129,7 @@ export default function HarambeePage() {
                   onChange={(e) => setCreateForm((f) => ({ ...f, deadline: e.target.value }))} />
                 {createError && <p className="text-xs text-[#B71C1C] font-medium">{createError}</p>}
                 <div className="flex gap-2">
-                  <button className={btnPrimary} disabled={!createForm.title || !createForm.goalAmount || createMut.isPending}
+                  <button className={btnPrimary} disabled={createForm.title.trim().length < 3 || !createForm.goalAmount || createMut.isPending}
                     onClick={() => createMut.mutate(createForm)}>
                     {createMut.isPending ? "Saving…" : "Create"}
                   </button>
@@ -228,7 +234,7 @@ export default function HarambeePage() {
                   </button>
                   <button className="border border-red-300 text-red-600 text-sm px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
                     disabled={updateMut.isPending}
-                    onClick={() => updateMut.mutate({ id: c.id, status: "cancelled" })}>
+                    onClick={() => setConfirmCancelId(c.id)}>
                     Cancel
                   </button>
                 </div>
@@ -238,6 +244,16 @@ export default function HarambeePage() {
         })}
       </main>
       <BottomNav />
+      <ConfirmDialog
+        open={!!confirmCancelId}
+        onOpenChange={(v) => { if (!v) setConfirmCancelId(null); }}
+        title="Cancel this campaign?"
+        description="Donations already collected won't be refunded automatically. Only cancel if the harambee is genuinely off."
+        confirmLabel="Cancel Campaign"
+        cancelLabel="Keep it"
+        loading={updateMut.isPending}
+        onConfirm={() => confirmCancelId && updateMut.mutate({ id: confirmCancelId, status: "cancelled" })}
+      />
     </div>
   );
 }

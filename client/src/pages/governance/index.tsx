@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { SectionLoader } from "@/components/shared/loading";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { Poll } from "@shared/types";
 
@@ -20,6 +20,7 @@ function CreatePollDialog({ onClose }: { onClose: () => void }) {
   const [description, setDescription] = useState("");
   const [options, setOptions] = useState(["", ""]);
   const [closesAt, setClosesAt] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: () => api.post("/api/polls", {
@@ -28,6 +29,9 @@ function CreatePollDialog({ onClose }: { onClose: () => void }) {
       closesAt: closesAt || undefined,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["polls"] }); onClose(); },
+    onError: (err) => {
+      setError(err instanceof ApiError ? err.message : "Failed to create poll. Please try again.");
+    },
   });
 
   const addOption = () => setOptions((o) => [...o, ""]);
@@ -48,7 +52,12 @@ function CreatePollDialog({ onClose }: { onClose: () => void }) {
         <div className="px-6 pb-2 space-y-4">
           <div>
             <Label className="text-[#212121] font-semibold">Question</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What would you like to ask?" />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="What would you like to ask?"
+              error={title.length > 0 && title.trim().length < 3 ? "At least 3 characters" : undefined}
+            />
           </div>
           <div>
             <Label className="text-[#212121] font-semibold">Description (optional)</Label>
@@ -74,13 +83,16 @@ function CreatePollDialog({ onClose }: { onClose: () => void }) {
             <Label className="text-[#212121] font-semibold">Closing date (optional)</Label>
             <Input type="datetime-local" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} />
           </div>
+          {error && (
+            <p className="text-sm text-[#B71C1C] bg-[#B71C1C]/8 rounded-lg px-3 py-2">{error}</p>
+          )}
         </div>
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button
             onClick={() => mutation.mutate()}
             loading={mutation.isPending}
-            disabled={!title || options.filter(Boolean).length < 2}
+            disabled={title.trim().length < 3 || options.filter(Boolean).length < 2}
           >
             Create Poll
           </Button>
@@ -92,11 +104,15 @@ function CreatePollDialog({ onClose }: { onClose: () => void }) {
 
 function PollCard({ poll }: { poll: Poll }) {
   const qc = useQueryClient();
+  const [voteError, setVoteError] = useState<string | null>(null);
   const isClosed = poll.closesAt ? new Date(poll.closesAt) < new Date() : false;
 
   const vote = useMutation({
     mutationFn: (optionId: string) => api.post(`/api/polls/${poll.id}/vote`, { optionId }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["polls"] }),
+    onSuccess: () => { setVoteError(null); qc.invalidateQueries({ queryKey: ["polls"] }); },
+    onError: (err) => {
+      setVoteError(err instanceof ApiError ? err.message : "Failed to submit your vote. Please try again.");
+    },
   });
 
   const total = poll.totalVotes ?? 0;
@@ -152,6 +168,9 @@ function PollCard({ poll }: { poll: Poll }) {
         <p className="text-xs text-[#D4C9A8] text-right">
           {total} vote{total !== 1 ? "s" : ""} total
         </p>
+        {voteError && (
+          <p className="text-xs text-[#B71C1C] font-medium">{voteError}</p>
+        )}
       </CardContent>
     </Card>
   );

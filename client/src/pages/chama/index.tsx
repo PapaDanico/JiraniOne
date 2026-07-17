@@ -120,6 +120,9 @@ export default function ChamaPage() {
               onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
               className="w-full border border-[#D4A017]/40 rounded-lg px-3 py-2 text-sm bg-white"
             />
+            {createForm.name.length > 0 && createForm.name.trim().length < 2 && (
+              <p className="text-xs text-[#B71C1C]">At least 2 characters</p>
+            )}
             <input
               placeholder="Description (optional)"
               value={createForm.description}

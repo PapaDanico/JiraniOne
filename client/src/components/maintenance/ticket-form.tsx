@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { Wrench } from "lucide-react";
+import { Wrench, X } from "lucide-react";
 
 const CATEGORIES = [
   { value: "plumbing",    label: "🔧 Plumbing / Water"  },
@@ -47,6 +47,25 @@ export function TicketForm({ open, onClose }: Props) {
   const [photos, setPhotos] = useState<FileList | null>(null);
   const [photoLimitWarning, setPhotoLimitWarning] = useState(false);
   const [photoSizeWarning, setPhotoSizeWarning] = useState(false);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+
+  // Thumbnail previews so a resident can confirm they attached the right
+  // photo before submitting, instead of just a "2 photos selected" count.
+  // Object URLs are revoked whenever the selection changes or the form
+  // unmounts, so we don't leak blob URLs across repeated opens.
+  useEffect(() => {
+    const urls = photos ? Array.from(photos).map((f) => URL.createObjectURL(f)) : [];
+    setPreviewUrls(urls);
+    return () => { urls.forEach((u) => URL.revokeObjectURL(u)); };
+  }, [photos]);
+
+  const removePhoto = (index: number) => {
+    if (!photos) return;
+    const dt = new DataTransfer();
+    Array.from(photos).forEach((f, i) => { if (i !== index) dt.items.add(f); });
+    setPhotos(dt.files.length > 0 ? dt.files : null);
+    setPhotoLimitWarning(false);
+  };
 
   // The server caps uploads at MAX_TICKET_PHOTOS/MAX_TICKET_PHOTO_BYTES and
   // rejects the whole request if either is exceeded — filter/truncate
@@ -191,8 +210,26 @@ export function TicketForm({ open, onClose }: Props) {
               className="w-full text-sm text-[#6B5D45] mt-1 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[#1B5E20]/10 file:text-[#1B5E20] hover:file:bg-[#1B5E20]/15 transition-colors"
               onChange={(e) => handlePhotoChange(e.target.files)}
             />
-            {photos && photos.length > 0 && (
-              <p className="text-xs text-[#1B5E20] mt-1">✓ {photos.length} photo{photos.length !== 1 ? "s" : ""} selected</p>
+            {previewUrls.length > 0 && (
+              <div className="flex gap-2 mt-2 flex-wrap">
+                {previewUrls.map((url, i) => (
+                  <div key={url} className="relative w-16 h-16 shrink-0">
+                    <img
+                      src={url}
+                      alt={`Selected photo ${i + 1}`}
+                      className="w-16 h-16 object-cover rounded-lg border border-[#D4C9A8]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      aria-label="Remove photo"
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#B71C1C] text-white flex items-center justify-center shadow-sm hover:bg-[#B71C1C]/90"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
             {photoLimitWarning && (
               <p className="text-xs text-[#B71C1C] mt-1">Only the first {MAX_TICKET_PHOTOS} photos were kept.</p>

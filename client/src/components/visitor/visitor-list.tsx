@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, QrCode, Clock, CheckCircle, XCircle, Ban, Users } from "lucide-react";
-import { api } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,9 +35,18 @@ export function VisitorList() {
     queryFn: () => api.get<Visitor[]>("/api/visitors/my").then((r) => r.data),
   });
 
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const cancelMutation = useMutation({
     mutationFn: (id: string) => api.post(`/api/visitors/${id}/cancel`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["visitors", "my"] }),
+    onSuccess: () => {
+      setCancelError(null);
+      setConfirmCancelId(null);
+      qc.invalidateQueries({ queryKey: ["visitors", "my"] });
+    },
+    onError: (err) => {
+      setCancelError(err instanceof ApiError ? err.message : "Failed to cancel visitor pass. Please try again.");
+    },
   });
 
   if (isLoading) return <SectionLoader />;
@@ -56,6 +66,10 @@ export function VisitorList() {
         </Button>
       </div>
 
+      {cancelError && (
+        <p className="text-xs text-[#B71C1C] font-medium">{cancelError}</p>
+      )}
+
       {visitors?.length === 0 ? (
         <div className="tribal-card p-10 text-center">
           <div className="w-16 h-16 rounded-2xl bg-[#1B5E20]/10 flex items-center justify-center mx-auto mb-4">
@@ -73,7 +87,7 @@ export function VisitorList() {
             <div>
               <p className="section-label mb-2">Expected / Inside ({active.length})</p>
               <div className="space-y-2">
-                {active.map((v) => <VisitorCard key={v.id} v={v} onShowQr={setQrVisitor} onCancel={(id) => cancelMutation.mutate(id)} cancelling={cancelMutation.isPending} />)}
+                {active.map((v) => <VisitorCard key={v.id} v={v} onShowQr={setQrVisitor} onCancel={(id) => setConfirmCancelId(id)} cancelling={cancelMutation.isPending} />)}
               </div>
             </div>
           )}
@@ -81,7 +95,7 @@ export function VisitorList() {
             <div>
               <p className="section-label mb-2">History ({past.length})</p>
               <div className="space-y-2">
-                {past.map((v) => <VisitorCard key={v.id} v={v} onShowQr={setQrVisitor} onCancel={(id) => cancelMutation.mutate(id)} cancelling={cancelMutation.isPending} />)}
+                {past.map((v) => <VisitorCard key={v.id} v={v} onShowQr={setQrVisitor} onCancel={(id) => setConfirmCancelId(id)} cancelling={cancelMutation.isPending} />)}
               </div>
             </div>
           )}
@@ -90,6 +104,16 @@ export function VisitorList() {
 
       <CreateVisitorPass open={createOpen} onClose={() => setCreateOpen(false)} />
       {qrVisitor && <VisitorQrModal visitor={qrVisitor} onClose={() => setQrVisitor(null)} />}
+      <ConfirmDialog
+        open={!!confirmCancelId}
+        onOpenChange={(v) => { if (!v) setConfirmCancelId(null); }}
+        title="Cancel this visitor pass?"
+        description="The visitor's QR code will stop working. Do this only if they're no longer coming."
+        confirmLabel="Cancel Pass"
+        cancelLabel="Keep it"
+        loading={cancelMutation.isPending}
+        onConfirm={() => confirmCancelId && cancelMutation.mutate(confirmCancelId)}
+      />
     </div>
   );
 }

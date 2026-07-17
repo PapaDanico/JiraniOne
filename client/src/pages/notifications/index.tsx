@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, CheckCheck, MessageCircle } from "lucide-react";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SectionLoader } from "@/components/shared/loading";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { formatRelative } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@shared/types";
@@ -38,14 +39,22 @@ export default function NotificationsPage() {
         .then((r) => r.data),
   });
 
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const markRead = useMutation({
     mutationFn: (id: string) => api.patch(`/api/notifications/${id}/read`, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+    onSuccess: () => { setActionError(null); qc.invalidateQueries({ queryKey: ["notifications"] }); },
+    onError: (err) => {
+      setActionError(err instanceof ApiError ? err.message : "Failed to mark notification as read.");
+    },
   });
 
   const markAllRead = useMutation({
     mutationFn: () => api.patch("/api/notifications/read-all", {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+    onSuccess: () => { setActionError(null); qc.invalidateQueries({ queryKey: ["notifications"] }); },
+    onError: (err) => {
+      setActionError(err instanceof ApiError ? err.message : "Failed to mark all as read.");
+    },
   });
 
   const unreadCount = notifications?.filter((n) => !n.read).length ?? 0;
@@ -83,6 +92,10 @@ export default function NotificationsPage() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {actionError && (
+          <p className="text-xs text-[#B71C1C] font-medium">{actionError}</p>
         )}
 
         <div className="flex items-center justify-between">
