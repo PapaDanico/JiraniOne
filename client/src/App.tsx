@@ -7,6 +7,7 @@ import { usePolling } from "@/hooks/usePolling";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { RoleGate } from "@/components/shared/role-gate";
 import { PageLoader } from "@/components/shared/loading";
+import { InstallBanner } from "@/components/shared/install-banner";
 
 // CLAUDE.md cares about emergency and visitor flows on 3G. These two are
 // eagerly imported (NOT lazy()) so the panic button and gate scanner don't
@@ -54,7 +55,9 @@ function AppRoutes() {
   if (isLoading) return <PageLoader />;
 
   return (
-    <Suspense fallback={<PageLoader />}>
+    <>
+      <InstallBanner />
+      <Suspense fallback={<PageLoader />}>
       <Switch>
         <Route path="/" component={LandingPage} />
         <Route path="/login" component={LoginPage} />
@@ -134,7 +137,8 @@ function AppRoutes() {
           {user ? <Redirect to={`/dashboard/${user.role}`} /> : <Redirect to="/" />}
         </Route>
       </Switch>
-    </Suspense>
+      </Suspense>
+    </>
   );
 }
 
