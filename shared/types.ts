@@ -236,6 +236,16 @@ export interface Parcel {
   receivedBy?: { name: string } | null;
 }
 
+export interface EstateDocument {
+  id: string;
+  estateId: string;
+  uploadedById: string;
+  title: string;
+  fileUrl: string;
+  fileType: string | null;
+  createdAt: string;
+}
+
 export interface Classified {
   id: string;
   estateId: string;

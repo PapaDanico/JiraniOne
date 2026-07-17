@@ -45,6 +45,7 @@ const STANDARD_KEYS = [
   ["parcels"],
   ["analytics"],
   ["estate-users"],
+  ["documents"],
 ];
 const EMERGENCY_KEY = ["emergency"];
 

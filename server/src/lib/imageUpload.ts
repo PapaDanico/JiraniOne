@@ -22,7 +22,7 @@
 import { randomBytes } from "crypto";
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
-import { saveImage } from "./blobStorage.js";
+import { saveFile } from "./blobStorage.js";
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_DIMENSION = 1280;
@@ -67,7 +67,7 @@ export async function processUploadedImages(
 
     // 4. Store under a content-addressed key.
     const safeName = `${randomBytes(12).toString("hex")}.webp`;
-    await saveImage(processed, safeName, "image/webp");
+    await saveFile(processed, safeName, "image/webp");
     results.push(`/uploads/${safeName}`);
   }
 

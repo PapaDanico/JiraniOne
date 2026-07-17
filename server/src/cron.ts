@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, lt, sql } from "drizzle-orm";
+import { and, eq, gt, lte, isNull, isNotNull, lt, sql } from "drizzle-orm";
 import { db } from "./db.js";
 import {
   payments,
@@ -7,11 +7,16 @@ import {
   smsQuotas,
   smsGlobalQuota,
   auditLogs,
+  events,
+  eventRsvps,
+  users,
 } from "@shared/schema.js";
 import { lucia } from "./auth.js";
 import { stkPushStatus } from "./lib/mpesa.js";
 import { logger } from "./lib/logger.js";
 import { settlePaymentById } from "./routes/payments.js";
+import { createNotification } from "./lib/notify.js";
+import { sendThrottledSms } from "./lib/sms.js";
 
 const log = logger.child({ component: "cron" });
 
@@ -140,5 +145,73 @@ export async function anonymizeOldVisitors() {
       );
   } catch (err) {
     log.error({ event: "visitor_purge_failed", err }, "visitor purge job failed");
+  }
+}
+
+// Notify every "attending" RSVP for one event, in-app + SMS (best-effort —
+// one recipient's SMS failure doesn't block the rest or the notification).
+async function notifyAttendees(eventId: string, title: string, body: string) {
+  const attendees = await db
+    .select({ userId: users.id, phone: users.phone })
+    .from(eventRsvps)
+    .innerJoin(users, eq(eventRsvps.userId, users.id))
+    .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.attending, true)));
+
+  for (const a of attendees) {
+    await createNotification({
+      userId: a.userId,
+      title,
+      body,
+      type: "event_reminder",
+      linkTo: "/events",
+    });
+    try {
+      await sendThrottledSms({ userId: a.userId, to: a.phone, message: `${title}: ${body}` });
+    } catch (err) {
+      log.error({ event: "event_reminder_sms_failed", eventId, userId: a.userId, err }, "reminder SMS failed");
+    }
+  }
+}
+
+// Event reminders (CLAUDE.md: "Event reminders 24h + 1h before"). Runs
+// every 15 minutes (see netlify/functions/event-reminders.ts); each tier
+// fires once an event falls inside its window and hasn't been sent yet
+// (reminder{24h,1h}SentAt IS NULL), rather than matching an exact 15-minute
+// slot — that stays correct even if a run is skipped or delayed, at the
+// cost of occasionally sending "tomorrow" and "in an hour" back-to-back
+// for an event created less than an hour before it starts.
+export async function sendEventReminders() {
+  const now = new Date();
+
+  try {
+    const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const dueFor24h = await db
+      .select({ id: events.id, title: events.title, startTime: events.startTime })
+      .from(events)
+      .where(and(gt(events.startTime, now), lte(events.startTime, in24h), isNull(events.reminder24hSentAt)))
+      .limit(50);
+
+    for (const e of dueFor24h) {
+      await notifyAttendees(e.id, `Reminder: ${e.title}`, `Happening ${e.startTime.toLocaleString("en-KE", { weekday: "long", hour: "2-digit", minute: "2-digit" })}.`);
+      await db.update(events).set({ reminder24hSentAt: now }).where(eq(events.id, e.id));
+    }
+  } catch (err) {
+    log.error({ event: "event_reminder_24h_failed", err }, "24h event reminder job failed");
+  }
+
+  try {
+    const in1h = new Date(now.getTime() + 60 * 60 * 1000);
+    const dueFor1h = await db
+      .select({ id: events.id, title: events.title, startTime: events.startTime })
+      .from(events)
+      .where(and(gt(events.startTime, now), lte(events.startTime, in1h), isNull(events.reminder1hSentAt)))
+      .limit(50);
+
+    for (const e of dueFor1h) {
+      await notifyAttendees(e.id, `Starting soon: ${e.title}`, `Starts at ${e.startTime.toLocaleString("en-KE", { hour: "2-digit", minute: "2-digit" })}.`);
+      await db.update(events).set({ reminder1hSentAt: now }).where(eq(events.id, e.id));
+    }
+  } catch (err) {
+    log.error({ event: "event_reminder_1h_failed", err }, "1h event reminder job failed");
   }
 }

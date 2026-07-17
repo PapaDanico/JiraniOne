@@ -8,3 +8,10 @@
 // 3 * 1.5MB budget inflated to exactly 6MB with zero headroom at all.
 export const MAX_TICKET_PHOTOS = 3;
 export const MAX_TICKET_PHOTO_BYTES = 1 * 1024 * 1024; // 1MB per photo
+
+// Estate documents (rules, AGM minutes, notices) are a single file per
+// upload, so there's more headroom than the multi-photo ticket budget
+// above — same Lambda 6MB-inflated ceiling, budgeted the same
+// conservative way: 3MB raw -> ~4MB inflated, ~2MB left for multipart
+// overhead and the title field.
+export const MAX_DOCUMENT_BYTES = 3 * 1024 * 1024; // 3MB

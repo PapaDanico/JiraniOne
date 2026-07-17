@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import {
   Wrench, ShieldAlert, CreditCard, CalendarDays, Store, Vote, BookOpen,
   Package, Tag, Users, Bell, PackageCheck, Megaphone, ChevronRight,
-  AlertCircle, HandCoins, Car, Coins, Activity,
+  AlertCircle, HandCoins, Car, Coins, Activity, FileText,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEstate } from "@/hooks/useEstate";
@@ -74,6 +74,7 @@ const MORE_TILES = [
   { href: "/chama",        label: "Chama",       Icon: Coins,        bg: "bg-yellow-100",  fg: "text-yellow-700" },
   { href: "/marketplace",  label: "Marketplace", Icon: Store,        bg: "bg-amber-100",   fg: "text-amber-700" },
   { href: "/notifications",label: "Alerts",      Icon: Bell,         bg: "bg-rose-100",    fg: "text-rose-700" },
+  { href: "/documents",    label: "Documents",   Icon: FileText,     bg: "bg-lime-100",    fg: "text-lime-700" },
 ];
 
 const ANN_VARIANT: Record<string, "default" | "warning" | "urgent"> = {

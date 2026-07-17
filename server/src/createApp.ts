@@ -28,6 +28,7 @@ import { weatherRouter } from "./routes/weather.js";
 import { trafficRouter } from "./routes/traffic.js";
 import { parcelsRouter } from "./routes/parcels.js";
 import { classifiedsRouter } from "./routes/classifieds.js";
+import { documentsRouter } from "./routes/documents.js";
 import { harambeeRouter } from "./routes/harambee.js";
 import { carpoolRouter } from "./routes/carpool.js";
 import { chamaRouter } from "./routes/chama.js";
@@ -283,6 +284,7 @@ export function createApp(): express.Express {
   app.use("/api/carpool", carpoolRouter);
   app.use("/api/chama", chamaRouter);
   app.use("/api/analytics", analyticsRouter);
+  app.use("/api/documents", documentsRouter);
 
   // ─── Health check ────────────────────────────────────────────────────────────
   // Returning OK without a DB ping means a DB outage looks healthy. Run a

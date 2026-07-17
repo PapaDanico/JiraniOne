@@ -44,6 +44,7 @@ const ClassifiedsPage    = lazy(() => import("@/pages/classifieds/index"));
 const HarambeePage       = lazy(() => import("@/pages/harambee/index"));
 const CarpoolPage        = lazy(() => import("@/pages/carpool/index"));
 const ChamaPage          = lazy(() => import("@/pages/chama/index"));
+const DocumentsPage      = lazy(() => import("@/pages/documents/index"));
 
 function AppRoutes() {
   const { user, isLoading } = useAuth();
@@ -122,6 +123,9 @@ function AppRoutes() {
         </Route>
         <Route path="/chama">
           <RoleGate roles={["resident", "admin"]}><ChamaPage /></RoleGate>
+        </Route>
+        <Route path="/documents">
+          <RoleGate roles={["resident", "admin", "security", "vendor"]}><DocumentsPage /></RoleGate>
         </Route>
 
         <Route>
