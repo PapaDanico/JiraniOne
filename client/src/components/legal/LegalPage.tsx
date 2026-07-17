@@ -17,7 +17,7 @@ export function LegalPage({ type }: { type: "privacy" | "terms" }) {
 
         <h1 className="font-black text-3xl text-[#212121] mt-4 mb-1">{title}</h1>
         <p className="text-xs text-[#6B5D45] mb-8">
-          Effective June 27, 2026 · {desc}
+          Effective July 17, 2026 · {desc}
         </p>
 
         <div className="space-y-6">

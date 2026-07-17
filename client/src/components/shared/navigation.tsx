@@ -74,6 +74,7 @@ const MORE_LINKS: Array<{ href: string; label: string; roles: UserRole[] }> = [
   { href: "/notifications", label: "Notifications", roles: ["resident", "admin", "security", "vendor"] },
   { href: "/admin/users",   label: "Residents",     roles: ["admin"] },
   { href: "/documents",     label: "Documents",     roles: ["resident", "admin", "security", "vendor"] },
+  { href: "/faq",           label: "Help & FAQ",    roles: ["resident", "admin", "security", "vendor"] },
 ];
 
 // ─── Edit Profile Modal ───────────────────────────────────────────────────────

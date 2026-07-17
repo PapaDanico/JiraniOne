@@ -45,6 +45,7 @@ const HarambeePage       = lazy(() => import("@/pages/harambee/index"));
 const CarpoolPage        = lazy(() => import("@/pages/carpool/index"));
 const ChamaPage          = lazy(() => import("@/pages/chama/index"));
 const DocumentsPage      = lazy(() => import("@/pages/documents/index"));
+const FaqPage            = lazy(() => import("@/pages/faq/index"));
 
 function AppRoutes() {
   const { user, isLoading } = useAuth();
@@ -62,6 +63,7 @@ function AppRoutes() {
         <Route path="/setup/:token" component={SetupPage} />
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/terms" component={TermsPage} />
+        <Route path="/faq" component={FaqPage} />
 
         <Route path="/dashboard/resident">
           <RoleGate roles={["resident"]}><ResidentDashboard /></RoleGate>

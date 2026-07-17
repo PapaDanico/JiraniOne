@@ -57,6 +57,9 @@ export function LandingPage() {
             <p className="text-lg text-[#6B5D45] leading-relaxed">
               Replace WhatsApp groups, paper logbooks, and guesswork with one platform for visitors, maintenance, M-PESA payments, and emergencies — designed around how Kenyan estates actually run.
             </p>
+            <p className="text-sm italic text-[#D47A00] font-medium">
+              "Jirani mwema ni hazina" — a good neighbour is a treasure.
+            </p>
           </div>
           <div className="flex flex-col gap-3 pt-4">
             <Button onClick={() => setLocation("/register")} className="w-full h-14 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
@@ -132,6 +135,31 @@ export function LandingPage() {
           </div>
         </section>
 
+        {/* How it works - 3 steps */}
+        <section className="max-w-lg mx-auto px-4 pb-12 space-y-5">
+          <div className="text-center space-y-2">
+            <h2 className="font-black text-3xl text-[#212121]">How It Works</h2>
+            <p className="text-sm text-[#6B5D45]">From WhatsApp chaos to calm, in three steps</p>
+          </div>
+          <div className="space-y-3">
+            {[
+              { n: "1", title: "Your estate joins", desc: "Management sets up the estate, adds facilities and rules, and invites every household." },
+              { n: "2", title: "You sign in with your phone number", desc: "No email needed. Invite visitors, report issues, book the clubhouse, and follow estate news — all from one app." },
+              { n: "3", title: "Pay and track with M-PESA", desc: "Levy prompts land on your phone. Every shilling is receipted and visible — full transparency for the whole community." },
+            ].map((s) => (
+              <div key={s.n} className="flex items-start gap-4 bg-white rounded-2xl p-4 border border-[#E8E3D8] shadow-sm">
+                <div className="w-9 h-9 rounded-full bg-[#1B5E20] text-white font-black flex items-center justify-center shrink-0">
+                  {s.n}
+                </div>
+                <div>
+                  <p className="font-bold text-sm text-[#212121]">{s.title}</p>
+                  <p className="text-sm text-[#6B5D45] mt-0.5 leading-relaxed">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Why Athi River - Pilot story */}
         <section className="max-w-lg mx-auto px-4 pb-12">
           <div className="bg-white rounded-2xl p-6 border border-[#E8E3D8] shadow-sm space-y-3">
@@ -199,7 +227,9 @@ export function LandingPage() {
         {/* Footer Links */}
         <section className="border-t border-[#E8E3D8] px-4 py-8 space-y-4 text-center">
           <p className="text-xs font-semibold text-[#6B5D45]">© 2026 JiraniHub Ltd. Kenya</p>
-          <div className="flex justify-center gap-6 text-xs font-semibold">
+          <div className="flex justify-center gap-4 text-xs font-semibold flex-wrap">
+            <a href="/faq" className="text-[#1B5E20] hover:underline hover:opacity-80 transition-all">Help & FAQ</a>
+            <span className="text-[#D4C9A8]">•</span>
             <a href="/privacy" className="text-[#1B5E20] hover:underline hover:opacity-80 transition-all">Privacy</a>
             <span className="text-[#D4C9A8]">•</span>
             <a href="/terms" className="text-[#1B5E20] hover:underline hover:opacity-80 transition-all">Terms</a>
