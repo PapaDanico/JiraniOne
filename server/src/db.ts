@@ -2,8 +2,19 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "@shared/schema.js";
 
-// DATABASE_URL validation happens in index.ts at server startup, not at build time.
-// At module load, we allow it to be undefined so the build doesn't fail.
+// index.ts's startup check only runs for local/traditional Node hosting —
+// the deployed Netlify Function imports createApp()/db.ts directly and
+// never executes it, so a missing DATABASE_URL there silently fell back to
+// an unreachable localhost URL and every DB query failed with an opaque
+// connection error instead of a clear one. Log loudly here too so that
+// failure mode is diagnosable from Netlify's function logs.
+if (!process.env.DATABASE_URL) {
+  console.error(
+    "❌ DATABASE_URL is not set — falling back to a localhost URL that will " +
+      "not work in any deployed environment. Set DATABASE_URL in the site's " +
+      "environment variables.",
+  );
+}
 const url = process.env.DATABASE_URL || "postgresql://localhost/jiranihub";
 
 // Use Supabase's Transaction pooler (Supavisor) connection string here, not
