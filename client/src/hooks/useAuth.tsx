@@ -41,8 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutMutation = useMutation({
     mutationFn: () => api.post("/api/auth/logout"),
     onSuccess: () => {
-      qc.setQueryData(["auth", "me"], null);
+      // clear() must run first — it wipes the entire cache, including
+      // whatever we set on ["auth", "me"]. Setting it to null afterwards
+      // (not before) is what actually makes `user` resolve to null
+      // immediately, instead of leaving the query cache-less and racing
+      // a refetch of /api/auth/me against RoleGate's redirect.
       qc.clear();
+      qc.setQueryData(["auth", "me"], null);
     },
   });
 
