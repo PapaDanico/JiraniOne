@@ -1,11 +1,12 @@
 import { Link, useLocation } from "wouter";
 import {
   Home, Users, Wrench, Megaphone, ShieldAlert, LogOut, Menu, X,
-  Store, Vote, CreditCard, UserPen, Eye, EyeOff, ChevronDown,
+  Store, Vote, CreditCard, UserPen, Eye, EyeOff, ChevronDown, MapPin,
 } from "lucide-react";
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useEstate } from "@/hooks/useEstate";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { RoleBadge } from "@/components/shared/role-badge";
@@ -15,7 +16,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
 import type { UserRole } from "@shared/types";
+
+interface EstateLite { id: string; name: string; location: string }
 
 // ─── Nav model ────────────────────────────────────────────────────────────────
 // Single source of truth, keyed by role. We render up to 5 items in the
@@ -78,16 +84,32 @@ const MORE_LINKS: Array<{ href: string; label: string; roles: UserRole[] }> = [
 ];
 
 // ─── Edit Profile Modal ───────────────────────────────────────────────────────
-function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function EditProfileModal({
+  open, onClose, initialTab = "name",
+}: { open: boolean; onClose: () => void; initialTab?: "name" | "password" | "estate" }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"name" | "password">("name");
+  const showEstateTab = !user?.estateId;
+  const [tab, setTab] = useState<"name" | "password" | "estate">(initialTab);
+  // `open` toggles without remounting this component, so the initialTab prop
+  // only takes effect on first mount without this — re-sync on every open.
+  useEffect(() => {
+    if (open) setTab(initialTab);
+  }, [open, initialTab]);
   const [name, setName] = useState(user?.name ?? "");
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [estateId, setEstateId] = useState("");
+  const [unitNumber, setUnitNumber] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const { data: estates } = useQuery({
+    queryKey: ["estates-public"],
+    queryFn: () => api.get<EstateLite[]>("/api/auth/estates").then((r) => r.data),
+    enabled: open && showEstateTab,
+  });
 
   const nameMutation = useMutation({
     mutationFn: () => api.patch("/api/users/me/profile", { name: name.trim() }),
@@ -109,12 +131,27 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
     onError: (e: unknown) => { setError(e instanceof Error ? e.message : "Password change failed"); setSuccess(null); },
   });
 
+  const estateMutation = useMutation({
+    mutationFn: () => api.patch("/api/users/me/estate", { estateId, unitNumber: unitNumber.trim() || undefined }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["auth", "me"] });
+      qc.invalidateQueries({ queryKey: ["estate"] });
+      setSuccess("Estate confirmed.");
+      setError(null);
+    },
+    onError: (e: unknown) => { setError(e instanceof Error ? e.message : "Could not confirm estate"); setSuccess(null); },
+  });
+
   const handleClose = () => {
     setError(null); setSuccess(null);
     setCurrentPw(""); setNewPw("");
     setName(user?.name ?? "");
+    setEstateId(""); setUnitNumber("");
+    setTab(initialTab);
     onClose();
   };
+
+  const tabs = (["name", "password", ...(showEstateTab ? ["estate" as const] : [])] as const);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
@@ -129,7 +166,7 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
         </DialogHeader>
 
         <div className="flex border-b border-tribal-border px-6">
-          {(["name", "password"] as const).map((t) => (
+          {tabs.map((t) => (
             <button
               key={t}
               onClick={() => { setTab(t); setError(null); setSuccess(null); }}
@@ -140,7 +177,7 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
                   : "border-transparent text-tribal-earth hover:text-tribal-charcoal",
               )}
             >
-              {t === "name" ? "Display Name" : "Change Password"}
+              {t === "name" ? "Display Name" : t === "password" ? "Change Password" : "Estate"}
             </button>
           ))}
         </div>
@@ -183,6 +220,36 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
               </div>
             </>
           )}
+          {tab === "estate" && (
+            <>
+              <p className="text-sm text-tribal-earth">
+                Confirm the estate you live in. Your admin can change this later if needed.
+              </p>
+              <div>
+                <Label className="text-tribal-charcoal font-semibold">Estate</Label>
+                <Select value={estateId} onValueChange={setEstateId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your estate" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {estates?.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.name} — {e.location}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-tribal-charcoal font-semibold">Unit / House number</Label>
+                <Input
+                  value={unitNumber}
+                  onChange={(e) => setUnitNumber(e.target.value)}
+                  placeholder="A14"
+                />
+              </div>
+            </>
+          )}
 
           {error   && <p className="text-sm text-brand-red bg-brand-red/10 rounded-xl px-3 py-2">{error}</p>}
           {success && <p className="text-sm text-brand-green bg-brand-green/10 rounded-xl px-3 py-2">{success}</p>}
@@ -194,9 +261,11 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
             onClick={() => {
               setError(null); setSuccess(null);
               if (tab === "name") nameMutation.mutate();
-              else pwMutation.mutate();
+              else if (tab === "password") pwMutation.mutate();
+              else estateMutation.mutate();
             }}
-            loading={nameMutation.isPending || pwMutation.isPending}
+            disabled={tab === "estate" && !estateId}
+            loading={nameMutation.isPending || pwMutation.isPending || estateMutation.isPending}
           >
             Save Changes
           </Button>
@@ -216,9 +285,11 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
 
 export function TopBar({ title }: { title?: string }) {
   const { user, logout } = useAuth();
+  const { data: estate } = useEstate();
   const [location] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [profileInitialTab, setProfileInitialTab] = useState<"name" | "password" | "estate">("name");
 
   if (!user) return null;
 
@@ -280,6 +351,12 @@ export function TopBar({ title }: { title?: string }) {
 
           {/* Right cluster */}
           <div className="flex items-center gap-2 shrink-0">
+            {estate && (
+              <span className="hidden md:inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90">
+                <MapPin className="h-3 w-3" />
+                {estate.name}
+              </span>
+            )}
             <RoleBadge
               role={user.role as UserRole}
               className="bg-white/15 text-white border-white/30 hidden sm:inline-flex"
@@ -297,7 +374,11 @@ export function TopBar({ title }: { title?: string }) {
 
       <div className="maasai-stripe" />
 
-      <EditProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <EditProfileModal
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        initialTab={profileInitialTab}
+      />
 
       {/* More drawer */}
       {menuOpen && (
@@ -310,18 +391,35 @@ export function TopBar({ title }: { title?: string }) {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-white truncate">{user.name}</div>
                 <div className="text-xs text-white/50">{user.phone}</div>
+                {estate && (
+                  <div className="text-xs text-white/50 flex items-center gap-1 mt-0.5">
+                    <MapPin className="h-3 w-3" /> {estate.name}
+                  </div>
+                )}
               </div>
               <RoleBadge
                 role={user.role as UserRole}
                 className="bg-white/15 text-white border-white/30 sm:hidden"
               />
               <button
-                onClick={() => { setMenuOpen(false); setProfileOpen(true); }}
+                onClick={() => { setMenuOpen(false); setProfileInitialTab("name"); setProfileOpen(true); }}
                 className="flex items-center gap-1.5 text-xs text-brand-gold bg-brand-gold/15 hover:bg-brand-gold/25 rounded-lg px-2.5 py-1.5 transition-colors shrink-0"
               >
                 <UserPen className="h-3.5 w-3.5" /> Edit
               </button>
             </div>
+
+            {!user.estateId && (
+              <button
+                onClick={() => { setMenuOpen(false); setProfileInitialTab("estate"); setProfileOpen(true); }}
+                className="mb-3 w-full flex items-center gap-2 rounded-xl border border-brand-gold/40 bg-brand-gold/10 px-3 py-2.5 text-left transition-colors hover:bg-brand-gold/15"
+              >
+                <MapPin className="h-4 w-4 text-brand-gold shrink-0" />
+                <span className="text-xs font-semibold text-white">
+                  No estate set yet — tap to confirm which estate you live in
+                </span>
+              </button>
+            )}
 
             {moreLinks.length > 0 && (
               <div className="mb-3">

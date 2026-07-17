@@ -3,12 +3,13 @@ import bcrypt from "bcrypt";
 import { randomBytes } from "crypto";
 import { eq, and, isNull, sql } from "drizzle-orm";
 import { db } from "../db.js";
-import { users, userSetupTokens } from "@shared/schema.js";
+import { users, userSetupTokens, estates } from "@shared/schema.js";
 import {
   adminCreateUserSchema,
   adminUpdateUserSchema,
   updateProfileSchema,
   changePasswordSchema,
+  setEstateSchema,
 } from "@shared/validators.js";
 import { lucia } from "../auth.js";
 import { requireAuth } from "../middleware/requireAuth.js";
@@ -210,6 +211,37 @@ usersRouter.patch("/me/profile", async (req, res) => {
   const { name } = parsed.data;
 
   await db.update(users).set({ name: name.trim(), updatedAt: new Date() })
+    .where(eq(users.id, user.id));
+
+  res.json({ data: { success: true } });
+});
+
+// Resident: confirm which estate they live in. Only allowed as a one-time
+// self-service action while unset — an estate admin owns changing it after
+// that (via the admin/users management screen), since it gates which
+// estate's data the account can see.
+usersRouter.patch("/me/estate", async (req, res) => {
+  const user = res.locals.user!;
+  if (user.estateId) {
+    res.status(409).json({ error: "Your estate is already set. Ask your estate admin to change it." });
+    return;
+  }
+
+  const parsed = setEstateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { estateId, unitNumber } = parsed.data;
+
+  const [estate] = await db.select().from(estates).where(eq(estates.id, estateId)).limit(1);
+  if (!estate) {
+    res.status(400).json({ error: "Estate not found — check the estate code" });
+    return;
+  }
+
+  await db.update(users)
+    .set({ estateId, unitNumber: unitNumber?.trim() || null, updatedAt: new Date() })
     .where(eq(users.id, user.id));
 
   res.json({ data: { success: true } });

@@ -48,14 +48,14 @@ export function LandingPage() {
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#1B5E20]/10 rounded-full border border-[#1B5E20]/20">
               <MapPin className="w-3 h-3 text-[#1B5E20]" />
               <span className="text-xs font-semibold text-[#1B5E20]">
-                Now piloting with NHC Stoni Athi View, Athi River
+                Now onboarding gated communities across Kenya
               </span>
             </div>
             <h1 className="font-black text-5xl leading-tight text-[#212121]">
-              Smart Estate<br />Management,<br />Built for Kenya
+              Run Your Estate.<br />Not a WhatsApp Group.
             </h1>
             <p className="text-lg text-[#6B5D45] leading-relaxed">
-              Replace WhatsApp groups, paper logbooks, and guesswork with one platform for visitors, maintenance, M-PESA payments, and emergencies — designed around how Kenyan estates actually run.
+              JiraniHub replaces the WhatsApp groups, paper logbooks, and spreadsheets most Kenyan estates run on today with one platform for visitor security, maintenance, M-PESA levy collection, governance, and emergencies — built for estate management companies, residents' associations, and property developers.
             </p>
             <p className="text-sm italic text-[#D47A00] font-medium">
               "Jirani mwema ni hazina" — a good neighbour is a treasure.
@@ -160,21 +160,26 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* Why Athi River - Pilot story */}
-        <section className="max-w-lg mx-auto px-4 pb-12">
-          <div className="bg-white rounded-2xl p-6 border border-[#E8E3D8] shadow-sm space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-full bg-[#D47A00]/10 flex items-center justify-center shrink-0">
-                <MapPin className="w-4 h-4 text-[#D47A00]" />
+        {/* Who it's for - target buyers */}
+        <section className="max-w-lg mx-auto px-4 pb-12 space-y-5">
+          <div className="text-center space-y-2">
+            <h2 className="font-black text-3xl text-[#212121]">Built For</h2>
+            <p className="text-sm text-[#6B5D45]">Whoever runs the estate day-to-day</p>
+          </div>
+          <div className="space-y-3">
+            {[
+              { icon: "🏘️", title: "Estate Management Companies", desc: "Run every property you manage from one dashboard — levies, tickets, gate logs, and reports, per estate." },
+              { icon: "🤝", title: "Residents' Associations & Committees", desc: "Replace the group-admin burden of chasing payments and forwarding notices with transparent, auditable tools." },
+              { icon: "🏗️", title: "Property Developers", desc: "Hand new estates a working management system from day one of occupation, not a WhatsApp group and a spreadsheet." },
+            ].map((a) => (
+              <div key={a.title} className="flex items-start gap-4 bg-white rounded-2xl p-4 border border-[#E8E3D8] shadow-sm">
+                <div className="text-2xl shrink-0">{a.icon}</div>
+                <div>
+                  <p className="font-bold text-sm text-[#212121]">{a.title}</p>
+                  <p className="text-sm text-[#6B5D45] mt-0.5 leading-relaxed">{a.desc}</p>
+                </div>
               </div>
-              <h3 className="font-black text-lg text-[#212121]">Our First Estate</h3>
-            </div>
-            <p className="text-sm text-[#6B5D45] leading-relaxed">
-              JiraniHub is launching with <strong className="text-[#212121]">NHC Stoni Athi View</strong> in Athi River, Machakos County — a real Kenyan estate, run day-to-day on this platform, not a demo environment. Every module on this page is built to handle the visitor logs, maintenance requests, levy collections, and emergencies of an actual community.
-            </p>
-            <p className="text-sm text-[#6B5D45] leading-relaxed">
-              We're onboarding new estates deliberately, one at a time, so each community gets it right from day one.
-            </p>
+            ))}
           </div>
         </section>
 
