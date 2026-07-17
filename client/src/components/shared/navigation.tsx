@@ -450,6 +450,29 @@ export function TopBar({ title }: { title?: string }) {
                 Sign out
               </button>
             </div>
+
+            <div className="border-t border-white/10 mt-3 pt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+              <Link
+                href="/privacy"
+                onClick={() => setMenuOpen(false)}
+                className="text-xs text-white/50 hover:text-white/80 transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              <Link
+                href="/terms"
+                onClick={() => setMenuOpen(false)}
+                className="text-xs text-white/50 hover:text-white/80 transition-colors"
+              >
+                Terms of Service
+              </Link>
+              <a
+                href="mailto:support@jiranihub.co.ke"
+                className="text-xs text-white/50 hover:text-white/80 transition-colors"
+              >
+                Support
+              </a>
+            </div>
           </div>
         </div>
       )}
