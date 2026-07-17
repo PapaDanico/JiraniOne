@@ -4,7 +4,7 @@ import { Coins } from "lucide-react";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import type { Chama } from "@shared/types";
+import type { Chama, ChamaContribution } from "@shared/types";
 
 const fmt = (x: string | number) => Number(x).toLocaleString("en-KE");
 const currentPeriod = () => {
@@ -23,6 +23,7 @@ export default function ChamaPage() {
     frequency: "monthly" as "weekly" | "monthly",
   });
   const [contributeOpen, setContributeOpen] = useState<string | null>(null);
+  const [historyOpenId, setHistoryOpenId] = useState<string | null>(null);
   const [contribAmount, setContribAmount] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -66,8 +67,9 @@ export default function ChamaPage() {
   const contributeMutation = useMutation({
     mutationFn: ({ id, amount, periodLabel }: { id: string; amount: string; periodLabel: string }) =>
       api.post(`/api/chama/${id}/contribute`, { amount: Math.trunc(Number(amount)), periodLabel }),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["chama"] });
+      qc.invalidateQueries({ queryKey: ["chama", vars.id, "contributions"] });
       setContributeOpen(null);
       setContribAmount("");
       setContributeError(null);
@@ -223,13 +225,29 @@ export default function ChamaPage() {
                 </div>
 
                 {/* Details row */}
-                <div className="flex items-center gap-4 text-sm text-[#6B5D45]">
+                <div className="flex items-center gap-4 text-sm text-[#6B5D45] flex-wrap">
                   <span className="font-semibold" style={{ color: "#1B5E20" }}>
                     KES {fmt(chama.contributionAmount)} / {chama.frequency === "monthly" ? "month" : "week"}
                   </span>
                   <span className="text-[#6B5D45]/60">·</span>
                   <span className="text-xs">{chama.memberCount ?? 0} members</span>
+                  <span className="text-[#6B5D45]/60">·</span>
+                  <span className="text-xs font-semibold" style={{ color: "#D4A017" }}>
+                    KES {fmt(chama.totalContributed ?? 0)} saved
+                  </span>
                 </div>
+
+                {chama.myMembership && (
+                  <button
+                    type="button"
+                    onClick={() => setHistoryOpenId((v) => (v === chama.id ? null : chama.id))}
+                    className="text-xs font-semibold underline"
+                    style={{ color: "#1B5E20" }}
+                  >
+                    {historyOpenId === chama.id ? "Hide contributions" : "View contributions"}
+                  </button>
+                )}
+                {historyOpenId === chama.id && <ContributionHistory chamaId={chama.id} />}
 
                 {/* Action area */}
                 {chama.myMembership === null || chama.myMembership === undefined ? (
@@ -303,6 +321,36 @@ export default function ChamaPage() {
         )}
       </main>
       <BottomNav />
+    </div>
+  );
+}
+
+function ContributionHistory({ chamaId }: { chamaId: string }) {
+  const { data, isLoading } = useQuery<ChamaContribution[]>({
+    queryKey: ["chama", chamaId, "contributions"],
+    queryFn: () => api.get<ChamaContribution[]>(`/api/chama/${chamaId}/contributions`).then((r) => r.data),
+  });
+
+  if (isLoading) {
+    return <p className="text-xs text-[#6B5D45]/60">Loading…</p>;
+  }
+  if (!data?.length) {
+    return <p className="text-xs text-[#6B5D45]/60">No contributions recorded yet.</p>;
+  }
+
+  return (
+    <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-lg bg-[#D4A017]/5 p-2.5">
+      {data.map((c) => (
+        <div key={c.id} className="flex items-center justify-between text-xs">
+          <span className="text-[#212121]">
+            {c.user?.name ?? "Unknown"}
+            {c.user?.unitNumber && <span className="text-[#6B5D45]/60"> · {c.user.unitNumber}</span>}
+          </span>
+          <span className="font-semibold" style={{ color: "#1B5E20" }}>
+            KES {fmt(c.amount)}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
