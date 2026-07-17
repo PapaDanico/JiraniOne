@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Coins } from "lucide-react";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -180,8 +181,12 @@ export default function ChamaPage() {
 
         {/* Empty state */}
         {!isLoading && chamas?.length === 0 && (
-          <div className="text-center py-12 text-[#6B5D45] opacity-60 text-sm">
-            No chamas yet. Start one to begin saving together!
+          <div className="tribal-card p-10 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#D4A017]/10 flex items-center justify-center mx-auto mb-3">
+              <Coins className="h-7 w-7 text-[#D4A017]" />
+            </div>
+            <p className="font-semibold text-[#212121] mb-1">No chamas yet</p>
+            <p className="text-[#6B5D45] text-sm">Start one to begin saving together with your neighbours.</p>
           </div>
         )}
 

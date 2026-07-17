@@ -260,7 +260,9 @@ export default function BookingsPage() {
           <TabsContent value="bookings">
             {loadBk ? <SectionLoader /> : !bookings?.length ? (
               <div className="tribal-card p-10 text-center">
-                <p className="text-[#6B5D45] text-sm">No bookings yet.</p>
+                <CheckCircle className="h-12 w-12 text-[#D4C9A8] mx-auto mb-3" />
+                <p className="font-semibold text-[#212121] mb-1">No bookings yet</p>
+                <p className="text-[#6B5D45] text-sm">Book a facility from the tab above to see it here.</p>
               </div>
             ) : (
               <div className="space-y-2">
