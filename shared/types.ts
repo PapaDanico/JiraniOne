@@ -398,3 +398,19 @@ export interface EstateAnalytics {
   parcels: { atGate: number; thisMonth: number };
   emergency: { active: number; thisMonth: number };
 }
+
+// ─── Leads (landing-page "bring JiraniHub to your estate") ───────────────────
+
+export type LeadStatus = "new" | "contacted" | "converted" | "declined";
+
+export interface Lead {
+  id: string;
+  estateName: string;
+  contactName: string;
+  phone: string;
+  email: string | null;
+  unitsCount: number | null;
+  message: string | null;
+  status: LeadStatus;
+  createdAt: string;
+}

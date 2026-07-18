@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowRight, Check, Lock, ShieldCheck, MapPin } from "lucide-react";
+import { Check, Lock, ShieldCheck, MapPin, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
+import { RequestDemoDialog } from "./RequestDemoDialog";
 
 const FEATURES = [
   { icon: "🚪", title: "Visitors", desc: "Digital QR check-in" },
@@ -36,6 +38,7 @@ const STATS = [
 
 export function LandingPage() {
   const [, setLocation] = useLocation();
+  const [demoOpen, setDemoOpen] = useState(false);
 
   return (
     <div className="page-wrap min-h-screen bg-gradient-to-b from-white via-[#F8F7F5] to-white">
@@ -62,8 +65,8 @@ export function LandingPage() {
             </p>
           </div>
           <div className="flex flex-col gap-3 pt-4">
-            <Button onClick={() => setLocation("/register")} className="w-full h-14 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
-              Get Started <ArrowRight className="w-5 h-5 ml-2" />
+            <Button onClick={() => setDemoOpen(true)} className="w-full h-14 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <Building2 className="w-5 h-5 mr-2" /> Bring JiraniHub to Your Estate
             </Button>
             <Button
               variant="secondary"
@@ -71,6 +74,13 @@ export function LandingPage() {
               className="w-full h-14 text-base font-semibold rounded-xl border-2 hover:bg-[#1B5E20]/5 transition-all duration-300"
             >
               Sign In
+            </Button>
+            <Button
+              variant="link"
+              onClick={() => setLocation("/register")}
+              className="text-sm text-[#6B5D45] hover:text-[#1B5E20]"
+            >
+              Already a resident of a JiraniHub estate? Create your account →
             </Button>
           </div>
         </section>
@@ -220,12 +230,22 @@ export function LandingPage() {
             </p>
           </div>
           <div className="space-y-3 bg-white rounded-2xl p-6 border border-[#E8E3D8] shadow-md">
-            <Button onClick={() => setLocation("/register")} className="w-full h-13 text-base font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              Create Your Account
+            <Button onClick={() => setDemoOpen(true)} className="w-full h-13 text-base font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
+              <Building2 className="w-5 h-5 mr-2" /> Request a Walkthrough
             </Button>
             <p className="text-xs text-[#6B5D45] text-center font-medium">
-              Estate managers: email us at <a href="mailto:support@jiranihub.co.ke" className="text-[#1B5E20] underline">support@jiranihub.co.ke</a> to bring JiraniHub to your community.
+              Prefer email? Reach us at{" "}
+              <a href="mailto:support@jiranihub.co.ke" className="text-[#1B5E20] underline">support@jiranihub.co.ke</a>
             </p>
+            <div className="flex items-center justify-center gap-1 pt-1">
+              <Button variant="link" size="sm" onClick={() => setLocation("/login")} className="text-xs">
+                Sign In
+              </Button>
+              <span className="text-[#D4C9A8]">•</span>
+              <Button variant="link" size="sm" onClick={() => setLocation("/register")} className="text-xs">
+                Resident? Create your account
+              </Button>
+            </div>
           </div>
         </section>
 
@@ -243,6 +263,8 @@ export function LandingPage() {
           </div>
         </section>
       </main>
+
+      <RequestDemoDialog open={demoOpen} onClose={() => setDemoOpen(false)} />
 
       <BottomNav />
     </div>

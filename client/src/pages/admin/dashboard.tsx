@@ -19,7 +19,7 @@ import { OnboardingChecklist } from "@/components/admin/onboarding-checklist";
 import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import type { EstateAnalytics, MaintenanceTicket, ServiceProvider } from "@shared/types";
+import type { EstateAnalytics, MaintenanceTicket, ServiceProvider, Lead } from "@shared/types";
 
 // ─── Module shortcuts ────────────────────────────────────────────────────────
 
@@ -133,6 +133,13 @@ export default function AdminDashboard() {
   });
   const unverifiedProviders = allProviders.filter((p) => !p.verified);
 
+  const { data: leads = [] } = useQuery<Lead[]>({
+    queryKey: ["leads"],
+    queryFn: () => api.get<Lead[]>("/api/leads").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+  const newLeads = leads.filter((l) => l.status === "new");
+
   const unpaidResidents = analytics?.payments.levyStatus.unpaidResidents ?? [];
 
   const monthlyData = (analytics?.payments.monthlyTotals ?? []).map((m) => ({
@@ -212,12 +219,28 @@ export default function AdminDashboard() {
                 <>
                   <OnboardingChecklist />
 
-                  {(openTickets.length > 0 || unverifiedProviders.length > 0 || unpaidResidents.length > 0) && (
+                  {(openTickets.length > 0 || unverifiedProviders.length > 0 || unpaidResidents.length > 0 || newLeads.length > 0) && (
                     <section>
                       <SectionTitle icon={<ClipboardList className="h-4 w-4" />}>
                         Needs Your Attention
                       </SectionTitle>
                       <div className="space-y-2">
+                        {newLeads.length > 0 && (
+                          <Link href="/admin/leads">
+                            <div className="tribal-card px-4 py-3 flex items-center gap-3 hover:shadow-card-lg transition-shadow border-l-4 border-l-brand-green">
+                              <Building2 className="h-4 w-4 text-brand-green shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm text-tribal-charcoal">
+                                  {newLeads.length} new estate inquir{newLeads.length > 1 ? "ies" : "y"}
+                                </p>
+                                <p className="text-xs text-tribal-earth mt-0.5 truncate">
+                                  {newLeads.slice(0, 2).map((l) => l.estateName).join(" · ")}
+                                </p>
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-tribal-muted shrink-0" />
+                            </div>
+                          </Link>
+                        )}
                         {openTickets.length > 0 && (
                           <Link href="/maintenance">
                             <div className="tribal-card px-4 py-3 flex items-center gap-3 hover:shadow-card-lg transition-shadow border-l-4 border-l-brand-amber">

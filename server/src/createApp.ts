@@ -29,6 +29,7 @@ import { trafficRouter } from "./routes/traffic.js";
 import { parcelsRouter } from "./routes/parcels.js";
 import { classifiedsRouter } from "./routes/classifieds.js";
 import { documentsRouter } from "./routes/documents.js";
+import { leadsRouter } from "./routes/leads.js";
 import { harambeeRouter } from "./routes/harambee.js";
 import { carpoolRouter } from "./routes/carpool.js";
 import { chamaRouter } from "./routes/chama.js";
@@ -197,6 +198,19 @@ export function createApp(): express.Express {
     }),
   );
 
+  // Public lead-capture form — unauthenticated, so guard against spam/scraping
+  app.use(
+    "/api/leads",
+    rateLimit({
+      windowMs: 60 * 60 * 1000,
+      max: 5,
+      standardHeaders: true,
+      legacyHeaders: false,
+      keyGenerator: getClientIp,
+      message: { error: "Too many requests. Please try again later." },
+    }),
+  );
+
   // Tight limit on M-Pesa STK push — 5 per 15 min per IP
   app.use(
     "/api/payments/stk-push",
@@ -299,6 +313,7 @@ export function createApp(): express.Express {
   app.use("/api/chama", chamaRouter);
   app.use("/api/analytics", analyticsRouter);
   app.use("/api/documents", documentsRouter);
+  app.use("/api/leads", leadsRouter);
 
   // ─── Health check ────────────────────────────────────────────────────────────
   // Returning OK without a DB ping means a DB outage looks healthy. Run a
