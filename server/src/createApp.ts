@@ -97,13 +97,26 @@ export function createApp(): express.Express {
     next();
   });
 
-  const ALLOWED_ORIGINS = isProd
-    ? [
-        "https://www.jiranihub.co.ke",
-        "https://jiranihub.co.ke",
-        process.env.CLIENT_URL,
-      ].filter(Boolean) as string[]
-    : ["http://localhost:3000", "http://localhost:5173"];
+  // Deliberately NOT gated on isProd. Login (and every mutating request)
+  // depends on the caller's Origin being in this list, so making the list
+  // itself conditional on environment detection created a single point of
+  // failure: any mis-detection of the environment silently swapped in the
+  // localhost-only list and 500'd every real login. This is a fixed
+  // superset of every trusted origin instead. Including the localhost dev
+  // origins in production is not a weakness — an `Origin: localhost` header
+  // can only be sent by a page actually served from the developer's own
+  // machine, never by a remote attacker's site (whose Origin is its own
+  // domain), so it grants an attacker nothing. The real production domains
+  // are always present regardless of env, and the netlify.app apex is
+  // hardcoded so login doesn't even depend on CLIENT_URL being set.
+  const ALLOWED_ORIGINS = [
+    "https://www.jiranihub.co.ke",
+    "https://jiranihub.co.ke",
+    "https://jiranihub.netlify.app",
+    process.env.CLIENT_URL,
+    "http://localhost:3000",
+    "http://localhost:5173",
+  ].filter(Boolean) as string[];
 
   app.use(
     cors({
