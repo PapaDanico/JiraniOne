@@ -11,6 +11,7 @@ import { requireRole } from "../middleware/requireRole.js";
 import { mpesaIpAllowlist } from "../middleware/mpesaIpAllowlist.js";
 import { newId } from "../lib/ids.js";
 import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
+import { persistCheckoutRequestId } from "../lib/paymentBookkeeping.js";
 import { writeAudit } from "../lib/audit.js";
 import { isProduction } from "../lib/env.js";
 
@@ -60,6 +61,13 @@ export async function applyPaymentResult(
     const campaignId = meta.campaignId as string | undefined;
     const anonymous = Boolean(meta.anonymous);
     if (campaignId) {
+      // The donation record is an accounting fact (this M-PESA charge
+      // happened) regardless of the campaign's current state, so it's
+      // always inserted. But the STK push may have been initiated before an
+      // admin closed the campaign and only settled after — crediting a
+      // closed campaign's total would misrepresent its final amount, so
+      // only increment current_amount if it's still active, and flag the
+      // mismatch for manual review otherwise.
       await tx.insert(donations).values({
         id: newId(),
         campaignId,
@@ -68,27 +76,60 @@ export async function applyPaymentResult(
         anonymous,
         mpesaRef: result.mpesaRef,
       });
-      await tx.execute(sql`
+      const updated = await tx.execute(sql`
         UPDATE fundraising_campaigns
            SET current_amount = current_amount + ${payment.amount}::numeric,
                updated_at = NOW()
-         WHERE id = ${campaignId}
+         WHERE id = ${campaignId} AND status = 'active'
+         RETURNING id
       `);
+      if (updated.length === 0) {
+        console.error(
+          JSON.stringify({
+            event: "donation_settled_after_campaign_closed",
+            paymentId: payment.id,
+            campaignId,
+            amount: payment.amount,
+          }),
+        );
+      }
     }
   } else if (payment.type === "chama_contribution") {
     const meta = payment.metadata ?? {};
     const chamaId = meta.chamaId as string | undefined;
     const periodLabel = String(meta.periodLabel ?? "");
     if (chamaId) {
-      await tx.insert(chamaContributions).values({
-        id: newId(),
-        chamaId,
-        userId: payment.user_id,
-        amount: payment.amount,
-        periodLabel,
-        mpesaRef: result.mpesaRef,
-        paidAt: new Date(),
-      });
+      try {
+        // Nested transaction (savepoint) — if this insert hits the
+        // (chamaId, userId, periodLabel) unique index, only THIS statement
+        // must roll back. The payment.status = "completed" update above
+        // already reflects a real M-PESA charge and must still commit even
+        // if the resident somehow ends up with two completed payments for
+        // the same period (flagged below for manual reconciliation, not
+        // silently dropped).
+        await tx.transaction(async (tx2) => {
+          await tx2.insert(chamaContributions).values({
+            id: newId(),
+            chamaId,
+            userId: payment.user_id,
+            amount: payment.amount,
+            periodLabel,
+            mpesaRef: result.mpesaRef,
+            paidAt: new Date(),
+          });
+        });
+      } catch (err) {
+        console.error(
+          JSON.stringify({
+            event: "duplicate_period_contribution_needs_review",
+            paymentId: payment.id,
+            chamaId,
+            userId: payment.user_id,
+            periodLabel,
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      }
     }
   }
 }
@@ -261,24 +302,14 @@ paymentsRouter.post("/stk-push", async (req, res) => {
     return;
   }
 
+  let result;
   try {
-    const result = await stkPush({
+    result = await stkPush({
       phone: payPhone,
       amount,
       accountRef: user.estateId.slice(0, 12),
       description: description ?? type,
     });
-    await db
-      .update(payments)
-      .set({ checkoutRequestId: result.CheckoutRequestID, updatedAt: new Date() })
-      .where(eq(payments.id, id));
-    void writeAudit(req, {
-      action: "payment.initiated",
-      targetType: "payment",
-      targetId: id,
-      metadata: { amount, type },
-    });
-    res.json({ data: payment, message: result.CustomerMessage });
   } catch (err) {
     console.error(
       JSON.stringify({
@@ -292,7 +323,30 @@ paymentsRouter.post("/stk-push", async (req, res) => {
       .set({ status: "failed", updatedAt: new Date() })
       .where(eq(payments.id, id));
     res.status(502).json({ error: "STK Push failed — please try again" });
+    return;
   }
+
+  // Safaricom has already accepted the push at this point — the resident
+  // may be charged regardless of what happens next. A failure persisting
+  // checkoutRequestId is NOT a payment failure and must never be reported
+  // or recorded as one (see persistCheckoutRequestId's comment).
+  const persisted = await persistCheckoutRequestId(id, result.CheckoutRequestID);
+  if (!persisted) {
+    console.error(
+      JSON.stringify({
+        event: "payment_orphaned_needs_reconciliation",
+        paymentId: id,
+        checkoutRequestId: result.CheckoutRequestID,
+      }),
+    );
+  }
+  void writeAudit(req, {
+    action: "payment.initiated",
+    targetType: "payment",
+    targetId: id,
+    metadata: { amount, type },
+  });
+  res.json({ data: payment, message: result.CustomerMessage });
 });
 
 // Resident: my payment history

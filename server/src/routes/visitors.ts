@@ -196,6 +196,12 @@ visitorsRouter.post("/:id/check-in", requireRole("admin", "security"), async (re
       status: "checked_in",
       checkedInAt: new Date(),
       checkedInById: user.id,
+      // Clear the prior cycle's checkout — otherwise a re-checked-in
+      // visitor (checked out earlier, now checking in again) shows a
+      // checkedOutAt timestamp that predates this checkedInAt, which reads
+      // as an already-checked-out visitor or a negative-duration gate-log
+      // entry depending on what a view derives from the two fields.
+      checkedOutAt: null,
       updatedAt: new Date(),
     })
     .where(eq(visitors.id, req.params['id']!))

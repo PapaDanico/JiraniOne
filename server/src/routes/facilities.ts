@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, and, lte, gte, or, ne } from "drizzle-orm";
+import { eq, desc, and, lt, gt, or, ne } from "drizzle-orm";
 import { db, dbTx } from "../db.js";
 import { facilities, bookings, users } from "@shared/schema.js";
 import { createFacilitySchema, createBookingSchema } from "@shared/validators.js";
@@ -154,12 +154,15 @@ facilitiesRouter.post("/bookings", async (req, res) => {
         );
       }
 
+      // Half-open [start, end) intervals: strict inequalities so
+      // back-to-back bookings (one ending exactly when the next starts)
+      // aren't flagged as overlapping.
       const conflicts = await tx.select().from(bookings)
         .where(and(
           eq(bookings.facilityId, facilityId),
           or(eq(bookings.status, "pending"), eq(bookings.status, "approved")),
-          lte(bookings.startTime, end),
-          gte(bookings.endTime, start),
+          lt(bookings.startTime, end),
+          gt(bookings.endTime, start),
         )).limit(1);
 
       if (conflicts.length > 0) {
@@ -213,6 +216,21 @@ facilitiesRouter.patch("/bookings/:id", async (req, res) => {
     res.status(403).json({ error: "Only admin can change status" }); return;
   }
 
+  // Without this, a sequential PATCH against a booking already in a
+  // terminal state (rejected/cancelled/completed) silently succeeds —
+  // e.g. resurrecting a cancelled booking back to "approved".
+  const VALID_TRANSITIONS: Record<string, readonly string[]> = {
+    pending: ["approved", "rejected", "cancelled"],
+    approved: ["cancelled", "completed"],
+    rejected: [],
+    cancelled: [],
+    completed: [],
+  };
+  if (!VALID_TRANSITIONS[booking.status]?.includes(status)) {
+    res.status(409).json({ error: `Cannot change a ${booking.status} booking to ${status}` });
+    return;
+  }
+
   if (status === "approved") {
     try {
       const updated = await dbTx.transaction(async (tx) => {
@@ -233,8 +251,8 @@ facilitiesRouter.patch("/bookings/:id", async (req, res) => {
             eq(bookings.facilityId, booking.facilityId),
             eq(bookings.status, "approved"),
             ne(bookings.id, booking.id),
-            lte(bookings.startTime, booking.endTime),
-            gte(bookings.endTime, booking.startTime),
+            lt(bookings.startTime, booking.endTime),
+            gt(bookings.endTime, booking.startTime),
           )).limit(1);
         if (conflicts.length > 0) {
           throw Object.assign(

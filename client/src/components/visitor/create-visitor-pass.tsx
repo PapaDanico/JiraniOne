@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createVisitorSchema, type CreateVisitorInput } from "@shared/validators";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { AlertCircle, UserPlus } from "lucide-react";
+import { AlertCircle, AlertTriangle, UserPlus } from "lucide-react";
+import type { Visitor } from "@shared/types";
 
 interface Props {
   open: boolean;
@@ -30,6 +31,7 @@ function localNow() {
 export function CreateVisitorPass({ open, onClose }: Props) {
   const qc = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [smsWarning, setSmsWarning] = useState(false);
 
   const {
     register,
@@ -41,17 +43,22 @@ export function CreateVisitorPass({ open, onClose }: Props) {
   });
 
   const mutation = useMutation({
-    mutationFn: (data: CreateVisitorInput) => api.post("/api/visitors", data),
-    onSuccess: () => {
+    mutationFn: (data: CreateVisitorInput) => api.post<Visitor>("/api/visitors", data),
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["visitors", "my"] });
+      // The visitor's SMS pass is the only way they know to show it at the
+      // gate — if it didn't send, don't silently close as if everything
+      // worked; the resident needs to know so they can tell the visitor
+      // directly (call/WhatsApp) instead.
+      if (!res.data.smsSent) {
+        setSmsWarning(true);
+        return;
+      }
       reset();
       onClose();
     },
     onError: (err: unknown) => {
-      const msg =
-        (err as { response?: { data?: { error?: string } } }).response?.data?.error
-        ?? (err instanceof Error ? err.message : "Failed to create visitor pass");
-      setServerError(msg);
+      setServerError(err instanceof ApiError ? err.message : "Failed to create visitor pass");
     },
   });
 
@@ -63,12 +70,28 @@ export function CreateVisitorPass({ open, onClose }: Props) {
   const handleClose = () => {
     reset();
     setServerError(null);
+    setSmsWarning(false);
     onClose();
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent>
+        {smsWarning ? (
+          <div className="p-6 text-center space-y-3">
+            <AlertTriangle className="h-12 w-12 text-brand-amber mx-auto" />
+            <DialogTitle>Pass created — SMS didn't send</DialogTitle>
+            <p className="text-sm text-[#6B5D45]">
+              The visitor pass was created, but we couldn't send the SMS.
+              Please share the pass details with your visitor directly
+              (call or WhatsApp) so they have it at the gate.
+            </p>
+            <Button onClick={handleClose} className="w-full mt-2">
+              Got it
+            </Button>
+          </div>
+        ) : (
+        <>
         <DialogHeader>
           <div className="flex items-center gap-3 mt-2">
             <div className="w-10 h-10 rounded-xl bg-[#1B5E20] flex items-center justify-center">
@@ -175,6 +198,8 @@ export function CreateVisitorPass({ open, onClose }: Props) {
             </Button>
           </DialogFooter>
         </form>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );
