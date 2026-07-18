@@ -61,15 +61,22 @@ emergencyRouter.post("/", async (req, res) => {
     if (responders.length > 0) {
       const label = ALERT_LABEL[parsed.data.type] ?? "EMERGENCY";
       const message = `JiraniHub ALERT: ${label} reported by ${user.name} (${user.phone}). Check the app now.`;
-      await Promise.all(
+      const results = await Promise.all(
         responders.map((r) =>
           sendThrottledSms({ userId: r.id, to: r.phone, message, systemMessage: true })
             .catch((err) => {
               logger.error({ err, userId: r.id }, "emergency alert sms failed");
-              return null;
+              return { ok: false } as const;
             }),
         ),
       );
+      // A resolved { ok: false } (quota cap, unconfigured provider) doesn't
+      // throw, so without this it's silently indistinguishable from every
+      // responder having no phone at all — for an active emergency, that
+      // gap needs to be loud in the logs, not swallowed.
+      if (results.every((r) => !r.ok)) {
+        logger.error({ alertId: alert!.id, responderCount: responders.length }, "emergency alert SMS fan-out: all sends failed");
+      }
     }
   } catch (err) {
     logger.error({ err, alertId: alert!.id }, "emergency alert sms fan-out failed");

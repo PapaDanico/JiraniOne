@@ -987,6 +987,11 @@ export const chamaContributions = pgTable(
     mpesaRefUq: uniqueIndex("chama_contributions_mpesa_ref_unique")
       .on(t.mpesaRef)
       .where(sql`${t.mpesaRef} is not null and ${t.mpesaRef} not in ('DEV_STUB', 'STUB')`),
+    // One contribution per member per period — DB-level backstop against
+    // double-submission (the app-level pre-check in chama.ts has a TOCTOU
+    // gap if two contribute requests race).
+    periodUq: uniqueIndex("chama_contributions_period_unique")
+      .on(t.chamaId, t.userId, t.periodLabel),
   }),
 );
 

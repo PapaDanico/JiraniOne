@@ -128,12 +128,15 @@ parcelsRouter.patch("/:id/received", requireRole("admin", "security"), async (re
       .limit(1);
 
     if (resident) {
-      await sendThrottledSms({
+      const sms = await sendThrottledSms({
         userId: parcel.residentId,
         to: resident.phone,
         message: `JiraniHub: Your parcel (${parcel.description}) has arrived at the gate. Please collect it.`,
         systemMessage: true,
       });
+      if (!sms.ok) {
+        logger.warn({ parcelId: parcel.id, reason: sms.reason }, "parcel arrival SMS failed to send");
+      }
     }
   } catch (err) {
     logger.error({ err, parcelId: parcel.id }, "parcel arrival sms failed");

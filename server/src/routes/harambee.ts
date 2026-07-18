@@ -11,6 +11,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
 import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
+import { persistCheckoutRequestId } from "../lib/paymentBookkeeping.js";
 import { writeAudit } from "../lib/audit.js";
 import { logger } from "../lib/logger.js";
 import { isProduction } from "../lib/env.js";
@@ -282,26 +283,14 @@ harambeeRouter.post("/:id/donate", async (req, res) => {
     return;
   }
 
+  let result;
   try {
-    const result = await stkPush({
+    result = await stkPush({
       phone: user.phone,
       amount,
       accountRef: campaign.id.slice(0, 12),
       description: `Harambee donation`,
     });
-    await db
-      .update(payments)
-      .set({ checkoutRequestId: result.CheckoutRequestID, updatedAt: new Date() })
-      .where(eq(payments.id, paymentId));
-
-    void writeAudit(req, {
-      action: "harambee.donate_initiated",
-      targetType: "fundraising_campaign",
-      targetId: campaign.id,
-      metadata: { amount, anonymous, paymentId },
-    });
-
-    res.json({ data: { payment: payment!, message: result.CustomerMessage } });
   } catch (err) {
     log.error(
       { event: "harambee_stk_push_failed", paymentId, campaignId: campaign.id, err },
@@ -312,5 +301,26 @@ harambeeRouter.post("/:id/donate", async (req, res) => {
       .set({ status: "failed", updatedAt: new Date() })
       .where(eq(payments.id, paymentId));
     res.status(502).json({ error: "STK Push failed — please try again" });
+    return;
   }
+
+  // Safaricom already accepted the push — a failure persisting
+  // checkoutRequestId is NOT a payment failure and must never be recorded
+  // as one (see persistCheckoutRequestId's comment).
+  const persisted = await persistCheckoutRequestId(paymentId, result.CheckoutRequestID);
+  if (!persisted) {
+    log.error(
+      { event: "payment_orphaned_needs_reconciliation", paymentId, checkoutRequestId: result.CheckoutRequestID },
+      "failed to persist checkoutRequestId after successful harambee STK push",
+    );
+  }
+
+  void writeAudit(req, {
+    action: "harambee.donate_initiated",
+    targetType: "fundraising_campaign",
+    targetId: campaign.id,
+    metadata: { amount, anonymous, paymentId },
+  });
+
+  res.json({ data: { payment: payment!, message: result.CustomerMessage } });
 });

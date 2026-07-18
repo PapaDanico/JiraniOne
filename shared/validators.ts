@@ -52,6 +52,11 @@ export const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+// Public self-registration — deliberately has NO `role` field. Every account
+// created here is a resident; admin/security/vendor accounts are only ever
+// created via the authenticated, admin-only POST /api/users invite flow.
+// (A `role` field here previously let any unauthenticated caller register
+// themselves as "admin" for any estate by POSTing directly to the API.)
 export const registerSchema = z.object({
   phone: kenyanPhone,
   password: z
@@ -62,7 +67,6 @@ export const registerSchema = z.object({
       message: "Password must include at least one letter and one digit",
     }),
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
-  role: z.enum(["resident", "admin", "security", "vendor"]).default("resident"),
   estateId: z.string().optional(),
   unitNumber: z.string().max(20).optional(),
   consent: z.boolean().refine((v) => v === true, {

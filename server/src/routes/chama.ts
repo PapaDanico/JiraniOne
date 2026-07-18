@@ -9,6 +9,7 @@ import {
 import { requireAuth } from "../middleware/requireAuth.js";
 import { newId } from "../lib/ids.js";
 import { stkPush, isMpesaConfigured } from "../lib/mpesa.js";
+import { persistCheckoutRequestId } from "../lib/paymentBookkeeping.js";
 import { logger } from "../lib/logger.js";
 import { isProduction } from "../lib/env.js";
 
@@ -227,6 +228,10 @@ chamaRouter.post("/:id/contribute", async (req, res) => {
     res.status(404).json({ error: "Chama not found" });
     return;
   }
+  if (chama.status !== "active") {
+    res.status(400).json({ error: "This chama is not accepting contributions" });
+    return;
+  }
 
   // Verify caller is a member
   const [membership] = await db
@@ -242,6 +247,26 @@ chamaRouter.post("/:id/contribute", async (req, res) => {
 
   if (!membership) {
     res.status(403).json({ error: "You are not a member of this chama" });
+    return;
+  }
+
+  // Best-effort early check — the unique index on (chamaId, userId,
+  // periodLabel) is the real backstop against a race where two contribute
+  // requests for the same period are in flight at once; this just avoids
+  // an unnecessary STK push for the common non-racy case.
+  const [existingContribution] = await db
+    .select({ id: chamaContributions.id })
+    .from(chamaContributions)
+    .where(
+      and(
+        eq(chamaContributions.chamaId, chama.id),
+        eq(chamaContributions.userId, user.id),
+        eq(chamaContributions.periodLabel, periodLabel.trim()),
+      ),
+    )
+    .limit(1);
+  if (existingContribution) {
+    res.status(409).json({ error: "You've already contributed for this period" });
     return;
   }
 
@@ -274,41 +299,50 @@ chamaRouter.post("/:id/contribute", async (req, res) => {
       return;
     }
 
+    // Insert before marking the payment completed — if this hits the
+    // (chamaId, userId, periodLabel) unique index (a race with a concurrent
+    // duplicate request), the payment must land on "failed", not
+    // "completed" with no matching contribution row.
+    let contribution;
+    try {
+      [contribution] = await db
+        .insert(chamaContributions)
+        .values({
+          id: newId(),
+          chamaId: chama.id,
+          userId: user.id,
+          amount: String(amount),
+          periodLabel: periodLabel.trim(),
+          mpesaRef: "DEV_STUB",
+          paidAt: new Date(),
+        })
+        .returning();
+    } catch {
+      await db
+        .update(payments)
+        .set({ status: "failed", updatedAt: new Date() })
+        .where(eq(payments.id, paymentId));
+      res.status(409).json({ error: "You've already contributed for this period" });
+      return;
+    }
+
     await db
       .update(payments)
       .set({ status: "completed", mpesaRef: "DEV_STUB", updatedAt: new Date() })
       .where(eq(payments.id, paymentId));
 
-    const [contribution] = await db
-      .insert(chamaContributions)
-      .values({
-        id: newId(),
-        chamaId: chama.id,
-        userId: user.id,
-        amount: String(amount),
-        periodLabel: periodLabel.trim(),
-        mpesaRef: "DEV_STUB",
-        paidAt: new Date(),
-      })
-      .returning();
-
     res.status(201).json({ data: { payment: payment!, contribution, stub: true } });
     return;
   }
 
+  let result;
   try {
-    const result = await stkPush({
+    result = await stkPush({
       phone: user.phone,
       amount,
       accountRef: chama.id.slice(0, 12),
       description: `Chama contribution`,
     });
-    await db
-      .update(payments)
-      .set({ checkoutRequestId: result.CheckoutRequestID, updatedAt: new Date() })
-      .where(eq(payments.id, paymentId));
-
-    res.json({ data: { payment: payment!, message: result.CustomerMessage } });
   } catch (err) {
     log.error(
       { event: "chama_stk_push_failed", paymentId, chamaId: chama.id, err },
@@ -319,7 +353,21 @@ chamaRouter.post("/:id/contribute", async (req, res) => {
       .set({ status: "failed", updatedAt: new Date() })
       .where(eq(payments.id, paymentId));
     res.status(502).json({ error: "STK Push failed — please try again" });
+    return;
   }
+
+  // Safaricom already accepted the push — a failure persisting
+  // checkoutRequestId is NOT a payment failure and must never be recorded
+  // as one (see persistCheckoutRequestId's comment).
+  const persisted = await persistCheckoutRequestId(paymentId, result.CheckoutRequestID);
+  if (!persisted) {
+    log.error(
+      { event: "payment_orphaned_needs_reconciliation", paymentId, checkoutRequestId: result.CheckoutRequestID },
+      "failed to persist checkoutRequestId after successful chama STK push",
+    );
+  }
+
+  res.json({ data: { payment: payment!, message: result.CustomerMessage } });
 });
 
 // GET /:id/contributions — list contributions for a chama (admin or member only)

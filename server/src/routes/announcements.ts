@@ -136,6 +136,12 @@ announcementsRouter.post("/", requireRole("admin"), async (req, res) => {
         );
         if (results.some((r) => r.ok)) {
           await db.update(announcements).set({ smsSent: true }).where(eq(announcements.id, row!.id));
+        } else {
+          // Every send resolved { ok: false } (not thrown) — the per-item
+          // .catch() above only logs thrown errors, so a systemic issue
+          // (unconfigured provider, exhausted global cap) would otherwise
+          // leave an "urgent" broadcast silently undelivered with no signal.
+          logger.error({ announcementId: row!.id, recipientCount: estateUsers.length }, "urgent announcement SMS fan-out: all sends failed");
         }
       }
     }

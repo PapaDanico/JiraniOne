@@ -15,6 +15,7 @@ import {
 import { requireAuth } from "../middleware/requireAuth.js";
 import { newId } from "../lib/ids.js";
 import { sendThrottledSms } from "../lib/sms.js";
+import { logger } from "../lib/logger.js";
 import type { AuthUser } from "@shared/types.js";
 
 const OTP_TTL_MS = 15 * 60 * 1000; // 15 minutes
@@ -33,7 +34,7 @@ authRouter.post("/register", async (req, res) => {
     return;
   }
 
-  const { phone, password, name, role, estateId, unitNumber } = parsed.data;
+  const { phone, password, name, estateId, unitNumber } = parsed.data;
 
   const [existing] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
   if (existing) {
@@ -65,7 +66,7 @@ authRouter.post("/register", async (req, res) => {
     phone,
     passwordHash,
     name,
-    role: role ?? "resident",
+    role: "resident",
     estateId: estateId ?? null,
     unitNumber: unitNumber ?? null,
   }).returning();
@@ -230,11 +231,19 @@ authRouter.post("/forgot-password", async (req, res) => {
     });
 
     if (sent) {
-      await sendThrottledSms({
+      const sms = await sendThrottledSms({
         userId: user.id,
         to: phone,
         message: `JiraniHub: Your password reset code is ${otp}. It expires in 15 minutes. If you did not request this, ignore this SMS.`,
       });
+      // The response below is intentionally generic regardless of outcome
+      // (anti phone-enumeration) — but that means a delivery failure is
+      // otherwise completely invisible. Log it so an SMS-misconfiguration
+      // or quota issue that's silently locking every resident out of
+      // password reset shows up somewhere.
+      if (!sms.ok) {
+        logger.warn({ userId: user.id, reason: sms.reason }, "password reset OTP SMS failed to send");
+      }
     }
   }
 
