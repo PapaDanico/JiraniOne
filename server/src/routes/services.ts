@@ -1,11 +1,28 @@
 import { Router } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, avg, count, desc } from "drizzle-orm";
 import { db } from "../db.js";
-import { serviceProviders } from "@shared/schema.js";
-import { createServiceProviderSchema } from "@shared/validators.js";
+import { serviceProviders, serviceReviews, users } from "@shared/schema.js";
+import { createServiceProviderSchema, createReviewSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
+
+// Recompute a provider's aggregate rating/ratingCount from its reviews —
+// called after every review write so the marketplace list (which only
+// ever reads the provider row, not the reviews table) stays accurate.
+async function recomputeRating(providerId: string) {
+  const [agg] = await db
+    .select({ avgRating: avg(serviceReviews.rating), cnt: count() })
+    .from(serviceReviews)
+    .where(eq(serviceReviews.providerId, providerId));
+  await db.update(serviceProviders)
+    .set({
+      rating: agg?.avgRating ?? "0",
+      ratingCount: agg?.cnt ?? 0,
+      updatedAt: new Date(),
+    })
+    .where(eq(serviceProviders.id, providerId));
+}
 
 export const servicesRouter = Router();
 servicesRouter.use(requireAuth);
@@ -86,4 +103,58 @@ servicesRouter.delete("/:id", requireRole("admin"), async (req, res) => {
   if (!existing) { res.status(404).json({ error: "Provider not found" }); return; }
   await db.delete(serviceProviders).where(eq(serviceProviders.id, req.params['id']!));
   res.json({ data: { success: true } });
+});
+
+// List reviews for a provider — newest first, with reviewer name + unit.
+servicesRouter.get("/:id/reviews", async (req, res) => {
+  const user = res.locals.user!;
+  const [provider] = await db.select({ id: serviceProviders.id }).from(serviceProviders)
+    .where(and(eq(serviceProviders.id, req.params['id']!), eq(serviceProviders.estateId, user.estateId!))).limit(1);
+  if (!provider) { res.status(404).json({ error: "Provider not found" }); return; }
+
+  const rows = await db
+    .select({
+      id: serviceReviews.id,
+      rating: serviceReviews.rating,
+      comment: serviceReviews.comment,
+      createdAt: serviceReviews.createdAt,
+      reviewer: { name: users.name, unitNumber: users.unitNumber },
+    })
+    .from(serviceReviews)
+    .innerJoin(users, eq(users.id, serviceReviews.userId))
+    .where(eq(serviceReviews.providerId, provider.id))
+    .orderBy(desc(serviceReviews.createdAt));
+
+  res.json({ data: rows });
+});
+
+// Resident: rate a provider — upsert (rethink your rating, don't spam
+// duplicates) then recompute the provider's aggregate rating/ratingCount.
+servicesRouter.post("/:id/reviews", requireRole("resident"), async (req, res) => {
+  const user = res.locals.user!;
+  const parsed = createReviewSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+
+  const [provider] = await db.select({ id: serviceProviders.id }).from(serviceProviders)
+    .where(and(eq(serviceProviders.id, req.params['id']!), eq(serviceProviders.estateId, user.estateId!))).limit(1);
+  if (!provider) { res.status(404).json({ error: "Provider not found" }); return; }
+
+  await db.insert(serviceReviews)
+    .values({
+      id: newId(),
+      providerId: provider.id,
+      userId: user.id,
+      rating: parsed.data.rating,
+      comment: parsed.data.comment ?? null,
+    })
+    .onConflictDoUpdate({
+      target: [serviceReviews.providerId, serviceReviews.userId],
+      set: { rating: parsed.data.rating, comment: parsed.data.comment ?? null, updatedAt: new Date() },
+    });
+
+  await recomputeRating(provider.id);
+  res.status(201).json({ data: { success: true } });
 });

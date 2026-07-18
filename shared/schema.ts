@@ -609,6 +609,32 @@ export const serviceProviders = pgTable(
   }),
 );
 
+// serviceProviders.rating/ratingCount were always meant to be "derived from
+// reviews" (see the comment on the PATCH route that refuses to let them be
+// set directly) but no review ever existed to derive them from — residents
+// had no way to actually rate a provider. One review per resident per
+// provider, upsertable (rethink your rating, don't spam duplicates).
+export const serviceReviews = pgTable(
+  "service_reviews",
+  {
+    id: text("id").primaryKey(),
+    providerId: text("provider_id")
+      .notNull()
+      .references(() => serviceProviders.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    rating: integer("rating").notNull(),
+    comment: text("comment"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    providerIdIdx: index("service_reviews_provider_id_idx").on(t.providerId),
+    providerUserUq: uniqueIndex("service_reviews_provider_user_uq").on(t.providerId, t.userId),
+  }),
+);
+
 // ─── Facility Bookings ────────────────────────────────────────────────────────
 
 export const facilities = pgTable(

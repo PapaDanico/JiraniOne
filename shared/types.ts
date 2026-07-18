@@ -224,6 +224,14 @@ export interface ServiceProvider {
   updatedAt: string;
 }
 
+export interface ServiceReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  reviewer?: { name: string; unitNumber: string | null };
+}
+
 export type ParcelStatus = "expected" | "at_gate" | "collected" | "returned";
 export type ClassifiedCategory = "sell" | "buy" | "give" | "service";
 

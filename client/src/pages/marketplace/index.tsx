@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Store, Phone, Plus, Star, BadgeCheck, Search } from "lucide-react";
+import { Store, Phone, Plus, Star, BadgeCheck, Search, MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,8 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { SectionLoader } from "@/components/shared/loading";
 import { api, ApiError } from "@/lib/api";
-import { displayPhone } from "@/lib/utils";
-import type { ServiceProvider } from "@shared/types";
+import { displayPhone, formatRelative } from "@/lib/utils";
+import type { ServiceProvider, ServiceReview } from "@shared/types";
 
 const CATEGORIES = [
   { value: "Plumber",        emoji: "🔧", label: "Plumber" },
@@ -115,11 +115,108 @@ function AddProviderDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} type="button" onClick={() => onChange(n)} className="p-0.5">
+          <Star
+            className={`h-7 w-7 transition-colors ${
+              n <= value ? "text-[#D4A017] fill-[#D4A017]" : "text-[#D4C9A8]"
+            }`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RateProviderDialog({ provider, onClose }: { provider: ServiceProvider; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () => api.post(`/api/services/${provider.id}/reviews`, { rating, comment: comment || undefined }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["services"] });
+      qc.invalidateQueries({ queryKey: ["services", provider.id, "reviews"] });
+      onClose();
+    },
+  });
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Rate {provider.name}</DialogTitle>
+        </DialogHeader>
+        <div className="px-6 pb-2 space-y-4">
+          <div>
+            <Label className="text-[#212121] font-semibold">Your rating</Label>
+            <div className="mt-1"><StarPicker value={rating} onChange={setRating} /></div>
+          </div>
+          <div>
+            <Label className="text-[#212121] font-semibold">Comment (optional)</Label>
+            <Textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows={3}
+              placeholder="How was your experience?"
+            />
+          </div>
+          {mutation.isError && (
+            <p className="text-sm text-[#B71C1C]">{(mutation.error as Error).message}</p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mutation.mutate()} loading={mutation.isPending} disabled={rating === 0}>
+            Submit
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ReviewsList({ providerId }: { providerId: string }) {
+  const { data, isLoading } = useQuery<ServiceReview[]>({
+    queryKey: ["services", providerId, "reviews"],
+    queryFn: () => api.get<ServiceReview[]>(`/api/services/${providerId}/reviews`).then((r) => r.data),
+  });
+
+  if (isLoading) return <p className="text-xs text-[#6B5D45]/60">Loading…</p>;
+  if (!data?.length) return <p className="text-xs text-[#6B5D45]/60">No reviews yet.</p>;
+
+  return (
+    <div className="space-y-2 max-h-56 overflow-y-auto rounded-lg bg-[#1B5E20]/5 p-2.5">
+      {data.map((r) => (
+        <div key={r.id} className="text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[#212121] font-medium">
+              {r.reviewer?.name ?? "Resident"}
+              {r.reviewer?.unitNumber && <span className="text-[#6B5D45]/60"> · {r.reviewer.unitNumber}</span>}
+            </span>
+            <span className="flex items-center gap-1 text-[#D4A017]">
+              <Star className="h-3 w-3 fill-[#D4A017]" /> {r.rating}
+            </span>
+          </div>
+          {r.comment && <p className="text-[#6B5D45] mt-0.5">{r.comment}</p>}
+          <p className="text-[#6B5D45]/60 mt-0.5">{formatRelative(r.createdAt)}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MarketplacePage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [filter, setFilter] = useState("");
+  const [rateTarget, setRateTarget] = useState<ServiceProvider | null>(null);
+  const [expandedReviews, setExpandedReviews] = useState<string | null>(null);
   const canAdd = user?.role === "admin" || user?.role === "vendor";
 
   const { data: providers, isLoading } = useQuery({
@@ -208,13 +305,35 @@ export default function MarketplacePage() {
                             {p.description && (
                               <p className="text-xs text-[#6B5D45] mt-0.5">{p.description}</p>
                             )}
-                            {p.ratingCount > 0 && (
-                              <div className="flex items-center gap-1 mt-1">
-                                <Star className="h-3.5 w-3.5 text-[#D4A017] fill-[#D4A017]" />
-                                <span className="text-xs text-[#6B5D45]">
-                                  {Number(p.rating ?? 0).toFixed(1)} ({p.ratingCount})
-                                </span>
-                              </div>
+                            <div className="flex items-center gap-3 mt-1 flex-wrap">
+                              {p.ratingCount > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <Star className="h-3.5 w-3.5 text-[#D4A017] fill-[#D4A017]" />
+                                  <span className="text-xs text-[#6B5D45]">
+                                    {Number(p.rating ?? 0).toFixed(1)} ({p.ratingCount})
+                                  </span>
+                                </div>
+                              )}
+                              {p.ratingCount > 0 && (
+                                <button
+                                  onClick={() => setExpandedReviews(expandedReviews === p.id ? null : p.id)}
+                                  className="flex items-center gap-1 text-xs text-[#1B5E20] font-semibold hover:underline"
+                                >
+                                  <MessageSquare className="h-3 w-3" />
+                                  {expandedReviews === p.id ? "Hide reviews" : "See reviews"}
+                                </button>
+                              )}
+                              {user?.role === "resident" && (
+                                <button
+                                  onClick={() => setRateTarget(p)}
+                                  className="flex items-center gap-1 text-xs text-[#D47A00] font-semibold hover:underline"
+                                >
+                                  <Star className="h-3 w-3" /> Rate
+                                </button>
+                              )}
+                            </div>
+                            {expandedReviews === p.id && (
+                              <div className="mt-2"><ReviewsList providerId={p.id} /></div>
                             )}
                           </div>
                           <div className="flex flex-col items-end gap-1.5 shrink-0">
@@ -253,6 +372,7 @@ export default function MarketplacePage() {
       </main>
 
       {addOpen && <AddProviderDialog onClose={() => setAddOpen(false)} />}
+      {rateTarget && <RateProviderDialog provider={rateTarget} onClose={() => setRateTarget(null)} />}
       <BottomNav />
     </div>
   );
