@@ -276,7 +276,7 @@ export interface Classified {
   imageUrl: string | null;
   createdAt: string;
   updatedAt: string;
-  user?: { name: string; unitNumber: string | null };
+  user?: { name: string; unitNumber: string | null; phone: string };
 }
 
 export interface WeatherData {

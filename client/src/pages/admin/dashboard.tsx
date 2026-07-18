@@ -305,7 +305,7 @@ export default function AdminDashboard() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <KpiTile
                         label="Residents"
-                        value={analytics.residents.total}
+                        value={analytics.residents.byRole.resident ?? 0}
                         tone="green"
                         icon={<Users className="h-4 w-4" />}
                         href="/admin/users"

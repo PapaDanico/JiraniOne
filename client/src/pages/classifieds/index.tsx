@@ -230,9 +230,9 @@ function ListingCard({
 
       {/* Action row */}
       <div className="flex items-center gap-2 mt-3 flex-wrap">
-        {listing.contactPhone && (
+        {(listing.contactPhone ?? listing.user?.phone) && (
           <a
-            href={`tel:${listing.contactPhone}`}
+            href={`tel:${listing.contactPhone ?? listing.user?.phone}`}
             className="flex items-center gap-1.5 text-xs text-[#1B5E20] bg-[#1B5E20]/10 hover:bg-[#1B5E20]/20 rounded-lg px-2.5 py-1.5 font-semibold transition-colors"
           >
             <Phone className="h-3.5 w-3.5" />
