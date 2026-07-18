@@ -324,6 +324,15 @@ export const createDocumentSchema = z.object({
   title: z.string().min(3).max(200),
 });
 
+export const createLeadSchema = z.object({
+  estateName: z.string().min(2).max(150),
+  contactName: z.string().min(2).max(100),
+  phone: kenyanPhone,
+  email: z.string().email().max(200).optional().or(z.literal("")),
+  unitsCount: z.number().int().positive().max(100000).optional(),
+  message: z.string().max(1000).optional(),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
@@ -333,3 +342,4 @@ export type CreateTicketInput = z.infer<typeof createTicketSchema>;
 export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
 export type EmergencyAlertInput = z.infer<typeof emergencyAlertSchema>;
+export type CreateLeadInput = z.infer<typeof createLeadSchema>;

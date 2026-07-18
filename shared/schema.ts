@@ -121,6 +121,37 @@ export const estates = pgTable(
   }),
 );
 
+// Landing-page "bring JiraniHub to your estate" inquiries — the actual B2B
+// buyer journey (estate management companies, associations, developers),
+// distinct from resident self-registration which only applies to an estate
+// that's already a customer. Durable storage instead of a bare mailto link,
+// so an interested prospect on a budget Android phone with no configured
+// email client doesn't just silently drop off.
+export const leadStatusEnum = pgEnum("lead_status", [
+  "new",
+  "contacted",
+  "converted",
+  "declined",
+]);
+
+export const leads = pgTable(
+  "leads",
+  {
+    id: text("id").primaryKey(),
+    estateName: varchar("estate_name", { length: 150 }).notNull(),
+    contactName: varchar("contact_name", { length: 100 }).notNull(),
+    phone: varchar("phone", { length: 20 }).notNull(),
+    email: varchar("email", { length: 200 }),
+    unitsCount: integer("units_count"),
+    message: text("message"),
+    status: leadStatusEnum("status").notNull().default("new"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    createdAtIdx: index("leads_created_at_idx").on(t.createdAt),
+  }),
+);
+
 export const users = pgTable(
   "users",
   {
