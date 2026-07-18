@@ -1,5 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { QrCode, Search, ClipboardList, ShieldAlert, Package } from "lucide-react";
+import { QrCode, Search, ClipboardList, ShieldAlert, Package, LogIn, LogOut, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { PageFooter } from "@/components/shared/page-footer";
@@ -7,6 +8,9 @@ import { RoleBanner } from "@/components/shared/role-banner";
 import { SectionTitle } from "@/components/shared/section-title";
 import { InfoBox } from "@/components/shared/info-box";
 import { TrafficWidget } from "@/components/shared/weather-traffic";
+import { api } from "@/lib/api";
+import { formatRelative } from "@/lib/utils";
+import type { EmergencyAlert, Visitor } from "@shared/types";
 
 const ACTIONS = [
   {
@@ -49,6 +53,23 @@ const ACTIONS = [
 export default function SecurityDashboard() {
   const { user } = useAuth();
 
+  const { data: alerts = [] } = useQuery<EmergencyAlert[]>({
+    queryKey: ["emergency"],
+    queryFn: () => api.get<EmergencyAlert[]>("/api/emergency").then((r) => r.data),
+    staleTime: 30 * 1000,
+  });
+  const activeAlerts = alerts.filter((a) => a.status !== "resolved");
+
+  const { data: gateLog = [], isLoading: loadingGateLog } = useQuery<Visitor[]>({
+    queryKey: ["visitors", "gate-log"],
+    queryFn: () => api.get<Visitor[]>("/api/visitors/gate-log").then((r) => r.data),
+    staleTime: 60 * 1000,
+  });
+  const recentActivity = gateLog
+    .filter((v) => v.checkedInAt)
+    .sort((a, b) => new Date(b.checkedOutAt ?? b.checkedInAt!).getTime() - new Date(a.checkedOutAt ?? a.checkedInAt!).getTime())
+    .slice(0, 5);
+
   return (
     <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Gate" />
@@ -71,6 +92,23 @@ export default function SecurityDashboard() {
             <div className="mt-4 flag-bar w-24" />
           </div>
         </div>
+
+        {/* Active alerts — highest priority, right under the hero */}
+        {activeAlerts.length > 0 && (
+          <Link href="/emergency">
+            <div className="rounded-2xl bg-brand-red text-white p-4 flex items-center gap-3 hover:opacity-90 transition-opacity active:scale-[0.99]">
+              <AlertCircle className="h-6 w-6 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="font-display font-bold text-sm">
+                  {activeAlerts.length} active alert{activeAlerts.length > 1 ? "s" : ""}
+                </p>
+                <p className="text-xs text-white/80 truncate">
+                  {activeAlerts[0]!.type} reported by {activeAlerts[0]!.user?.name ?? "resident"} · {formatRelative(activeAlerts[0]!.createdAt)}
+                </p>
+              </div>
+            </div>
+          </Link>
+        )}
 
         {/* Primary scan action — large, thumb-friendly */}
         <Link
@@ -102,6 +140,48 @@ export default function SecurityDashboard() {
               </Link>
             ))}
           </div>
+        </section>
+
+        {/* Recent gate activity — quick handover view without opening the
+            full gate log */}
+        <section>
+          <SectionTitle
+            icon={<ClipboardList className="h-4 w-4" />}
+            action={
+              <Link href="/visitors" className="text-xs text-brand-green font-semibold hover:underline">
+                View all →
+              </Link>
+            }
+          >
+            Recent Activity
+          </SectionTitle>
+          {loadingGateLog ? (
+            <div className="tribal-card p-4 animate-pulse h-16" />
+          ) : recentActivity.length === 0 ? (
+            <div className="tribal-card p-6 text-center">
+              <ClipboardList className="h-7 w-7 text-tribal-border mx-auto mb-2" />
+              <p className="text-tribal-earth text-sm font-medium">No gate activity yet today.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentActivity.map((v) => {
+                const checkedOut = !!v.checkedOutAt;
+                return (
+                  <div key={v.id} className="tribal-card px-4 py-3 flex items-center gap-3">
+                    {checkedOut
+                      ? <LogOut className="h-4 w-4 text-tribal-earth shrink-0" />
+                      : <LogIn className="h-4 w-4 text-brand-green shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-tribal-charcoal truncate">{v.name}</p>
+                      <p className="text-xs text-tribal-earth mt-0.5">
+                        {checkedOut ? "Checked out" : "Checked in"} · {formatRelative(checkedOut ? v.checkedOutAt! : v.checkedInAt!)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* Traffic for gate handover */}
