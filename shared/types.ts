@@ -85,6 +85,13 @@ export interface Announcement {
   smsSent: boolean;
   createdAt: string;
   author?: { name: string };
+  myAcknowledged?: boolean;
+}
+
+export interface AnnouncementReads {
+  totalRecipients: number;
+  acknowledgedCount: number;
+  readers: Array<{ name: string; unitNumber: string | null; readAt: string }>;
 }
 
 export interface Notification {

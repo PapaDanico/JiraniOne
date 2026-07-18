@@ -437,6 +437,30 @@ export const announcements = pgTable(
   }),
 );
 
+// Per-user "I've seen this" acknowledgment — CLAUDE.md's Communication
+// module spec ("Residents can acknowledge/read receipts") never had an
+// implementation until now. Gives admins visibility into how many
+// residents actually saw an urgent notice.
+export const announcementReads = pgTable(
+  "announcement_reads",
+  {
+    id: text("id").primaryKey(),
+    announcementId: text("announcement_id")
+      .notNull()
+      .references(() => announcements.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    announcementIdIdx: index("announcement_reads_announcement_id_idx").on(t.announcementId),
+    // DB-level backstop against a double-acknowledge race, same reasoning
+    // as vote_eligibility_poll_user_uq.
+    announcementUserUq: uniqueIndex("announcement_reads_announcement_user_uq").on(t.announcementId, t.userId),
+  }),
+);
+
 export const documents = pgTable(
   "documents",
   {
