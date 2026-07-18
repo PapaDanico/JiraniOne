@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, and, gte } from "drizzle-orm";
+import { eq, desc, and, gte, inArray } from "drizzle-orm";
 import { db, dbTx } from "../db.js";
 import { carpoolOffers, carpoolBookings, users } from "@shared/schema.js";
 import { createCarpoolOfferSchema } from "@shared/validators.js";
@@ -41,7 +41,13 @@ carpoolRouter.get("/", async (_req, res) => {
     .where(
       and(
         eq(carpoolOffers.estateId, user.estateId),
-        eq(carpoolOffers.status, "active"),
+        // "full" offers must stay listed — otherwise the driver and every
+        // passenger with a confirmed booking on it lose all visibility
+        // into (and ability to cancel) a ride the moment the last seat is
+        // taken. Client-side `canBook` already disables booking unless
+        // status === "active", so this only restores visibility, not
+        // over-booking.
+        inArray(carpoolOffers.status, ["active", "full"]),
         gte(carpoolOffers.departureTime, now),
       ),
     )

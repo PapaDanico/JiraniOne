@@ -22,7 +22,7 @@ classifiedsRouter.get("/", async (_req, res) => {
       ne(classifieds.status, "closed"),
     ),
     with: {
-      user: { columns: { name: true, unitNumber: true } },
+      user: { columns: { name: true, unitNumber: true, phone: true } },
     },
     orderBy: desc(classifieds.createdAt),
     limit: 100,
@@ -37,7 +37,8 @@ classifiedsRouter.get("/my", async (_req, res) => {
     .select()
     .from(classifieds)
     .where(eq(classifieds.userId, user.id))
-    .orderBy(desc(classifieds.createdAt));
+    .orderBy(desc(classifieds.createdAt))
+    .limit(100);
   res.json({ data: rows });
 });
 
@@ -102,7 +103,17 @@ classifiedsRouter.patch("/:id", async (req, res) => {
   if (!isOwner && !isAdmin) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (status) updates.status = status;
+  if (status) {
+    // Once an admin closes a listing (moderation takedown), the owner
+    // shouldn't be able to unilaterally reopen it — isOwner alone would
+    // otherwise satisfy the authorization check above regardless of who
+    // last changed the status.
+    if (listing.status === "closed" && !isAdmin) {
+      res.status(409).json({ error: "This listing was closed by an admin and can't be reopened" });
+      return;
+    }
+    updates.status = status;
+  }
   if (title?.trim()) updates.title = title.trim();
   if (description?.trim()) updates.description = description.trim();
   if (price !== undefined) updates.price = price === null ? null : String(price);

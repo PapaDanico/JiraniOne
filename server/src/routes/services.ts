@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, avg, count, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { serviceProviders, serviceReviews, users } from "@shared/schema.js";
 import { createServiceProviderSchema, createReviewSchema } from "@shared/validators.js";
@@ -10,18 +10,24 @@ import { newId } from "../lib/ids.js";
 // Recompute a provider's aggregate rating/ratingCount from its reviews —
 // called after every review write so the marketplace list (which only
 // ever reads the provider row, not the reviews table) stays accurate.
+//
+// Single atomic UPDATE with correlated subqueries, not a separate SELECT
+// then UPDATE — two concurrent reviewers each computing their own snapshot
+// of the aggregate and writing it back is a lost-update race (whichever
+// UPDATE lands last wins, silently dropping the other's review from the
+// stored total). A single statement lets Postgres serialize the reads
+// against the writes for this row.
 async function recomputeRating(providerId: string) {
-  const [agg] = await db
-    .select({ avgRating: avg(serviceReviews.rating), cnt: count() })
-    .from(serviceReviews)
-    .where(eq(serviceReviews.providerId, providerId));
-  await db.update(serviceProviders)
-    .set({
-      rating: agg?.avgRating ?? "0",
-      ratingCount: agg?.cnt ?? 0,
-      updatedAt: new Date(),
-    })
-    .where(eq(serviceProviders.id, providerId));
+  await db.execute(sql`
+    UPDATE service_providers
+       SET rating = COALESCE(
+             (SELECT avg(rating) FROM service_reviews WHERE provider_id = ${providerId}),
+             0
+           ),
+           rating_count = (SELECT count(*) FROM service_reviews WHERE provider_id = ${providerId}),
+           updated_at = NOW()
+     WHERE id = ${providerId}
+  `);
 }
 
 export const servicesRouter = Router();
