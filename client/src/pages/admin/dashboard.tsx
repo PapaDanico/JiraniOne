@@ -5,6 +5,7 @@ import {
   Users, Wrench, Megaphone, AlertCircle, CreditCard, CalendarDays, Vote,
   BookOpen, Store, ShieldAlert, UserCog, Package, Tag, HandCoins, Car,
   Coins, BarChart3, TrendingUp, Activity, FileText, Building2, FolderOpen,
+  ClipboardList, ChevronRight, BadgeCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEstate } from "@/hooks/useEstate";
@@ -18,7 +19,7 @@ import { OnboardingChecklist } from "@/components/admin/onboarding-checklist";
 import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import type { EstateAnalytics } from "@shared/types";
+import type { EstateAnalytics, MaintenanceTicket, ServiceProvider } from "@shared/types";
 
 // ─── Module shortcuts ────────────────────────────────────────────────────────
 
@@ -114,6 +115,26 @@ export default function AdminDashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Action Queue — the KPI tiles and breakdowns below answer "how is the
+  // estate doing", but not "what do I need to do right now". Pulls
+  // together the cross-module TODOs (unassigned tickets, unverified
+  // vendors, unpaid levies) that today are only visible by browsing each
+  // module separately.
+  const { data: openTickets = [] } = useQuery<MaintenanceTicket[]>({
+    queryKey: ["maintenance", "estate", "open"],
+    queryFn: () => api.get<MaintenanceTicket[]>("/api/maintenance/estate?status=open").then((r) => r.data),
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const { data: allProviders = [] } = useQuery<ServiceProvider[]>({
+    queryKey: ["services"],
+    queryFn: () => api.get<ServiceProvider[]>("/api/services").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+  const unverifiedProviders = allProviders.filter((p) => !p.verified);
+
+  const unpaidResidents = analytics?.payments.levyStatus.unpaidResidents ?? [];
+
   const monthlyData = (analytics?.payments.monthlyTotals ?? []).map((m) => ({
     label: m.month.slice(5),
     value: m.total,
@@ -190,6 +211,64 @@ export default function AdminDashboard() {
               analytics && (
                 <>
                   <OnboardingChecklist />
+
+                  {(openTickets.length > 0 || unverifiedProviders.length > 0 || unpaidResidents.length > 0) && (
+                    <section>
+                      <SectionTitle icon={<ClipboardList className="h-4 w-4" />}>
+                        Needs Your Attention
+                      </SectionTitle>
+                      <div className="space-y-2">
+                        {openTickets.length > 0 && (
+                          <Link href="/maintenance">
+                            <div className="tribal-card px-4 py-3 flex items-center gap-3 hover:shadow-card-lg transition-shadow border-l-4 border-l-brand-amber">
+                              <Wrench className="h-4 w-4 text-brand-amber shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm text-tribal-charcoal">
+                                  {openTickets.length} ticket{openTickets.length > 1 ? "s" : ""} awaiting assignment
+                                </p>
+                                <p className="text-xs text-tribal-earth mt-0.5 truncate">
+                                  {openTickets.slice(0, 2).map((t) => t.title).join(" · ")}
+                                </p>
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-tribal-muted shrink-0" />
+                            </div>
+                          </Link>
+                        )}
+                        {unverifiedProviders.length > 0 && (
+                          <Link href="/marketplace">
+                            <div className="tribal-card px-4 py-3 flex items-center gap-3 hover:shadow-card-lg transition-shadow border-l-4 border-l-indigo-400">
+                              <BadgeCheck className="h-4 w-4 text-indigo-500 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm text-tribal-charcoal">
+                                  {unverifiedProviders.length} vendor listing{unverifiedProviders.length > 1 ? "s" : ""} pending verification
+                                </p>
+                                <p className="text-xs text-tribal-earth mt-0.5 truncate">
+                                  {unverifiedProviders.slice(0, 2).map((p) => p.name).join(" · ")}
+                                </p>
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-tribal-muted shrink-0" />
+                            </div>
+                          </Link>
+                        )}
+                        {unpaidResidents.length > 0 && (
+                          <Link href="/payments">
+                            <div className="tribal-card px-4 py-3 flex items-center gap-3 hover:shadow-card-lg transition-shadow border-l-4 border-l-brand-red">
+                              <CreditCard className="h-4 w-4 text-brand-red shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm text-tribal-charcoal">
+                                  {unpaidResidents.length} resident{unpaidResidents.length > 1 ? "s" : ""} haven't paid levy this month
+                                </p>
+                                <p className="text-xs text-tribal-earth mt-0.5 truncate">
+                                  {unpaidResidents.slice(0, 2).map((r) => r.name).join(" · ")}
+                                </p>
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-tribal-muted shrink-0" />
+                            </div>
+                          </Link>
+                        )}
+                      </div>
+                    </section>
+                  )}
 
                   <div className="grid grid-cols-2 gap-3">
                     <WeatherWidget />
