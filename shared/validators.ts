@@ -239,6 +239,11 @@ export const createServiceProviderSchema = z.object({
   description: z.string().max(500).optional(),
 });
 
+export const createReviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().max(500).optional(),
+});
+
 export const createParcelSchema = z.object({
   description: z.string().min(1).max(200),
   trackingRef: z.string().max(100).optional(),

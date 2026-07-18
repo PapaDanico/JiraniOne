@@ -437,6 +437,30 @@ export const announcements = pgTable(
   }),
 );
 
+// Per-user "I've seen this" acknowledgment — CLAUDE.md's Communication
+// module spec ("Residents can acknowledge/read receipts") never had an
+// implementation until now. Gives admins visibility into how many
+// residents actually saw an urgent notice.
+export const announcementReads = pgTable(
+  "announcement_reads",
+  {
+    id: text("id").primaryKey(),
+    announcementId: text("announcement_id")
+      .notNull()
+      .references(() => announcements.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    announcementIdIdx: index("announcement_reads_announcement_id_idx").on(t.announcementId),
+    // DB-level backstop against a double-acknowledge race, same reasoning
+    // as vote_eligibility_poll_user_uq.
+    announcementUserUq: uniqueIndex("announcement_reads_announcement_user_uq").on(t.announcementId, t.userId),
+  }),
+);
+
 export const documents = pgTable(
   "documents",
   {
@@ -582,6 +606,32 @@ export const serviceProviders = pgTable(
   (t) => ({
     estateIdIdx: index("providers_estate_id_idx").on(t.estateId),
     categoryIdx: index("providers_category_idx").on(t.category),
+  }),
+);
+
+// serviceProviders.rating/ratingCount were always meant to be "derived from
+// reviews" (see the comment on the PATCH route that refuses to let them be
+// set directly) but no review ever existed to derive them from — residents
+// had no way to actually rate a provider. One review per resident per
+// provider, upsertable (rethink your rating, don't spam duplicates).
+export const serviceReviews = pgTable(
+  "service_reviews",
+  {
+    id: text("id").primaryKey(),
+    providerId: text("provider_id")
+      .notNull()
+      .references(() => serviceProviders.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    rating: integer("rating").notNull(),
+    comment: text("comment"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    providerIdIdx: index("service_reviews_provider_id_idx").on(t.providerId),
+    providerUserUq: uniqueIndex("service_reviews_provider_user_uq").on(t.providerId, t.userId),
   }),
 );
 

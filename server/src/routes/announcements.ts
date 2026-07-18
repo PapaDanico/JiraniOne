@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { eq, desc, ne, and } from "drizzle-orm";
+import { eq, desc, ne, and, inArray, count } from "drizzle-orm";
 import { db } from "../db.js";
-import { announcements, users } from "@shared/schema.js";
+import { announcements, announcementReads, users } from "@shared/schema.js";
 import { createAnnouncementSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
@@ -22,7 +22,59 @@ announcementsRouter.get("/", async (_req, res) => {
     .where(eq(announcements.estateId, user.estateId))
     .orderBy(desc(announcements.createdAt))
     .limit(50);
-  res.json({ data: rows });
+
+  if (rows.length === 0) { res.json({ data: [] }); return; }
+
+  const myReads = await db
+    .select({ announcementId: announcementReads.announcementId })
+    .from(announcementReads)
+    .where(and(
+      inArray(announcementReads.announcementId, rows.map((r) => r.id)),
+      eq(announcementReads.userId, user.id),
+    ));
+  const readSet = new Set(myReads.map((r) => r.announcementId));
+
+  res.json({ data: rows.map((r) => ({ ...r, myAcknowledged: readSet.has(r.id) })) });
+});
+
+// Mark "I've seen this" — idempotent, so a double-tap or retry doesn't error.
+announcementsRouter.post("/:id/acknowledge", async (req, res) => {
+  const user = res.locals.user!;
+  const [ann] = await db.select({ id: announcements.id }).from(announcements)
+    .where(and(eq(announcements.id, req.params['id']!), eq(announcements.estateId, user.estateId!))).limit(1);
+  if (!ann) { res.status(404).json({ error: "Announcement not found" }); return; }
+
+  await db.insert(announcementReads)
+    .values({ id: newId(), announcementId: ann.id, userId: user.id })
+    .onConflictDoNothing();
+
+  res.json({ data: { success: true } });
+});
+
+// Admin: who has actually seen this one — lazy-loaded on demand rather
+// than joined into every list fetch, since only admins reviewing an
+// announcement's reach need it.
+announcementsRouter.get("/:id/reads", requireRole("admin"), async (req, res) => {
+  const user = res.locals.user!;
+  const [ann] = await db.select({ id: announcements.id, authorId: announcements.authorId }).from(announcements)
+    .where(and(eq(announcements.id, req.params['id']!), eq(announcements.estateId, user.estateId!))).limit(1);
+  if (!ann) { res.status(404).json({ error: "Announcement not found" }); return; }
+
+  const [totalRecipients, acknowledgedCount, readers] = await Promise.all([
+    db.select({ value: count() }).from(users)
+      .where(and(eq(users.estateId, user.estateId!), ne(users.id, ann.authorId)))
+      .then((r) => r[0]?.value ?? 0),
+    db.select({ value: count() }).from(announcementReads)
+      .where(eq(announcementReads.announcementId, ann.id))
+      .then((r) => r[0]?.value ?? 0),
+    db.select({ name: users.name, unitNumber: users.unitNumber, readAt: announcementReads.createdAt })
+      .from(announcementReads)
+      .innerJoin(users, eq(users.id, announcementReads.userId))
+      .where(eq(announcementReads.announcementId, ann.id))
+      .orderBy(desc(announcementReads.createdAt)),
+  ]);
+
+  res.json({ data: { totalRecipients, acknowledgedCount, readers } });
 });
 
 announcementsRouter.post("/", requireRole("admin"), async (req, res) => {

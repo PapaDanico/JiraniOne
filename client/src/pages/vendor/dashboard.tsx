@@ -1,8 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Store, Star, Phone, Plus, BadgeCheck } from "lucide-react";
+import { Store, Star, Phone, Plus, BadgeCheck, MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
+import { PageFooter } from "@/components/shared/page-footer";
 import { RoleBanner } from "@/components/shared/role-banner";
 import { SectionTitle } from "@/components/shared/section-title";
 import { KpiTile } from "@/components/shared/kpi-tile";
@@ -10,7 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SectionLoader } from "@/components/shared/loading";
 import { api } from "@/lib/api";
-import type { ServiceProvider } from "@shared/types";
+import { formatRelative } from "@/lib/utils";
+import type { ServiceProvider, ServiceReview } from "@shared/types";
 
 export default function VendorDashboard() {
   const { user } = useAuth();
@@ -25,6 +27,23 @@ export default function VendorDashboard() {
   const avgRating = myListings.length
     ? (myListings.reduce((s, p) => s + Number(p.rating ?? 0), 0) / myListings.length).toFixed(1)
     : "—";
+
+  // Reviews are per-listing server-side (no cross-listing endpoint), so
+  // fetch each listing's reviews in parallel and merge for one "what's
+  // recent" view — the thing a vendor actually checks daily, per the
+  // dashboard refresh this was built for.
+  const reviewQueries = useQueries({
+    queries: myListings.map((p) => ({
+      queryKey: ["services", p.id, "reviews"],
+      queryFn: () => api.get<ServiceReview[]>(`/api/services/${p.id}/reviews`).then((r) => r.data),
+      enabled: myListings.length > 0,
+    })),
+  });
+  const loadingReviews = reviewQueries.some((q) => q.isLoading);
+  const recentReviews = reviewQueries
+    .flatMap((q, i) => (q.data ?? []).map((r) => ({ ...r, providerName: myListings[i]!.name })))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 5);
 
   return (
     <div className="page-wrap" data-bottomnav="true">
@@ -137,7 +156,44 @@ export default function VendorDashboard() {
             </div>
           )}
         </section>
+
+        {/* Recent reviews */}
+        {myListings.length > 0 && (
+          <section>
+            <SectionTitle icon={<MessageSquare className="h-4 w-4" />}>Recent reviews</SectionTitle>
+            {loadingReviews ? (
+              <SectionLoader />
+            ) : recentReviews.length === 0 ? (
+              <div className="tribal-card p-6 text-center">
+                <MessageSquare className="h-7 w-7 text-tribal-border mx-auto mb-2" />
+                <p className="text-tribal-earth text-sm font-medium">No reviews yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {recentReviews.map((r) => (
+                  <Card key={r.id}>
+                    <CardContent className="py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-tribal-charcoal truncate">{r.providerName}</p>
+                        <span className="flex items-center gap-1 text-[#D4A017] shrink-0">
+                          <Star className="h-3.5 w-3.5 fill-[#D4A017]" />
+                          <span className="text-xs font-bold">{r.rating}</span>
+                        </span>
+                      </div>
+                      {r.comment && <p className="text-sm text-tribal-earth mt-1">{r.comment}</p>}
+                      <p className="text-xs text-tribal-earth/60 mt-1">
+                        {r.reviewer?.name ?? "Resident"} · {formatRelative(r.createdAt)}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </main>
+
+      <PageFooter />
 
       <BottomNav />
     </div>

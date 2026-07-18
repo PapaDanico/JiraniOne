@@ -85,6 +85,13 @@ export interface Announcement {
   smsSent: boolean;
   createdAt: string;
   author?: { name: string };
+  myAcknowledged?: boolean;
+}
+
+export interface AnnouncementReads {
+  totalRecipients: number;
+  acknowledgedCount: number;
+  readers: Array<{ name: string; unitNumber: string | null; readAt: string }>;
 }
 
 export interface Notification {
@@ -215,6 +222,14 @@ export interface ServiceProvider {
   verified: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ServiceReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  reviewer?: { name: string; unitNumber: string | null };
 }
 
 export type ParcelStatus = "expected" | "at_gate" | "collected" | "returned";
