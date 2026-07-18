@@ -328,9 +328,12 @@ export const createLeadSchema = z.object({
   estateName: z.string().min(2).max(150),
   contactName: z.string().min(2).max(100),
   phone: kenyanPhone,
-  email: z.string().email().max(200).optional().or(z.literal("")),
+  // Blank optional text fields arrive as "" from untouched form inputs —
+  // normalize to undefined here so every caller (not just this route)
+  // gets a clean NULL in storage instead of a stored empty string.
+  email: z.string().email().max(200).optional().or(z.literal("")).transform((v) => v || undefined),
   unitsCount: z.number().int().positive().max(100000).optional(),
-  message: z.string().max(1000).optional(),
+  message: z.string().max(1000).optional().transform((v) => v || undefined),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

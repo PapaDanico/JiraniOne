@@ -1,9 +1,8 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { createLeadSchema, type CreateLeadInput } from "@shared/validators";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,45 +19,46 @@ interface Props {
 }
 
 export function RequestDemoDialog({ open, onClose }: Props) {
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
-
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<CreateLeadInput>({
     resolver: zodResolver(createLeadSchema),
   });
 
   const mutation = useMutation({
     mutationFn: (data: CreateLeadInput) => api.post("/api/leads", data),
-    onSuccess: () => setSubmitted(true),
-    onError: (err: unknown) => {
-      const msg =
-        (err as { response?: { data?: { error?: string } } }).response?.data?.error
-        ?? (err instanceof Error ? err.message : "Failed to send your request");
-      setServerError(msg);
-    },
   });
 
   const onSubmit = (data: CreateLeadInput) => {
-    setServerError(null);
     mutation.mutate(data);
   };
 
+  // Reset both form and mutation state on close — otherwise a stale
+  // success/error from a previous attempt reappears the next time the
+  // dialog opens, since the component stays mounted across open/close.
   const handleClose = () => {
     reset();
-    setServerError(null);
-    setSubmitted(false);
+    mutation.reset();
     onClose();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        // Block dismissal (X, Escape, outside-click all route through here
+        // in controlled mode) while a submission is in flight — otherwise
+        // closing mid-request lets a late resolution flip the mutation to
+        // success/error after the user has already reopened for a new
+        // attempt.
+        if (!v && !mutation.isPending) handleClose();
+      }}
+    >
       <DialogContent>
-        {submitted ? (
+        {mutation.isSuccess ? (
           <div className="p-6 text-center space-y-3">
             <CheckCircle2 className="h-12 w-12 text-[#1B5E20] mx-auto" />
             <DialogTitle>Thank you!</DialogTitle>
@@ -173,21 +173,21 @@ export function RequestDemoDialog({ open, onClose }: Props) {
                 />
               </div>
 
-              {serverError && (
+              {mutation.isError && (
                 <div
                   role="alert"
                   className="flex items-start gap-2 rounded-xl bg-[#B71C1C]/10 border border-[#B71C1C]/20 px-3 py-2.5 text-sm text-[#B71C1C]"
                 >
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  {serverError}
+                  {mutation.error instanceof ApiError ? mutation.error.message : "Failed to send your request"}
                 </div>
               )}
 
               <DialogFooter className="pt-2">
-                <Button type="button" variant="secondary" onClick={handleClose}>
+                <Button type="button" variant="secondary" onClick={handleClose} disabled={mutation.isPending}>
                   Cancel
                 </Button>
-                <Button type="submit" loading={isSubmitting || mutation.isPending}>
+                <Button type="submit" loading={mutation.isPending}>
                   Request Demo
                 </Button>
               </DialogFooter>

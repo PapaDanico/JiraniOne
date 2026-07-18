@@ -40,6 +40,7 @@ const BookingsPage       = lazy(() => import("@/pages/bookings/index"));
 const MarketplacePage    = lazy(() => import("@/pages/marketplace/index"));
 const NotificationsPage  = lazy(() => import("@/pages/notifications/index"));
 const AdminUsersPage     = lazy(() => import("@/pages/admin/users"));
+const AdminLeadsPage     = lazy(() => import("@/pages/admin/leads"));
 const ParcelsPage        = lazy(() => import("@/pages/parcels/index"));
 const ClassifiedsPage    = lazy(() => import("@/pages/classifieds/index"));
 const HarambeePage       = lazy(() => import("@/pages/harambee/index"));
@@ -113,6 +114,9 @@ function AppRoutes() {
         </Route>
         <Route path="/admin/users">
           <RoleGate roles={["admin"]}><AdminUsersPage /></RoleGate>
+        </Route>
+        <Route path="/admin/leads">
+          <RoleGate roles={["admin"]}><AdminLeadsPage /></RoleGate>
         </Route>
         <Route path="/parcels">
           <RoleGate roles={["resident", "admin", "security"]}><ParcelsPage /></RoleGate>

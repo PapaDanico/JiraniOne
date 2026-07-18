@@ -75,12 +75,13 @@ export function LandingPage() {
             >
               Sign In
             </Button>
-            <button
+            <Button
+              variant="link"
               onClick={() => setLocation("/register")}
-              className="text-sm font-semibold text-[#6B5D45] hover:text-[#1B5E20] transition-colors underline underline-offset-2"
+              className="text-sm text-[#6B5D45] hover:text-[#1B5E20]"
             >
               Already a resident of a JiraniHub estate? Create your account →
-            </button>
+            </Button>
           </div>
         </section>
 
@@ -236,6 +237,15 @@ export function LandingPage() {
               Prefer email? Reach us at{" "}
               <a href="mailto:support@jiranihub.co.ke" className="text-[#1B5E20] underline">support@jiranihub.co.ke</a>
             </p>
+            <div className="flex items-center justify-center gap-1 pt-1">
+              <Button variant="link" size="sm" onClick={() => setLocation("/login")} className="text-xs">
+                Sign In
+              </Button>
+              <span className="text-[#D4C9A8]">•</span>
+              <Button variant="link" size="sm" onClick={() => setLocation("/register")} className="text-xs">
+                Resident? Create your account
+              </Button>
+            </div>
           </div>
         </section>
 
