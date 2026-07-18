@@ -110,9 +110,16 @@ export async function sendSmsRaw({ to, message }: SmsOptions): Promise<boolean> 
   const username = process.env.SMS_USERNAME;
 
   if (!apiKey || !username || apiKey === "your_africastalking_api_key") {
-    if (!isProduction()) {
-      console.info(`[SMS STUB] To: ${to}\n${message}`);
+    // Never silently pretend an SMS was sent when the provider isn't
+    // configured — same "fail loudly in production" guard as the M-PESA
+    // payment path. A missing/rotated credential must surface as a
+    // failure so callers (and OTP/emergency/visitor flows relying on
+    // sms.ok) don't trust a false "sent".
+    if (isProduction()) {
+      console.error(JSON.stringify({ event: "sms_not_configured", to }));
+      return false;
     }
+    console.info(`[SMS STUB] To: ${to}\n${message}`);
     return true;
   }
 
