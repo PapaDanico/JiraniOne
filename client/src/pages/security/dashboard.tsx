@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { QrCode, Search, ClipboardList, ShieldAlert, Package } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
+import { PageFooter } from "@/components/shared/page-footer";
 import { RoleBanner } from "@/components/shared/role-banner";
 import { SectionTitle } from "@/components/shared/section-title";
 import { InfoBox } from "@/components/shared/info-box";
@@ -117,6 +118,8 @@ export default function SecurityDashboard() {
           </p>
         </InfoBox>
       </main>
+
+      <PageFooter />
 
       <BottomNav />
     </div>

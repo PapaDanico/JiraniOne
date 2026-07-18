@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Store, Star, Phone, Plus, BadgeCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
+import { PageFooter } from "@/components/shared/page-footer";
 import { RoleBanner } from "@/components/shared/role-banner";
 import { SectionTitle } from "@/components/shared/section-title";
 import { KpiTile } from "@/components/shared/kpi-tile";
@@ -138,6 +139,8 @@ export default function VendorDashboard() {
           )}
         </section>
       </main>
+
+      <PageFooter />
 
       <BottomNav />
     </div>
