@@ -14,8 +14,8 @@ import { KpiTile } from "@/components/shared/kpi-tile";
 import { Badge } from "@/components/ui/badge";
 import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
 import { api } from "@/lib/api";
-import { formatRelative } from "@/lib/utils";
-import type { Announcement, MaintenanceTicket, Notification, Parcel, Poll } from "@shared/types";
+import { formatRelative, formatDate } from "@/lib/utils";
+import type { Announcement, Event, MaintenanceTicket, Notification, Parcel, Poll } from "@shared/types";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -79,10 +79,6 @@ const MORE_TILES = [
   { href: "/documents",    label: "Documents",   Icon: FileText,     bg: "bg-lime-100",    fg: "text-lime-700" },
 ];
 
-const ANN_VARIANT: Record<string, "default" | "warning" | "urgent"> = {
-  info: "default", warning: "warning", urgent: "urgent",
-};
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ResidentDashboard() {
@@ -120,12 +116,54 @@ export default function ResidentDashboard() {
     staleTime: 2 * 60 * 1000,
   });
 
+  const { data: events = [], isLoading: loadingFeed } = useQuery<Event[]>({
+    queryKey: ["events"],
+    queryFn: () => api.get<Event[]>("/api/events").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const openTickets = tickets.filter((t) => t.status !== "resolved" && t.status !== "closed").length;
   const atGate      = parcels.filter((p) => p.status === "at_gate").length;
   const unread      = notifications.filter((n) => !n.read).length;
-  const latestAnn   = announcements.slice(0, 3);
   const openPolls   = polls.filter((p) => !p.iHaveVoted && (!p.closesAt || new Date(p.closesAt) > new Date()));
   const hasAlert    = atGate > 0 || unread > 0;
+
+  // Unified estate activity feed — announcements, open polls, and upcoming
+  // events used to live in separate sections a resident had to remember to
+  // check individually. Merged into one list, most-actionable-first: urgent
+  // announcements, then votes awaiting a decision, then what's coming up,
+  // then routine notices — capped so the dashboard stays scannable.
+  const urgentAnn = announcements.filter((a) => a.priority === "urgent").slice(0, 2);
+  const routineAnn = announcements.filter((a) => a.priority !== "urgent").slice(0, 2);
+  const feedItems: Array<{
+    key: string; href: string; title: string; subtitle: string;
+    icon: React.ReactNode; badge: string; badgeVariant: "urgent" | "default" | "warning";
+  }> = [
+    ...urgentAnn.map((a) => ({
+      key: `ann-${a.id}`, href: "/announcements", title: a.title,
+      subtitle: formatRelative(a.createdAt),
+      icon: <AlertCircle className="h-4 w-4 text-brand-red" />,
+      badge: "Urgent", badgeVariant: "urgent" as const,
+    })),
+    ...openPolls.slice(0, 2).map((p) => ({
+      key: `poll-${p.id}`, href: "/governance", title: p.title,
+      subtitle: "Awaiting your vote",
+      icon: <Vote className="h-4 w-4 text-purple-600" />,
+      badge: "Vote", badgeVariant: "warning" as const,
+    })),
+    ...events.slice(0, 2).map((e) => ({
+      key: `event-${e.id}`, href: "/events", title: e.title,
+      subtitle: formatDate(e.startTime),
+      icon: <CalendarDays className="h-4 w-4 text-cyan-600" />,
+      badge: "Event", badgeVariant: "default" as const,
+    })),
+    ...routineAnn.map((a) => ({
+      key: `ann-${a.id}`, href: "/announcements", title: a.title,
+      subtitle: formatRelative(a.createdAt),
+      icon: <Megaphone className="h-4 w-4 text-brand-green" />,
+      badge: "Notice", badgeVariant: "default" as const,
+    })),
+  ].slice(0, 6);
 
   return (
     <div className="page-wrap" data-bottomnav="true">
@@ -206,7 +244,7 @@ export default function ResidentDashboard() {
           </div>
         </section>
 
-        {/* ── From Management ──────────────────────────────────── */}
+        {/* ── Estate Activity (unified feed) ───────────────────── */}
         <section>
           <SectionTitle
             icon={<Megaphone className="h-4 w-4" />}
@@ -216,10 +254,10 @@ export default function ResidentDashboard() {
               </Link>
             }
           >
-            From Management
+            Estate Activity
           </SectionTitle>
 
-          {loadingAnn ? (
+          {loadingFeed || loadingAnn ? (
             <div className="space-y-2">
               {[0, 1].map((i) => (
                 <div key={i} className="tribal-card p-4 animate-pulse">
@@ -228,65 +266,32 @@ export default function ResidentDashboard() {
                 </div>
               ))}
             </div>
-          ) : latestAnn.length === 0 ? (
+          ) : feedItems.length === 0 ? (
             <div className="tribal-card p-6 text-center">
               <Megaphone className="h-8 w-8 text-tribal-border mx-auto mb-2" />
-              <p className="text-tribal-earth text-sm font-medium">No announcements yet.</p>
-              <p className="text-tribal-earth text-xs mt-1 opacity-70">Management notices will appear here.</p>
+              <p className="text-tribal-earth text-sm font-medium">Nothing new right now.</p>
+              <p className="text-tribal-earth text-xs mt-1 opacity-70">Announcements, votes, and events will appear here.</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {latestAnn.map((ann) => (
-                <Link key={ann.id} href="/announcements">
-                  <div
-                    className={`tribal-card px-4 py-3 flex items-start justify-between gap-2 hover:shadow-card-lg transition-shadow ${
-                      ann.priority === "urgent" ? "border-l-4 border-l-brand-red" : ""
-                    }`}
-                  >
+              {feedItems.map((item) => (
+                <Link key={item.key} href={item.href}>
+                  <div className="tribal-card px-4 py-3 flex items-center gap-3 hover:shadow-card-lg transition-shadow">
+                    <div className="shrink-0">{item.icon}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        {ann.priority === "urgent" && <AlertCircle className="h-3.5 w-3.5 text-brand-red shrink-0" />}
-                        <Badge variant={ANN_VARIANT[ann.priority] ?? "default"}>{ann.priority}</Badge>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-sm text-tribal-charcoal truncate">{item.title}</p>
+                        <Badge variant={item.badgeVariant}>{item.badge}</Badge>
                       </div>
-                      <p className="font-semibold text-sm text-tribal-charcoal truncate">{ann.title}</p>
-                      <p className="text-xs text-tribal-earth mt-0.5">{formatRelative(ann.createdAt)}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-tribal-muted shrink-0 mt-1" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* ── Community Voice (governance) ─────────────────────── */}
-        {openPolls.length > 0 && (
-          <section>
-            <SectionTitle
-              icon={<Vote className="h-4 w-4" />}
-              action={
-                <Link href="/governance" className="text-xs text-brand-green font-semibold hover:underline">
-                  View all →
-                </Link>
-              }
-            >
-              Community Voice
-            </SectionTitle>
-            <div className="space-y-2">
-              {openPolls.slice(0, 2).map((poll) => (
-                <Link key={poll.id} href="/governance">
-                  <div className="tribal-card px-4 py-3 flex items-center justify-between gap-2 hover:shadow-card-lg transition-shadow border-l-4 border-l-purple-400">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-tribal-charcoal truncate">{poll.title}</p>
-                      <p className="text-xs text-tribal-earth mt-0.5">Awaiting your vote</p>
+                      <p className="text-xs text-tribal-earth mt-0.5">{item.subtitle}</p>
                     </div>
                     <ChevronRight className="h-4 w-4 text-tribal-muted shrink-0" />
                   </div>
                 </Link>
               ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* ── More Services ────────────────────────────────────── */}
         <section>
