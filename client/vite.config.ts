@@ -11,7 +11,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "icons/apple-touch-icon.png"],
+      includeAssets: ["icons/favicon-32.png", "icons/favicon-16.png", "icons/apple-touch-icon.png"],
       manifest: {
         name: "JiraniHub",
         short_name: "JiraniHub",
