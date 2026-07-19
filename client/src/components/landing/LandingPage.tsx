@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Check, Lock, ShieldCheck, MapPin, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TopBar, BottomNav } from "@/components/shared/navigation";
+import { BottomNav } from "@/components/shared/navigation";
 import { RequestDemoDialog } from "./RequestDemoDialog";
 
 const FEATURES = [
@@ -42,7 +42,16 @@ export function LandingPage() {
 
   return (
     <div className="page-wrap min-h-screen bg-gradient-to-b from-white via-[#F8F7F5] to-white">
-      <TopBar title="JiraniHub" />
+      {/* Public header — TopBar renders nothing for logged-out visitors, so
+          the landing page (the first thing a prospect or investor sees) had
+          no brand mark anywhere on it. This is the unauthenticated
+          equivalent, styled to match. */}
+      <header className="sticky top-0 z-40 bg-[#1B5E20] text-white">
+        <div className="flex items-center gap-2.5 px-4 h-14 max-w-6xl mx-auto">
+          <img src="/brand/logo-mark.webp" alt="JiraniHub" className="h-8 w-8 object-contain" />
+          <span className="font-bold text-lg tracking-tight font-display">JiraniHub</span>
+        </div>
+      </header>
 
       <main className="page-content">
         {/* Hero */}
