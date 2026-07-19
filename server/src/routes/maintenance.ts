@@ -173,6 +173,26 @@ maintenanceRouter.post(
       return;
     }
 
+    // Offline-queue retry of a submission that already landed — the
+    // original request's response never reached the client (timeout on
+    // flaky 3G), but the ticket exists. Return it instead of creating a
+    // duplicate; the unique index on (residentId, clientDraftId) is the
+    // backstop if two retries race each other.
+    if (parsed.data.clientDraftId) {
+      const [existingTicket] = await db
+        .select()
+        .from(maintenanceTickets)
+        .where(and(
+          eq(maintenanceTickets.residentId, user.id),
+          eq(maintenanceTickets.clientDraftId, parsed.data.clientDraftId),
+        ))
+        .limit(1);
+      if (existingTicket) {
+        res.status(200).json({ data: existingTicket });
+        return;
+      }
+    }
+
     let photoUrls: string[] = [];
     try {
       photoUrls = await processUploadedImages(req.files as Express.Multer.File[]);
@@ -195,6 +215,7 @@ maintenanceRouter.post(
         priority: parsed.data.priority,
         photoUrls,
         status: "open",
+        clientDraftId: parsed.data.clientDraftId ?? null,
       })
       .returning();
 

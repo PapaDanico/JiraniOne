@@ -292,7 +292,10 @@ paymentsRouter.post("/stk-push", async (req, res) => {
       .set({ status: "completed", mpesaRef: "DEV_STUB", updatedAt: new Date() })
       .where(eq(payments.id, id))
       .returning();
-    void writeAudit(req, {
+    // Awaited, not fire-and-forget — this is the audit trail for real
+    // money movement, and a serverless function can be frozen the instant
+    // after the response is sent, silently dropping an in-flight insert.
+    await writeAudit(req, {
       action: "payment.initiated",
       targetType: "payment",
       targetId: id,
@@ -340,7 +343,8 @@ paymentsRouter.post("/stk-push", async (req, res) => {
       }),
     );
   }
-  void writeAudit(req, {
+  // Awaited — see the dev-stub branch above for why.
+  await writeAudit(req, {
     action: "payment.initiated",
     targetType: "payment",
     targetId: id,

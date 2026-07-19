@@ -272,7 +272,10 @@ harambeeRouter.post("/:id/donate", async (req, res) => {
       return d;
     });
 
-    void writeAudit(req, {
+    // Awaited, not fire-and-forget — audit trail for real money movement;
+    // a serverless function can be frozen right after the response is
+    // sent, silently dropping an in-flight insert.
+    await writeAudit(req, {
       action: "harambee.donated",
       targetType: "fundraising_campaign",
       targetId: campaign.id,
@@ -315,7 +318,8 @@ harambeeRouter.post("/:id/donate", async (req, res) => {
     );
   }
 
-  void writeAudit(req, {
+  // Awaited — see the dev-stub branch above for why.
+  await writeAudit(req, {
     action: "harambee.donate_initiated",
     targetType: "fundraising_campaign",
     targetId: campaign.id,

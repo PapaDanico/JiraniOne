@@ -36,7 +36,11 @@ authRouter.post("/register", async (req, res) => {
 
   const { phone, password, name, estateId, unitNumber } = parsed.data;
 
-  const [existing] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
+  // Only an ACTIVE account blocks registration — a deactivated account's
+  // phone must stay reusable (mirrors users.ts's admin-invite route).
+  const [existing] = await db.select().from(users)
+    .where(and(eq(users.phone, phone), isNull(users.deletedAt)))
+    .limit(1);
   if (existing) {
     // Previously this returned a 202 "success-shaped" response to avoid
     // leaking whether the phone was taken — but the status code (202 vs
@@ -91,13 +95,17 @@ authRouter.post("/login", async (req, res) => {
 
   const { phone, password } = parsed.data;
 
+  // Filtered at the query, not just checked after — a phone can now map to
+  // more than one row (an active account plus any deactivated ones sharing
+  // the same reused number), and `.limit(1)` with no ORDER BY does not
+  // guarantee which row comes back if the filter doesn't narrow it first.
   const [user] = await db
     .select()
     .from(users)
-    .where(eq(users.phone, phone))
+    .where(and(eq(users.phone, phone), isNull(users.deletedAt)))
     .limit(1);
 
-  if (!user || user.deletedAt) {
+  if (!user) {
     res.status(401).json({ error: "Invalid phone number or password" });
     return;
   }
@@ -186,9 +194,11 @@ authRouter.post("/forgot-password", async (req, res) => {
   }
 
   const { phone } = parsed.data;
-  const [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
+  const [user] = await db.select().from(users)
+    .where(and(eq(users.phone, phone), isNull(users.deletedAt)))
+    .limit(1);
 
-  if (user && !user.deletedAt) {
+  if (user) {
     // Per-phone daily cap: 3 OTP requests / 24h regardless of source IP.
     // Prevents an attacker rotating IPs from blasting SMS (smishing /
     // SMS-cost amplification) at any victim's number. Locking the user row
@@ -264,8 +274,10 @@ authRouter.post("/reset-password", async (req, res) => {
   }
 
   const { phone, otp, password } = parsed.data;
-  const [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
-  if (!user || user.deletedAt) {
+  const [user] = await db.select().from(users)
+    .where(and(eq(users.phone, phone), isNull(users.deletedAt)))
+    .limit(1);
+  if (!user) {
     res.status(400).json({ error: "Invalid or expired reset code" });
     return;
   }

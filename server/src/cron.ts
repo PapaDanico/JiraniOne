@@ -1,4 +1,4 @@
-import { and, eq, gt, lte, isNull, isNotNull, lt, sql } from "drizzle-orm";
+import { and, eq, gt, lte, isNull, isNotNull, lt, ne, sql } from "drizzle-orm";
 import { db } from "./db.js";
 import {
   payments,
@@ -48,22 +48,32 @@ export async function reconcilePendingPayments() {
 
     for (const p of stale) {
       if (!p.checkoutRequestId) continue;
-      const status = await stkPushStatus(p.checkoutRequestId);
-      if (!status) continue;
+      // Isolate each row — without this, one payment whose Daraja query
+      // throws (timeout, malformed response) aborts the whole batch and
+      // leaves every payment after it in this run unprocessed. A
+      // permanently-failing row would then sit at/near the front of every
+      // subsequent run, starving reconciliation for everything queued
+      // behind it.
+      try {
+        const status = await stkPushStatus(p.checkoutRequestId);
+        if (!status) continue;
 
-      if (status.ResultCode === 0) {
-        // Daraja confirms success but our callback never arrived. Settle via
-        // the same path the webhook uses — this creates the donation/chama
-        // contribution row and credits the campaign total, not just the
-        // payments.status flip (a prior version of this job only did the
-        // latter, silently losing the downstream record whenever a callback
-        // was lost). We don't have the receipt number from this endpoint,
-        // so mpesaRef stays NULL — admin can reconcile from the Safaricom
-        // dashboard if needed.
-        await settlePaymentById(p.id, { success: true, mpesaRef: null });
-      } else if (status.ResultCode !== 1) {
-        // Anything other than "still processing" (1) is terminal failure.
-        await settlePaymentById(p.id, { success: false, mpesaRef: null });
+        if (status.ResultCode === 0) {
+          // Daraja confirms success but our callback never arrived. Settle via
+          // the same path the webhook uses — this creates the donation/chama
+          // contribution row and credits the campaign total, not just the
+          // payments.status flip (a prior version of this job only did the
+          // latter, silently losing the downstream record whenever a callback
+          // was lost). We don't have the receipt number from this endpoint,
+          // so mpesaRef stays NULL — admin can reconcile from the Safaricom
+          // dashboard if needed.
+          await settlePaymentById(p.id, { success: true, mpesaRef: null });
+        } else if (status.ResultCode !== 1) {
+          // Anything other than "still processing" (1) is terminal failure.
+          await settlePaymentById(p.id, { success: false, mpesaRef: null });
+        }
+      } catch (err) {
+        log.error({ event: "reconcile_row_failed", paymentId: p.id, err }, "reconciliation failed for one payment");
       }
     }
   } catch (err) {
@@ -141,6 +151,12 @@ export async function anonymizeOldVisitors() {
         and(
           lt(visitors.createdAt, cutoff),
           sql`${visitors.name} != 'Visitor (anonymized)'`,
+          // Never anonymize a visitor currently on the property — a
+          // long-duration or long-pre-registered visit whose pass predates
+          // the retention window must keep its identity while checked in,
+          // both for security's ability to identify who's on-site and for
+          // the emergency layer, which depends on knowing who's present.
+          ne(visitors.status, "checked_in"),
         ),
       );
   } catch (err) {
@@ -158,13 +174,17 @@ async function notifyAttendees(eventId: string, title: string, body: string) {
     .where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.attending, true)));
 
   for (const a of attendees) {
-    await createNotification({
-      userId: a.userId,
-      title,
-      body,
-      type: "event_reminder",
-      linkTo: "/events",
-    });
+    try {
+      await createNotification({
+        userId: a.userId,
+        title,
+        body,
+        type: "event_reminder",
+        linkTo: "/events",
+      });
+    } catch (err) {
+      log.error({ event: "event_reminder_notification_failed", eventId, userId: a.userId, err }, "in-app reminder notification failed");
+    }
     try {
       await sendThrottledSms({ userId: a.userId, to: a.phone, message: `${title}: ${body}` });
     } catch (err) {
@@ -192,8 +212,20 @@ export async function sendEventReminders() {
       .limit(50);
 
     for (const e of dueFor24h) {
+      // Claim atomically BEFORE notifying — a concurrent or retried
+      // invocation racing this one finds reminder24hSentAt already set and
+      // its own UPDATE affects 0 rows, so only one of them notifies
+      // attendees. Claiming after notifying (the previous order) let two
+      // overlapping runs both fully notify everyone before either wrote
+      // the flag.
+      const claimed = await db
+        .update(events)
+        .set({ reminder24hSentAt: now })
+        .where(and(eq(events.id, e.id), isNull(events.reminder24hSentAt)))
+        .returning({ id: events.id });
+      if (claimed.length === 0) continue;
+
       await notifyAttendees(e.id, `Reminder: ${e.title}`, `Happening ${e.startTime.toLocaleString("en-KE", { weekday: "long", hour: "2-digit", minute: "2-digit" })}.`);
-      await db.update(events).set({ reminder24hSentAt: now }).where(eq(events.id, e.id));
     }
   } catch (err) {
     log.error({ event: "event_reminder_24h_failed", err }, "24h event reminder job failed");
@@ -208,8 +240,14 @@ export async function sendEventReminders() {
       .limit(50);
 
     for (const e of dueFor1h) {
+      const claimed = await db
+        .update(events)
+        .set({ reminder1hSentAt: now })
+        .where(and(eq(events.id, e.id), isNull(events.reminder1hSentAt)))
+        .returning({ id: events.id });
+      if (claimed.length === 0) continue;
+
       await notifyAttendees(e.id, `Starting soon: ${e.title}`, `Starts at ${e.startTime.toLocaleString("en-KE", { hour: "2-digit", minute: "2-digit" })}.`);
-      await db.update(events).set({ reminder1hSentAt: now }).where(eq(events.id, e.id));
     }
   } catch (err) {
     log.error({ event: "event_reminder_1h_failed", err }, "1h event reminder job failed");
