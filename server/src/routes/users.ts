@@ -27,9 +27,12 @@ const BCRYPT_COST = 12;
 export const usersRouter = Router();
 usersRouter.use(requireAuth);
 
-// Admin: list all estate users
-usersRouter.get("/", requireRole("admin"), async (_req, res) => {
+// Admin: list all estate users. ?deactivated=true lists deactivated users
+// instead — otherwise there's no way to find the id of someone to reactivate,
+// since the default list excludes them.
+usersRouter.get("/", requireRole("admin"), async (req, res) => {
   const user = res.locals.user!;
+  const wantDeactivated = req.query['deactivated'] === "true";
   const rows = await db
     .select({
       id: users.id,
@@ -43,7 +46,10 @@ usersRouter.get("/", requireRole("admin"), async (_req, res) => {
       createdAt: users.createdAt,
     })
     .from(users)
-    .where(and(eq(users.estateId, user.estateId!), isNull(users.deletedAt)))
+    .where(and(
+      eq(users.estateId, user.estateId!),
+      wantDeactivated ? sql`${users.deletedAt} is not null` : isNull(users.deletedAt),
+    ))
     .orderBy(users.role, users.name);
   res.json({ data: rows });
 });
@@ -62,7 +68,15 @@ usersRouter.post("/", requireRole("admin"), async (req, res) => {
   }
   const { phone, name, role, unitNumber } = parsed.data;
 
-  const [existing] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
+  // Only an ACTIVE account blocks re-provisioning — otherwise a phone
+  // number tied to a deactivated user could never be re-invited, since
+  // nothing ever clears deletedAt for it (see reactivate below, which
+  // handles the "un-deactivate the same account" case; this handles
+  // inviting a fresh account against a phone whose old account stays
+  // deactivated).
+  const [existing] = await db.select().from(users)
+    .where(and(eq(users.phone, phone), isNull(users.deletedAt)))
+    .limit(1);
   if (existing) {
     res.status(409).json({ error: "Phone number already registered" });
     return;
@@ -127,18 +141,38 @@ usersRouter.patch("/:id", requireRole("admin"), async (req, res) => {
     res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
-  const { name, unitNumber, role } = parsed.data;
+  const { name, unitNumber, role, reactivate } = parsed.data;
 
+  // No isNull(deletedAt) filter here — reactivate must be able to find a
+  // deactivated user by id in the first place. (Pair with GET
+  // /?deactivated=true, which is how an admin finds that id.)
   const [existing] = await db.select().from(users)
     .where(and(eq(users.id, req.params['id']!), eq(users.estateId, admin.estateId!)))
     .limit(1);
 
   if (!existing) { res.status(404).json({ error: "User not found" }); return; }
 
+  if (reactivate === true && existing.deletedAt) {
+    // Someone may have already been invited/reactivated onto this same
+    // phone number while this account was deactivated — the partial unique
+    // index only allows one ACTIVE row per phone, so check up front and
+    // give a clear error instead of a raw constraint-violation 500.
+    const [activeConflict] = await db.select({ id: users.id }).from(users)
+      .where(and(eq(users.phone, existing.phone), isNull(users.deletedAt)))
+      .limit(1);
+    if (activeConflict) {
+      res.status(409).json({
+        error: "Another active account already uses this phone number — deactivate it first, or the two accounts can't both be active",
+      });
+      return;
+    }
+  }
+
   const updates: Partial<typeof existing> = { updatedAt: new Date() };
   if (name !== undefined) updates.name = name;
   if (unitNumber !== undefined) updates.unitNumber = unitNumber;
   if (role !== undefined) updates.role = role;
+  if (reactivate === true) updates.deletedAt = null;
 
   const updatedRows = await db.update(users).set(updates)
     .where(eq(users.id, req.params['id']!)).returning();
@@ -151,7 +185,7 @@ usersRouter.patch("/:id", requireRole("admin"), async (req, res) => {
   }
 
   await writeAudit(req, {
-    action: "user.update",
+    action: reactivate === true ? "user.reactivate" : "user.update",
     targetType: "user",
     targetId: existing.id,
     metadata: {

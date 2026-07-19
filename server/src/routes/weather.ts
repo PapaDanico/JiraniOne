@@ -56,7 +56,11 @@ weatherRouter.get("/", async (req, res) => {
       `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
       `&timezone=Africa%2FNairobi&forecast_days=1`;
 
-    const resp = await fetch(url);
+    // AbortSignal.timeout — without it, an Open-Meteo API that accepts the
+    // connection but never responds hangs the request indefinitely (a
+    // try/catch alone only catches a rejection, not a promise that never
+    // settles).
+    const resp = await fetch(url, { signal: AbortSignal.timeout(8_000) });
     if (!resp.ok) throw new Error("Weather API error");
     const raw = (await resp.json()) as {
       current: {

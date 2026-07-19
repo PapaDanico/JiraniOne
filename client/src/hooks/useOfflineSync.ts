@@ -37,6 +37,10 @@ export function useOfflineSync() {
           formData.append("description", draft.description);
           formData.append("category", draft.category);
           formData.append("priority", draft.priority);
+          // Lets the server recognize a retry of a submission that already
+          // landed (request timed out but was actually processed) instead
+          // of creating a duplicate ticket.
+          formData.append("clientDraftId", draft.id);
           draft.photos.forEach((f) => formData.append("photos", f));
           await api.upload("/api/maintenance", formData);
           await deleteDraft(MAINTENANCE_DRAFTS_STORE, draft.id);

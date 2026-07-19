@@ -111,6 +111,7 @@ export const adminUpdateUserSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   unitNumber: z.string().max(20).nullable().optional(),
   role: z.enum(["resident", "admin", "security", "vendor"]).optional(),
+  reactivate: z.boolean().optional(),
 });
 
 export const updateProfileSchema = z.object({
@@ -142,6 +143,9 @@ export const createTicketSchema = z.object({
     "other",
   ]),
   priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
+  // Set only by useOfflineSync.ts when replaying a queued offline draft —
+  // lets the server recognize a retry of the same submission.
+  clientDraftId: z.string().max(64).optional(),
 });
 
 export const updateTicketSchema = z.object({

@@ -156,7 +156,7 @@ export const users = pgTable(
   "users",
   {
     id: text("id").primaryKey(),
-    phone: varchar("phone", { length: 20 }).notNull().unique(),
+    phone: varchar("phone", { length: 20 }).notNull(),
     passwordHash: text("password_hash").notNull(),
     name: varchar("name", { length: 100 }).notNull(),
     role: userRoleEnum("role").notNull().default("resident"),
@@ -170,6 +170,11 @@ export const users = pgTable(
   (t) => ({
     estateIdIdx: index("users_estate_id_idx").on(t.estateId),
     roleIdx: index("users_role_idx").on(t.role),
+    // Partial, not a plain unique column — a deactivated user's phone must
+    // stay reusable for a fresh invite/registration (see users.ts POST / and
+    // auth.ts POST /register) while still guaranteeing at most one ACTIVE
+    // account per phone.
+    phoneActiveUq: uniqueIndex("users_phone_unique").on(t.phone).where(sql`${t.deletedAt} is null`),
   }),
 );
 
@@ -319,6 +324,11 @@ export const maintenanceTickets = pgTable(
     adminNotes: text("admin_notes"),
     resolvedAt: timestamp("resolved_at"),
     deletedAt: timestamp("deleted_at"),
+    // Client-generated id for offline-queued submissions (useOfflineSync.ts)
+    // — lets a retry after an ambiguous failure (request timed out but may
+    // have actually reached and been processed by the server) be recognized
+    // as the same submission instead of creating a duplicate ticket.
+    clientDraftId: varchar("client_draft_id", { length: 64 }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -328,6 +338,9 @@ export const maintenanceTickets = pgTable(
     statusIdx: index("tickets_status_idx").on(t.status),
     priorityIdx: index("tickets_priority_idx").on(t.priority),
     createdAtIdx: index("tickets_created_at_idx").on(t.createdAt),
+    clientDraftIdUq: uniqueIndex("tickets_resident_client_draft_unique")
+      .on(t.residentId, t.clientDraftId)
+      .where(sql`${t.clientDraftId} is not null`),
   }),
 );
 

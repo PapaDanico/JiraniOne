@@ -27,43 +27,47 @@ const NORMAL_MINS = 45;
 const DISTANCE_KM = 42;
 
 trafficRouter.get("/", async (req, res) => {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-
-  const user = res.locals.user!;
-  let origin = DEFAULT_ORIGIN;
-  if (user.estateId) {
-    const [estate] = await db
-      .select({ lat: estates.lat, lng: estates.lng })
-      .from(estates)
-      .where(eq(estates.id, user.estateId))
-      .limit(1);
-    if (estate?.lat && estate?.lng) {
-      origin = `${estate.lat},${estate.lng}`;
-    }
-  }
-
-  if (!apiKey) {
-    // No API key — return static baseline with a flag
-    const data: TrafficData & { noKey: true } = {
-      durationMins: NORMAL_MINS,
-      normalMins:   NORMAL_MINS,
-      distanceKm:   DISTANCE_KM,
-      status:       "clear",
-      updatedAt:    new Date().toISOString(),
-      noKey:        true,
-    };
-    res.json({ data });
-    return;
-  }
-
   try {
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+    const user = res.locals.user!;
+    let origin = DEFAULT_ORIGIN;
+    if (user.estateId) {
+      const [estate] = await db
+        .select({ lat: estates.lat, lng: estates.lng })
+        .from(estates)
+        .where(eq(estates.id, user.estateId))
+        .limit(1);
+      if (estate?.lat && estate?.lng) {
+        origin = `${estate.lat},${estate.lng}`;
+      }
+    }
+
+    if (!apiKey) {
+      // No API key — return static baseline with a flag
+      const data: TrafficData & { noKey: true } = {
+        durationMins: NORMAL_MINS,
+        normalMins:   NORMAL_MINS,
+        distanceKm:   DISTANCE_KM,
+        status:       "clear",
+        updatedAt:    new Date().toISOString(),
+        noKey:        true,
+      };
+      res.json({ data });
+      return;
+    }
+
     const url =
       `https://maps.googleapis.com/maps/api/distancematrix/json` +
       `?origins=${origin}&destinations=${DEST}` +
       `&mode=driving&departure_time=now&traffic_model=best_guess` +
       `&key=${apiKey}`;
 
-    const resp = await fetch(url);
+    // AbortSignal.timeout — without it, a Google Maps API that accepts the
+    // connection but never responds hangs the request indefinitely (a
+    // try/catch alone only catches a rejection, not a promise that never
+    // settles).
+    const resp = await fetch(url, { signal: AbortSignal.timeout(8_000) });
     const raw = (await resp.json()) as {
       rows: Array<{
         elements: Array<{

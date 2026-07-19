@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useRef,
   type ReactNode,
 } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -30,17 +31,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     staleTime: Infinity,
   });
 
+  // Guards against two classes of race on a shared/slow device: (1) the
+  // initial /api/auth/me check is slow (3G) and resolves AFTER a login,
+  // silently repainting the cache with the pre-login (or a previous user's,
+  // on a shared device) identity; (2) a double-tap or fast logout-then-login
+  // lets both mutations run concurrently, and whichever's onSuccess fires
+  // last wins regardless of which action the user actually intended last.
+  // cancelQueries() makes React Query discard the /auth/me query's result
+  // if it resolves after being superseded; the generation counter does the
+  // same for one auth mutation's result arriving after a newer one already
+  // completed.
+  const authGeneration = useRef(0);
+  async function beginAuthAction() {
+    const gen = ++authGeneration.current;
+    await qc.cancelQueries({ queryKey: ["auth", "me"] });
+    return { gen };
+  }
+
   const loginMutation = useMutation({
     mutationFn: ({ phone, password }: { phone: string; password: string }) =>
       api.post<AuthUser>("/api/auth/login", { phone, password }),
-    onSuccess: (res) => {
+    onMutate: beginAuthAction,
+    onSuccess: (res, _vars, ctx) => {
+      if (ctx.gen !== authGeneration.current) return;
       qc.setQueryData(["auth", "me"], res.data);
     },
   });
 
   const logoutMutation = useMutation({
     mutationFn: () => api.post("/api/auth/logout"),
-    onSuccess: () => {
+    onMutate: beginAuthAction,
+    onSuccess: (_data, _vars, ctx) => {
+      if (ctx.gen !== authGeneration.current) return;
       // clear() must run first — it wipes the entire cache, including
       // whatever we set on ["auth", "me"]. Setting it to null afterwards
       // (not before) is what actually makes `user` resolve to null
@@ -54,7 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerMutation = useMutation({
     mutationFn: (data: { phone: string; password: string; name: string; estateId?: string; unitNumber?: string; consent: boolean }) =>
       api.post<AuthUser>("/api/auth/register", data),
-    onSuccess: (res) => {
+    onMutate: beginAuthAction,
+    onSuccess: (res, _vars, ctx) => {
+      if (ctx.gen !== authGeneration.current) return;
       qc.setQueryData(["auth", "me"], res.data);
     },
   });
