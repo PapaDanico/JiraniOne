@@ -21,7 +21,6 @@
 
 import { randomBytes } from "crypto";
 import { fileTypeFromBuffer } from "file-type";
-import sharp from "sharp";
 import { saveFile } from "./blobStorage.js";
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -47,8 +46,20 @@ export async function processUploadedImages(
 
     // 2 + 3. Re-encode + resize via sharp. WebP gives the best quality/size
     // for our use case (mobile data scarcity is a CLAUDE.md concern).
+    //
+    // sharp is loaded lazily, on first actual use, rather than imported at
+    // module top-level. This module is pulled in transitively by
+    // createApp.ts (via routes/maintenance.ts) for every API request, not
+    // just photo uploads — a top-level `import sharp from "sharp"` means
+    // sharp's native binary is loaded (and can fail to load) at Netlify
+    // Function cold start, before any route runs, taking down every
+    // endpoint including login. Loading it here confines any native-binding
+    // failure to the one code path that actually needs it, caught by the
+    // try/catch below like any other processing error. Mirrors the same
+    // lazy-import treatment blobStorage.ts already gives `@netlify/blobs`.
     let processed: Buffer;
     try {
+      const sharp = (await import("sharp")).default;
       processed = await sharp(buffer, { failOn: "error" })
         .rotate() // honour EXIF orientation before stripping
         .resize({
