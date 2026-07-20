@@ -24,6 +24,7 @@ export interface Estate {
   adminId: string | null;
   subscriptionTier: "starter" | "growth" | "enterprise";
   totalUnits: number | null;
+  securityPhone: string | null;
   createdAt: string;
 }
 

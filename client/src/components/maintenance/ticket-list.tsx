@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { TicketForm } from "./ticket-form";
+import { TicketStatusStepper } from "./ticket-status-stepper";
 import { SectionLoader } from "@/components/shared/loading";
 import { formatRelative } from "@/lib/utils";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
@@ -110,6 +111,10 @@ function TicketCard({ ticket }: TicketCardProps) {
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
           )}
+        </div>
+
+        <div className="mt-3 pt-3 border-t border-tribal-border">
+          <TicketStatusStepper status={ticket.status} />
         </div>
 
         {expanded && ticket.comments && ticket.comments.length > 0 && (

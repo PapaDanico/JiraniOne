@@ -7,6 +7,7 @@ interface EstateInfo {
   name: string;
   location: string;
   totalUnits: number | null;
+  securityPhone: string | null;
 }
 
 export function useEstate() {
