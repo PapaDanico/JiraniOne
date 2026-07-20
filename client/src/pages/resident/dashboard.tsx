@@ -14,6 +14,7 @@ import { SectionTitle } from "@/components/shared/section-title";
 import { KpiTile } from "@/components/shared/kpi-tile";
 import { Badge } from "@/components/ui/badge";
 import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
+import { LevyStatusWidget } from "@/components/shared/levy-status";
 import { api } from "@/lib/api";
 import { formatRelative, formatDate } from "@/lib/utils";
 import type { Announcement, Event, MaintenanceTicket, Notification, Parcel, Poll } from "@shared/types";
@@ -199,6 +200,9 @@ export default function ResidentDashboard() {
           </div>
           <div className="mt-4 flag-bar w-24 relative z-10" />
         </div>
+
+        {/* ── Levy status ──────────────────────────────────────── */}
+        <LevyStatusWidget />
 
         {/* ── Weather & Traffic ───────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3">

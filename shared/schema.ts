@@ -113,6 +113,10 @@ export const estates = pgTable(
       .notNull()
       .default("starter"),
     totalUnits: integer("total_units").default(0),
+    // Nullable — the emergency page's "call security directly" one-tap links
+    // fall back to a generic placeholder number when unset, but every estate
+    // should eventually set its own so residents actually reach their gate.
+    securityPhone: varchar("security_phone", { length: 20 }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

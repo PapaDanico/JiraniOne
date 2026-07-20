@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ShieldAlert, Phone, AlertTriangle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEstate } from "@/hooks/useEstate";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,14 +36,21 @@ const STATUS_LABEL: Record<string, string> = {
   active: "Active", responding: "Responding", resolved: "Resolved",
 };
 
-const CONTACTS = [
-  { label: "Estate Security",  number: "0722 000 000", icon: "🛡️" },
-  { label: "Police (Kenya)",   number: "999",           icon: "👮" },
-  { label: "Ambulance (KNH)",  number: "0722 040 545", icon: "🚑" },
-  { label: "Fire Brigade",     number: "020 222 2181", icon: "🚒" },
-];
+// Fallback only — every estate should set its own security desk number
+// (estates.securityPhone) so this generic placeholder isn't what residents
+// actually reach in a real emergency.
+const DEFAULT_SECURITY_PHONE = "0722 000 000";
 
-function RaiseAlertDialog({ onClose }: { onClose: () => void }) {
+function contactsFor(securityPhone: string | null | undefined) {
+  return [
+    { label: "Estate Security",  number: securityPhone || DEFAULT_SECURITY_PHONE, icon: "🛡️" },
+    { label: "Police (Kenya)",   number: "999",           icon: "👮" },
+    { label: "Ambulance (KNH)",  number: "0722 040 545", icon: "🚑" },
+    { label: "Fire Brigade",     number: "020 222 2181", icon: "🚒" },
+  ];
+}
+
+function RaiseAlertDialog({ onClose, securityPhone }: { onClose: () => void; securityPhone: string }) {
   const qc = useQueryClient();
   const [type, setType] = useState("medical");
   const [description, setDescription] = useState("");
@@ -101,10 +109,10 @@ function RaiseAlertDialog({ onClose }: { onClose: () => void }) {
             <div className="tribal-card p-3">
               <p className="text-xs text-[#6B5D45] mb-1">Call security directly:</p>
               <a
-                href="tel:+254722000000"
+                href={`tel:${securityPhone.replace(/\s/g, "")}`}
                 className="flex items-center justify-center gap-2 text-[#1B5E20] font-bold"
               >
-                <Phone className="h-4 w-4" /> 0722 000 000
+                <Phone className="h-4 w-4" /> {securityPhone}
               </a>
             </div>
             <Button className="w-full" onClick={onClose}>Close</Button>
@@ -137,7 +145,7 @@ function RaiseAlertDialog({ onClose }: { onClose: () => void }) {
               {mutation.isError && (
                 <div className="rounded-xl bg-[#B71C1C]/10 border border-[#B71C1C]/30 px-3 py-2.5 text-sm text-[#B71C1C]">
                   Couldn't send the alert — check your connection and try again, or call
-                  security directly at 0722 000 000.
+                  security directly at {securityPhone}.
                 </div>
               )}
             </div>
@@ -160,8 +168,11 @@ function RaiseAlertDialog({ onClose }: { onClose: () => void }) {
 
 export default function EmergencyPage() {
   const { user } = useAuth();
+  const { data: estate } = useEstate();
   const [alertOpen, setAlertOpen] = useState(false);
   const canViewAll = user?.role === "admin" || user?.role === "security";
+  const securityPhone = estate?.securityPhone || DEFAULT_SECURITY_PHONE;
+  const CONTACTS = contactsFor(estate?.securityPhone);
 
   const { data: alerts, isLoading } = useQuery({
     queryKey: ["emergency"],
@@ -275,7 +286,7 @@ export default function EmergencyPage() {
         )}
       </main>
 
-      {alertOpen && <RaiseAlertDialog onClose={() => setAlertOpen(false)} />}
+      {alertOpen && <RaiseAlertDialog onClose={() => setAlertOpen(false)} securityPhone={securityPhone} />}
       <BottomNav />
     </div>
   );
