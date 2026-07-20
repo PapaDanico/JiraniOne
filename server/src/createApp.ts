@@ -75,7 +75,7 @@ export function createApp(): express.Express {
               styleSrc:        ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
               fontSrc:         ["https://fonts.gstatic.com"],
               imgSrc:          ["'self'", "data:", "https:"],
-              connectSrc:      ["'self'", "https://www.jiranihub.co.ke"],
+              connectSrc:      ["'self'", "https://jiranihub.org", "https://www.jiranihub.co.ke"],
               frameAncestors:  ["'none'"],
               baseUri:         ["'self'"],
               formAction:      ["'self'"],
@@ -110,7 +110,18 @@ export function createApp(): express.Express {
   // domain), so it grants an attacker nothing. The real production domains
   // are always present regardless of env, and the netlify.app apex is
   // hardcoded so login doesn't even depend on CLIENT_URL being set.
+  //
+  // jiranihub.org (not jiranihub.co.ke — the .co.ke domain referenced
+  // elsewhere was never actually the live one) is the site's real custom
+  // domain per Netlify's project config. Its absence here was the actual
+  // cause of the "Internal server error" on every login: the `cors`
+  // middleware calls `next(err)` on a rejected origin with no status of
+  // its own, so the request fell through to the generic 500 handler
+  // instead of a CORS-specific rejection — indistinguishable from a
+  // server crash from the client's point of view.
   const ALLOWED_ORIGINS = [
+    "https://jiranihub.org",
+    "https://www.jiranihub.org",
     "https://www.jiranihub.co.ke",
     "https://jiranihub.co.ke",
     "https://jiranihub.netlify.app",
@@ -128,6 +139,24 @@ export function createApp(): express.Express {
       credentials: true,
     }),
   );
+
+  // A rejected origin surfaces as `next(err)` from the cors middleware above
+  // with no status code of its own — left unhandled, it falls all the way
+  // through to the generic 500 handler at the bottom of this file, making a
+  // simple allowlist gap (e.g. a domain never added after a custom-domain
+  // change) look exactly like an unrelated server crash from the client's
+  // point of view. That's what actually happened here: jiranihub.org was
+  // missing from ALLOWED_ORIGINS, so every real login 500'd. Catch the CORS
+  // rejection specifically, right after the middleware that raises it, so
+  // it reports as an honest 403 instead.
+  app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err.message === "Not allowed by CORS") {
+      logger.warn({ origin: req.headers.origin, path: req.path }, "CORS origin rejected");
+      res.status(403).json({ error: "Origin not allowed" });
+      return;
+    }
+    next(err);
+  });
 
   // Global rate limit
   app.use(
