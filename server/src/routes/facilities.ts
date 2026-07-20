@@ -2,7 +2,7 @@ import { Router } from "express";
 import { eq, desc, and, lt, gt, or, ne } from "drizzle-orm";
 import { db, dbTx } from "../db.js";
 import { facilities, bookings, users } from "@shared/schema.js";
-import { createFacilitySchema, createBookingSchema } from "@shared/validators.js";
+import { createFacilitySchema, updateFacilitySchema, createBookingSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
@@ -48,9 +48,12 @@ facilitiesRouter.patch("/:id", requireRole("admin"), async (req, res) => {
     .where(and(eq(facilities.id, req.params['id']!), eq(facilities.estateId, user.estateId!))).limit(1);
   if (!existing) { res.status(404).json({ error: "Facility not found" }); return; }
 
-  const { name, description, requiresApproval, maxBookingHours } = req.body as {
-    name?: string; description?: string; requiresApproval?: boolean; maxBookingHours?: number;
-  };
+  const parsed = updateFacilitySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+  const { name, description, requiresApproval, maxBookingHours } = parsed.data;
   const [updated] = await db.update(facilities)
     .set({ name: name ?? existing.name, description: description ?? existing.description,
            requiresApproval: requiresApproval ?? existing.requiresApproval,

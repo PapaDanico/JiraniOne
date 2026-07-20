@@ -300,6 +300,8 @@ export const createFacilitySchema = z.object({
   maxBookingHours: z.number().int().min(1).max(24).default(4),
 });
 
+export const updateFacilitySchema = createFacilitySchema.partial();
+
 export const createPollSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().optional(),
