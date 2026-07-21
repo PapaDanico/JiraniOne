@@ -169,7 +169,7 @@ export default function AnnouncementsPage() {
   return (
     <div className="page-wrap">
       <TopBar title="Announcements" />
-      <main className="max-w-lg mx-auto px-4 pt-4 page-content">
+      <main className="container-list pt-4 page-content">
         <div className="flex items-center justify-between mb-4">
           <p className="section-label">Estate Announcements</p>
           {user?.role === "admin" && (
@@ -190,7 +190,7 @@ export default function AnnouncementsPage() {
             <p className="text-[#6B5D45] text-sm">Estate announcements will appear here</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="card-grid">
             {announcements.map((a) => {
               const cfg = PRIORITY_CONFIG[a.priority as keyof typeof PRIORITY_CONFIG] ?? PRIORITY_CONFIG.info;
               return (

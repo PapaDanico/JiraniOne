@@ -210,7 +210,7 @@ export default function AdminUsersPage() {
   return (
     <div className="page-wrap">
       <TopBar title="Users" />
-      <main className="max-w-lg mx-auto px-4 pt-4 space-y-4 page-content">
+      <main className="container-list pt-4 space-y-4 page-content">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B5D45]" />
@@ -248,7 +248,7 @@ export default function AdminUsersPage() {
                 <p className="section-label mb-2">
                   {cfg.emoji} {cfg.label}s ({group.length})
                 </p>
-                <div className="space-y-2">
+                <div className="card-grid">
                   {group.map((u) => (
                     <Card key={u.id}>
                       <CardContent className="py-3 flex items-center justify-between gap-3">

@@ -222,7 +222,7 @@ export function AdminTickets() {
               <p className="text-[#6B5D45] text-sm">No tickets in this view.</p>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="card-grid">
               {tickets.map((t) => {
                 const emoji = CATEGORY_EMOJI[t.category] ?? "📋";
                 const pri = PRIORITY_CONFIG[t.priority];

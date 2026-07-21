@@ -248,22 +248,26 @@ function ResidentParcels() {
         </div>
       ) : (
         <div className="space-y-3">
-          {active.map((p) => (
-            <ParcelCard
-              key={p.id}
-              parcel={p}
-              onCollect={() => markCollected(p.id)}
-              onDelete={() => setConfirmDeleteId(p.id)}
-              isResident
-            />
-          ))}
+          <div className="card-grid">
+            {active.map((p) => (
+              <ParcelCard
+                key={p.id}
+                parcel={p}
+                onCollect={() => markCollected(p.id)}
+                onDelete={() => setConfirmDeleteId(p.id)}
+                isResident
+              />
+            ))}
+          </div>
 
           {history.length > 0 && (
             <>
               <p className="section-label pt-2">History</p>
-              {history.map((p) => (
-                <ParcelCard key={p.id} parcel={p} isResident readOnly />
-              ))}
+              <div className="card-grid">
+                {history.map((p) => (
+                  <ParcelCard key={p.id} parcel={p} isResident readOnly />
+                ))}
+              </div>
             </>
           )}
         </div>
@@ -323,21 +327,25 @@ function EstateParcels() {
         </div>
       ) : (
         <div className="space-y-3">
-          {pending.map((p) => (
-            <ParcelCard
-              key={p.id}
-              parcel={p}
-              onReceive={() => setReceivingParcel(p)}
-              onCollect={() => markCollected(p.id)}
-            />
-          ))}
+          <div className="card-grid">
+            {pending.map((p) => (
+              <ParcelCard
+                key={p.id}
+                parcel={p}
+                onReceive={() => setReceivingParcel(p)}
+                onCollect={() => markCollected(p.id)}
+              />
+            ))}
+          </div>
 
           {completed.length > 0 && (
             <>
               <p className="section-label pt-2">Recent History</p>
-              {completed.slice(0, 15).map((p) => (
-                <ParcelCard key={p.id} parcel={p} readOnly />
-              ))}
+              <div className="card-grid">
+                {completed.slice(0, 15).map((p) => (
+                  <ParcelCard key={p.id} parcel={p} readOnly />
+                ))}
+              </div>
             </>
           )}
         </div>
@@ -460,7 +468,7 @@ export default function ParcelsPage() {
     <div className="page-wrap">
       <TopBar title="Parcels" />
 
-      <main className="max-w-lg mx-auto px-4 pt-5 pb-6 page-content">
+      <main className="container-list pt-5 pb-6 page-content">
         {isStaff ? <EstateParcels /> : <ResidentParcels />}
       </main>
 

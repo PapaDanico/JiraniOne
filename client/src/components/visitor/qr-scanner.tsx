@@ -109,7 +109,7 @@ export function QrScanner() {
 
       {/* Results */}
       {result && result.length > 0 && (
-        <div className="space-y-2">
+        <div className="card-grid">
           {result.map((v) => (
             <Card
               key={v.id}

@@ -85,7 +85,7 @@ export function GateLog() {
           <p className="text-[#6B5D45] text-sm">No visitors found.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="card-grid">
           {filtered?.map((v) => (
             <Card
               key={v.id}

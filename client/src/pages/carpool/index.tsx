@@ -103,7 +103,7 @@ export default function CarpoolPage() {
   return (
     <div className="page-wrap">
       <TopBar title="Carpool" />
-      <main className="max-w-lg mx-auto px-4 pt-5 pb-6 space-y-5 page-content">
+      <main className="container-list pt-5 pb-6 space-y-5 page-content">
 
         {/* Offer a Ride toggle */}
         <button
@@ -231,6 +231,7 @@ export default function CarpoolPage() {
         )}
 
         {/* Offer cards */}
+        <div className="card-grid">
         {!isLoading && offers.map((offer) => {
           const isDriver = offer.driverId === user?.id;
           const canBook = !isDriver && !offer.myBooking && offer.seatsAvailable > 0 && offer.status === "active";
@@ -306,6 +307,7 @@ export default function CarpoolPage() {
             </div>
           );
         })}
+        </div>
       </main>
       <BottomNav />
       <ConfirmDialog

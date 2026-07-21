@@ -307,7 +307,7 @@ export default function ClassifiedsPage() {
     <div className="page-wrap">
       <TopBar title="Noticeboard" />
 
-      <main className="max-w-lg mx-auto px-4 pt-5 pb-6 page-content">
+      <main className="container-list pt-5 pb-6 page-content">
         {/* Header row */}
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -355,7 +355,7 @@ export default function ClassifiedsPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="card-grid">
             {filtered.map((c) => (
               <ListingCard
                 key={c.id}

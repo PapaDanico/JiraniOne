@@ -100,7 +100,7 @@ export default function ChamaPage() {
   return (
     <div className="page-wrap">
       <TopBar title="Chama" />
-      <main className="max-w-lg mx-auto px-4 pt-5 pb-6 space-y-5 page-content">
+      <main className="container-list pt-5 pb-6 space-y-5 page-content">
         {/* Create button */}
         <button
           onClick={() => setShowCreate((v) => !v)}
@@ -194,7 +194,7 @@ export default function ChamaPage() {
 
         {/* Chama cards */}
         {!isLoading && chamas && chamas.length > 0 && (
-          <div className="space-y-4">
+          <div className="card-grid">
             {chamas.map((chama) => (
               <div key={chama.id} className="tribal-card p-4 space-y-3">
                 {/* Header row */}

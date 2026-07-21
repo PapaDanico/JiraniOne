@@ -62,7 +62,7 @@ export default function NotificationsPage() {
   return (
     <div className="page-wrap">
       <TopBar title="Notifications" />
-      <main className="max-w-lg mx-auto px-4 pt-4 space-y-4 page-content">
+      <main className="container-list pt-4 space-y-4 page-content">
         {smsQuota && (
           <Card className={smsQuota.percentUsed > 80 ? "border-amber-500" : ""}>
             <CardContent className="py-3">
@@ -131,7 +131,7 @@ export default function NotificationsPage() {
             <p className="text-[#6B5D45] text-sm">You're all caught up — great!</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="card-grid">
             {notifications.map((n) => {
               const cfg = TYPE_CONFIG[n.type] ?? { label: n.type, color: "bg-[#EDE7D8] text-[#6B5D45]", emoji: "📋" };
               return (

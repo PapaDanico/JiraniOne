@@ -129,7 +129,7 @@ export default function DocumentsPage() {
   return (
     <div className="page-wrap">
       <TopBar title="Documents" />
-      <main className="max-w-lg mx-auto px-4 pt-5 pb-6 space-y-4 page-content">
+      <main className="container-list pt-5 pb-6 space-y-4 page-content">
         <div className="flex items-center justify-between">
           <div>
             <p className="section-label mb-0">Estate Documents</p>
@@ -159,7 +159,7 @@ export default function DocumentsPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="card-grid">
             {documents.map((doc) => (
               <div key={doc.id} className="tribal-card p-4 flex items-center gap-3">
                 <span className="text-2xl shrink-0">{fileIcon(doc.fileType)}</span>

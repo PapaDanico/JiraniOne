@@ -204,120 +204,131 @@ export default function ResidentDashboard() {
         {/* ── Levy status ──────────────────────────────────────── */}
         <LevyStatusWidget />
 
-        {/* ── Weather & Traffic ───────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-3">
-          <WeatherWidget />
-          <TrafficWidget />
-        </div>
+        {/* ── Below the fold: on desktop this becomes a 2/3 + 1/3 grid
+            (primary actions/activity on the left, ambient at-a-glance
+            widgets in a right rail) via explicit grid placement — purely
+            a lg:+ CSS reflow, so DOM order (and the mobile stacked
+            layout, which relies on it) is completely unchanged below
+            the lg breakpoint. ─────────────────────────────────────── */}
+        <div className="lg:grid lg:grid-cols-3 lg:gap-x-6 lg:gap-y-5 lg:items-start space-y-5 lg:space-y-0">
 
-        {/* ── My Status (KPI tiles) ───────────────────────────── */}
-        <section>
-          <SectionTitle icon={<Activity className="h-4 w-4" />}>My Status</SectionTitle>
-          <div className="grid grid-cols-3 gap-2.5">
-            <KpiTile
-              label="Open Issues"
-              value={openTickets}
-              tone={openTickets > 0 ? "gold" : "neutral"}
-              icon={<Wrench className="h-4 w-4" />}
-              href="/maintenance"
-            />
-            <KpiTile
-              label="At Gate"
-              value={atGate}
-              tone={atGate > 0 ? "gold" : "neutral"}
-              icon={<PackageCheck className="h-4 w-4" />}
-              href="/parcels"
-            />
-            <KpiTile
-              label="Alerts"
-              value={unread}
-              tone={unread > 0 ? "red" : "neutral"}
-              icon={<Bell className="h-4 w-4" />}
-              href="/notifications"
-            />
+          {/* Weather & Traffic → right rail, row 1. Side-by-side on mobile
+              (there's room), stacked in the narrower right-rail column on
+              desktop. */}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:col-start-3 lg:row-start-1">
+            <WeatherWidget />
+            <TrafficWidget />
           </div>
-        </section>
 
-        {/* ── Quick Actions ────────────────────────────────────── */}
-        <section>
-          <SectionTitle>Quick Actions</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
-            <ActionTile href="/maintenance" tone="amber" icon={<Wrench className="h-5 w-5" />}     label="Report Issue"   desc="Plumbing, electrical, roads…" />
-            <ActionTile href="/visitors"    tone="green" icon={<Users className="h-5 w-5" />}      label="Invite Visitor" desc="Generate a gate pass" />
-            <ActionTile href="/payments"    tone="gold"  icon={<CreditCard className="h-5 w-5" />} label="Pay Levy"       desc="Service charge via M-PESA" />
-            <ActionTile href="/emergency"   tone="red"   icon={<ShieldAlert className="h-5 w-5" />}label="Emergency"      desc="Raise an estate alert" />
-          </div>
-        </section>
-
-        {/* ── Estate Activity (unified feed) ───────────────────── */}
-        <section>
-          <SectionTitle
-            icon={<Megaphone className="h-4 w-4" />}
-            action={
-              <Link href="/announcements" className="text-xs text-brand-green font-semibold hover:underline">
-                View all →
-              </Link>
-            }
-          >
-            Estate Activity
-          </SectionTitle>
-
-          {loadingFeed || loadingAnn ? (
-            <div className="space-y-2">
-              {[0, 1].map((i) => (
-                <div key={i} className="tribal-card p-4 animate-pulse">
-                  <div className="h-3 bg-tribal-border rounded w-1/4 mb-2" />
-                  <div className="h-4 bg-tribal-border rounded w-3/4" />
-                </div>
-              ))}
+          {/* My Status (KPI tiles) → right rail, row 2 */}
+          <section className="lg:col-start-3 lg:row-start-2">
+            <SectionTitle icon={<Activity className="h-4 w-4" />}>My Status</SectionTitle>
+            <div className="grid grid-cols-3 gap-2.5">
+              <KpiTile
+                label="Open Issues"
+                value={openTickets}
+                tone={openTickets > 0 ? "gold" : "neutral"}
+                icon={<Wrench className="h-4 w-4" />}
+                href="/maintenance"
+              />
+              <KpiTile
+                label="At Gate"
+                value={atGate}
+                tone={atGate > 0 ? "gold" : "neutral"}
+                icon={<PackageCheck className="h-4 w-4" />}
+                href="/parcels"
+              />
+              <KpiTile
+                label="Alerts"
+                value={unread}
+                tone={unread > 0 ? "red" : "neutral"}
+                icon={<Bell className="h-4 w-4" />}
+                href="/notifications"
+              />
             </div>
-          ) : feedItems.length === 0 ? (
-            <div className="tribal-card p-6 text-center">
-              <Megaphone className="h-8 w-8 text-tribal-border mx-auto mb-2" />
-              <p className="text-tribal-earth text-sm font-medium">Nothing new right now.</p>
-              <p className="text-tribal-earth text-xs mt-1 opacity-70">Announcements, votes, and events will appear here.</p>
+          </section>
+
+          {/* Quick Actions → main column, row 1 */}
+          <section className="lg:col-start-1 lg:col-span-2 lg:row-start-1">
+            <SectionTitle>Quick Actions</SectionTitle>
+            <div className="grid grid-cols-2 gap-3">
+              <ActionTile href="/maintenance" tone="amber" icon={<Wrench className="h-5 w-5" />}     label="Report Issue"   desc="Plumbing, electrical, roads…" />
+              <ActionTile href="/visitors"    tone="green" icon={<Users className="h-5 w-5" />}      label="Invite Visitor" desc="Generate a gate pass" />
+              <ActionTile href="/payments"    tone="gold"  icon={<CreditCard className="h-5 w-5" />} label="Pay Levy"       desc="Service charge via M-PESA" />
+              <ActionTile href="/emergency"   tone="red"   icon={<ShieldAlert className="h-5 w-5" />}label="Emergency"      desc="Raise an estate alert" />
             </div>
-          ) : (
-            <div className="space-y-2">
-              {feedItems.map((item) => (
-                <Link key={item.key} href={item.href}>
-                  <div className="tribal-card px-4 py-3 flex items-center gap-3 hover:shadow-card-lg transition-shadow">
-                    <div className="shrink-0">{item.icon}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm text-tribal-charcoal truncate">{item.title}</p>
-                        <Badge variant={item.badgeVariant}>{item.badge}</Badge>
-                      </div>
-                      <p className="text-xs text-tribal-earth mt-0.5">{item.subtitle}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-tribal-muted shrink-0" />
+          </section>
+
+          {/* Estate Activity (unified feed) → main column, row 2 */}
+          <section className="lg:col-start-1 lg:col-span-2 lg:row-start-2 lg:row-span-2">
+            <SectionTitle
+              icon={<Megaphone className="h-4 w-4" />}
+              action={
+                <Link href="/announcements" className="text-xs text-brand-green font-semibold hover:underline">
+                  View all →
+                </Link>
+              }
+            >
+              Estate Activity
+            </SectionTitle>
+
+            {loadingFeed || loadingAnn ? (
+              <div className="space-y-2">
+                {[0, 1].map((i) => (
+                  <div key={i} className="tribal-card p-4 animate-pulse">
+                    <div className="h-3 bg-tribal-border rounded w-1/4 mb-2" />
+                    <div className="h-4 bg-tribal-border rounded w-3/4" />
                   </div>
+                ))}
+              </div>
+            ) : feedItems.length === 0 ? (
+              <div className="tribal-card p-6 text-center">
+                <Megaphone className="h-8 w-8 text-tribal-border mx-auto mb-2" />
+                <p className="text-tribal-earth text-sm font-medium">Nothing new right now.</p>
+                <p className="text-tribal-earth text-xs mt-1 opacity-70">Announcements, votes, and events will appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
+                {feedItems.map((item) => (
+                  <Link key={item.key} href={item.href}>
+                    <div className="tribal-card px-4 py-3 flex items-center gap-3 hover:shadow-card-lg transition-shadow">
+                      <div className="shrink-0">{item.icon}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-sm text-tribal-charcoal truncate">{item.title}</p>
+                          <Badge variant={item.badgeVariant}>{item.badge}</Badge>
+                        </div>
+                        <p className="text-xs text-tribal-earth mt-0.5">{item.subtitle}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-tribal-muted shrink-0" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* More Services → right rail, row 3 */}
+          <section className="lg:col-start-3 lg:row-start-3">
+            <SectionTitle>More Services</SectionTitle>
+            <div className="grid grid-cols-4 gap-2 lg:grid-cols-3">
+              {MORE_TILES.map((m) => (
+                <Link
+                  key={m.href}
+                  href={m.href}
+                  className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl border border-tribal-border-soft bg-white hover:border-brand-green/30 hover:shadow-card transition-all"
+                >
+                  <div className={`rounded-xl p-2 ${m.bg}`}>
+                    <m.Icon className={`h-5 w-5 ${m.fg}`} />
+                  </div>
+                  <span className="text-[10px] font-semibold text-tribal-charcoal text-center leading-tight">
+                    {m.label}
+                  </span>
                 </Link>
               ))}
             </div>
-          )}
-        </section>
-
-        {/* ── More Services ────────────────────────────────────── */}
-        <section>
-          <SectionTitle>More Services</SectionTitle>
-          <div className="grid grid-cols-4 gap-2">
-            {MORE_TILES.map((m) => (
-              <Link
-                key={m.href}
-                href={m.href}
-                className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl border border-tribal-border-soft bg-white hover:border-brand-green/30 hover:shadow-card transition-all"
-              >
-                <div className={`rounded-xl p-2 ${m.bg}`}>
-                  <m.Icon className={`h-5 w-5 ${m.fg}`} />
-                </div>
-                <span className="text-[10px] font-semibold text-tribal-charcoal text-center leading-tight">
-                  {m.label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
 
       <PageFooter />
