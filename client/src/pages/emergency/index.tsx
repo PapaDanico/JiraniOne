@@ -193,7 +193,7 @@ export default function EmergencyPage() {
   return (
     <div className="page-wrap">
       <TopBar title="Emergency" />
-      <main className="max-w-lg mx-auto px-4 pt-4 space-y-5 page-content">
+      <main className="container-list pt-4 space-y-5 page-content">
 
         {/* SOS button */}
         <button
@@ -241,7 +241,7 @@ export default function EmergencyPage() {
                 <p className="text-[#6B5D45] text-sm">No active emergency alerts.</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="card-grid">
                 {alerts.map((a) => (
                   <Card
                     key={a.id}

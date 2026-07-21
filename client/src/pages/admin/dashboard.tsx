@@ -219,8 +219,15 @@ export default function AdminDashboard() {
                 <>
                   <OnboardingChecklist />
 
+                  {/* On desktop this reflows into a 2/3 + 1/3 grid (primary
+                      numbers/charts on the left, ambient widgets in a right
+                      rail) via explicit lg: grid placement only — DOM order
+                      is untouched, so the mobile stacked layout below lg is
+                      byte-identical to before. */}
+                  <div className="lg:grid lg:grid-cols-3 lg:gap-x-6 lg:gap-y-6 lg:items-start space-y-6 lg:space-y-0">
+
                   {(openTickets.length > 0 || unverifiedProviders.length > 0 || unpaidResidents.length > 0 || newLeads.length > 0) && (
-                    <section>
+                    <section className="lg:col-start-1 lg:col-span-2 lg:row-start-1">
                       <SectionTitle icon={<ClipboardList className="h-4 w-4" />}>
                         Needs Your Attention
                       </SectionTitle>
@@ -293,12 +300,12 @@ export default function AdminDashboard() {
                     </section>
                   )}
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:col-start-3 lg:row-start-1">
                     <WeatherWidget />
                     <TrafficWidget />
                   </div>
 
-                  <section>
+                  <section className="lg:col-start-1 lg:col-span-2 lg:row-start-2">
                     <SectionTitle icon={<Activity className="h-4 w-4" />}>
                       Estate at a glance
                     </SectionTitle>
@@ -335,7 +342,7 @@ export default function AdminDashboard() {
                   </section>
 
                   {monthlyData.length > 0 && (
-                    <section>
+                    <section className="lg:col-start-1 lg:col-span-2 lg:row-start-3">
                       <SectionTitle icon={<TrendingUp className="h-4 w-4" />}>
                         Monthly Collections (KES)
                       </SectionTitle>
@@ -346,7 +353,7 @@ export default function AdminDashboard() {
                   )}
 
                   {analytics.payments.levyStatus.totalResidents > 0 && (
-                    <section>
+                    <section className="lg:col-start-1 lg:col-span-2 lg:row-start-4">
                       <SectionTitle icon={<CreditCard className="h-4 w-4" />}>
                         Levy Collection This Month
                       </SectionTitle>
@@ -395,7 +402,7 @@ export default function AdminDashboard() {
                     </section>
                   )}
 
-                  <section>
+                  <section className="lg:col-start-1 lg:col-span-2 lg:row-start-5">
                     <SectionTitle icon={<Wrench className="h-4 w-4" />}>
                       Maintenance
                     </SectionTitle>
@@ -428,11 +435,11 @@ export default function AdminDashboard() {
                     </div>
                   </section>
 
-                  <section>
+                  <section className="lg:col-start-3 lg:row-start-2">
                     <SectionTitle icon={<Users className="h-4 w-4" />}>
                       Visitors & Emergency
                     </SectionTitle>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
                       <KpiTile
                         label="Visitors / month"
                         value={analytics.visitors.thisMonth}
@@ -448,6 +455,7 @@ export default function AdminDashboard() {
                       />
                     </div>
                   </section>
+                  </div>
                 </>
               )
             )}

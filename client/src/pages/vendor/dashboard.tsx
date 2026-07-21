@@ -115,7 +115,7 @@ export default function VendorDashboard() {
               </Link>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="card-grid">
               {myListings.map((p) => (
                 <Card key={p.id}>
                   <CardContent className="py-3">
@@ -169,7 +169,7 @@ export default function VendorDashboard() {
                 <p className="text-tribal-earth text-sm font-medium">No reviews yet.</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="card-grid">
                 {recentReviews.map((r) => (
                   <Card key={r.id}>
                     <CardContent className="py-3">

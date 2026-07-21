@@ -13,7 +13,7 @@ export default function VisitorsPage() {
   return (
     <div className="page-wrap">
       <TopBar title="Visitors" />
-      <main className="max-w-lg mx-auto px-4 pt-4 page-content">
+      <main className="container-list pt-4 page-content">
         {user?.role === "resident" && <VisitorList />}
 
         {isSecurityOrAdmin && (

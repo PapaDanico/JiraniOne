@@ -86,7 +86,7 @@ export function VisitorList() {
           {active.length > 0 && (
             <div>
               <p className="section-label mb-2">Expected / Inside ({active.length})</p>
-              <div className="space-y-2">
+              <div className="card-grid">
                 {active.map((v) => <VisitorCard key={v.id} v={v} onShowQr={setQrVisitor} onCancel={(id) => setConfirmCancelId(id)} cancelling={cancelMutation.isPending} />)}
               </div>
             </div>
@@ -94,7 +94,7 @@ export function VisitorList() {
           {past.length > 0 && (
             <div>
               <p className="section-label mb-2">History ({past.length})</p>
-              <div className="space-y-2">
+              <div className="card-grid">
                 {past.map((v) => <VisitorCard key={v.id} v={v} onShowQr={setQrVisitor} onCancel={(id) => setConfirmCancelId(id)} cancelling={cancelMutation.isPending} />)}
               </div>
             </div>

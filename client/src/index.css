@@ -152,11 +152,29 @@
   }
   .page-wrap[data-bottomnav="true"] { padding-bottom: 5rem; }
 
+  /* Dashboard-style pages (hero + widget grid). Mobile stays a single
+   * column exactly as before; from md up it widens in steps so a
+   * 1440px+ desktop isn't stuck rendering a 672px column with huge
+   * empty gutters on both sides. */
   .container-app {
-    @apply max-w-2xl mx-auto px-4;
+    @apply max-w-2xl mx-auto px-4 md:max-w-4xl lg:max-w-6xl lg:px-6;
   }
   .container-wide {
     @apply max-w-6xl mx-auto px-4;
+  }
+  /* List/detail pages (tickets, payments, marketplace, etc). Same idea as
+   * .container-app but one step narrower at each breakpoint, since these
+   * pages are mostly single-column card feeds rather than a multi-widget
+   * dashboard. */
+  .container-list {
+    @apply max-w-lg mx-auto px-4 md:max-w-3xl lg:max-w-5xl lg:px-6;
+  }
+  /* Repeating card feeds (ticket list, payment history, marketplace
+   * listings, ...). Reflows from one column on mobile to a proper grid on
+   * wider screens instead of one narrow stack stretched inside a wide
+   * container. Use in place of a plain space-y-* wrapper. */
+  .card-grid {
+    @apply grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3;
   }
 
   /* Section title — bottom-border on green (KASH .stitle). */

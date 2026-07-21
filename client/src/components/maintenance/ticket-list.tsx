@@ -200,7 +200,7 @@ export function TicketList() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="card-grid">
           {tickets.map((t) => (
             <TicketCard key={t.id} ticket={t} />
           ))}

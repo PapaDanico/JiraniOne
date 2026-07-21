@@ -104,7 +104,7 @@ export default function HarambeePage() {
   return (
     <div className="page-wrap">
       <TopBar title="Harambee" />
-      <main className="max-w-lg mx-auto px-4 pt-5 pb-6 space-y-5 page-content">
+      <main className="container-list pt-5 pb-6 space-y-5 page-content">
 
         {/* Admin: Create Campaign */}
         {isAdmin && (
@@ -167,6 +167,7 @@ export default function HarambeePage() {
         )}
 
         {/* Campaign cards */}
+        <div className="card-grid">
         {campaigns?.map((c) => {
           const pct = Math.min(100, (Number(c.currentAmount) / Number(c.goalAmount)) * 100);
           const deadlinePast = c.deadline ? isPast(c.deadline) : false;
@@ -242,6 +243,7 @@ export default function HarambeePage() {
             </div>
           );
         })}
+        </div>
       </main>
       <BottomNav />
       <ConfirmDialog

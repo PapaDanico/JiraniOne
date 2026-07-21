@@ -210,7 +210,7 @@ export default function BookingsPage() {
   return (
     <div className="page-wrap">
       <TopBar title="Facilities" />
-      <main className="max-w-lg mx-auto px-4 pt-4 page-content">
+      <main className="container-list pt-4 page-content">
         {bookingActionError && (
           <p className="text-xs text-[#B71C1C] font-medium mb-3">{bookingActionError}</p>
         )}
@@ -237,7 +237,7 @@ export default function BookingsPage() {
                 <p className="text-[#6B5D45] text-sm">No facilities yet.</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="card-grid">
                 {facilities.map((f) => (
                   <Card key={f.id}>
                     <CardContent className="py-3 flex items-center justify-between gap-3">
@@ -265,7 +265,7 @@ export default function BookingsPage() {
                 <p className="text-[#6B5D45] text-sm">Book a facility from the tab above to see it here.</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="card-grid">
                 {bookings.map((b) => (
                   <Card key={b.id}>
                     <CardContent className="py-3">
@@ -313,7 +313,7 @@ export default function BookingsPage() {
                   <p className="text-[#6B5D45] text-sm">No bookings.</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="card-grid">
                   {bookings.map((b) => (
                     <Card key={b.id}>
                       <CardContent className="py-3">

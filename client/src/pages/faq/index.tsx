@@ -74,7 +74,11 @@ export default function FaqPage() {
 
   return (
     <div className="page-wrap min-h-screen" data-bottomnav={user ? "true" : undefined}>
-      <main className="max-w-lg mx-auto px-4 py-8 page-content">
+      {/* Deliberately narrower than .container-list — this is a single
+          prose column (accordions, not cards), and comfortable reading
+          line-length tops out well before the 5xl width the card-feed
+          pages use. */}
+      <main className="max-w-lg mx-auto px-4 md:max-w-2xl py-8 page-content">
         <Link href={user ? `/dashboard/${user.role}` : "/"} className="text-sm text-[#1B5E20] font-semibold">
           ← Back
         </Link>

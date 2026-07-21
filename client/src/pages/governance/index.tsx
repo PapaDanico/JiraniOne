@@ -192,7 +192,7 @@ export default function GovernancePage() {
   return (
     <div className="page-wrap">
       <TopBar title="Governance" />
-      <main className="max-w-lg mx-auto px-4 pt-4 page-content">
+      <main className="container-list pt-4 page-content">
         <div className="flex items-center justify-between mb-4">
           <p className="section-label">Estate Polls</p>
           {user?.role === "admin" && (
@@ -213,7 +213,7 @@ export default function GovernancePage() {
             <p className="text-[#6B5D45] text-sm">Estate polls will appear here</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="card-grid">
             {polls.map((p) => <PollCard key={p.id} poll={p} />)}
           </div>
         )}

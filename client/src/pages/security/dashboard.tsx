@@ -163,7 +163,7 @@ export default function SecurityDashboard() {
               <p className="text-tribal-earth text-sm font-medium">No gate activity yet today.</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="card-grid">
               {recentActivity.map((v) => {
                 const checkedOut = !!v.checkedOutAt;
                 return (
