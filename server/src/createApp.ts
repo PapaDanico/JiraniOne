@@ -35,7 +35,9 @@ import { carpoolRouter } from "./routes/carpool.js";
 import { chamaRouter } from "./routes/chama.js";
 import { analyticsRouter } from "./routes/analytics.js";
 import { uploadsRouter } from "./routes/uploads.js";
+import { systemAdminRouter } from "./routes/systemAdmin.js";
 import { logger, captureException } from "./lib/logger.js";
+import { logErrorToDb } from "./lib/errorLog.js";
 import { getClientIp } from "./lib/httpUtils.js";
 import { isProduction } from "./lib/env.js";
 
@@ -343,6 +345,7 @@ export function createApp(): express.Express {
   app.use("/api/analytics", analyticsRouter);
   app.use("/api/documents", documentsRouter);
   app.use("/api/leads", leadsRouter);
+  app.use("/api/system", systemAdminRouter);
 
   // ─── Health check ────────────────────────────────────────────────────────────
   // Returning OK without a DB ping means a DB outage looks healthy. Run a
@@ -372,6 +375,14 @@ export function createApp(): express.Express {
   app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     logger.error({ err, path: req.path, method: req.method }, "unhandled error");
     captureException(err, { path: req.path, method: req.method });
+    // Fire-and-forget — logErrorToDb never throws/rejects (it swallows its
+    // own failures), and the client response must not wait on this write.
+    void logErrorToDb(err, {
+      path: req.path,
+      method: req.method,
+      userId: res.locals.user?.id,
+      estateId: res.locals.user?.estateId,
+    });
     if (!res.headersSent) {
       res.status(500).json({ error: "Internal server error" });
     }

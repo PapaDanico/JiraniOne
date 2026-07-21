@@ -7,6 +7,7 @@ import {
   smsQuotas,
   smsGlobalQuota,
   auditLogs,
+  errorLogs,
   events,
   eventRsvps,
   users,
@@ -126,6 +127,17 @@ export async function runDailyCleanup() {
         lt(
           auditLogs.createdAt,
           new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000),
+        ),
+      );
+
+    // Error log retention (30 days) — this is a quick-triage view, not a
+    // long-term audit trail, so it doesn't need audit_logs' 2-year window.
+    await db
+      .delete(errorLogs)
+      .where(
+        lt(
+          errorLogs.createdAt,
+          new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
         ),
       );
   } catch (err) {

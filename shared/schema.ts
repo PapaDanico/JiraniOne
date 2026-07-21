@@ -222,6 +222,29 @@ export const passwordResetTokens = pgTable(
 );
 
 // Audit trail for admin/security-sensitive actions
+// Server-side unhandled-error log — the createApp.ts last-resort error
+// handler writes here so there's SOME production error visibility without
+// a third-party APM (Sentry is wired in code but was never actually given
+// a DSN). Platform-owner-only (see requirePlatformOwner.ts), not a
+// per-estate admin feature — a stack trace can reference internals no
+// estate admin should see, and errors aren't scoped to one estate anyway.
+export const errorLogs = pgTable(
+  "error_logs",
+  {
+    id: text("id").primaryKey(),
+    message: text("message").notNull(),
+    stack: text("stack"),
+    path: varchar("path", { length: 300 }),
+    method: varchar("method", { length: 10 }),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+    estateId: text("estate_id").references(() => estates.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    createdAtIdx: index("error_logs_created_at_idx").on(t.createdAt),
+  }),
+);
+
 export const auditLogs = pgTable(
   "audit_logs",
   {
