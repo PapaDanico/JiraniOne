@@ -15,7 +15,7 @@ import { sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { smsQuotas, smsGlobalQuota } from "@shared/schema.js";
 import { isProduction } from "./env.js";
-import { SMS_SENDER_ID } from "@shared/brand.js";
+import { SMS_REGISTERED_SENDER } from "@shared/brand.js";
 
 interface SmsOptions {
   to: string;
@@ -129,7 +129,7 @@ export async function sendSmsRaw({ to, message }: SmsOptions): Promise<boolean> 
       username,
       to,
       message,
-      from: SMS_SENDER_ID,
+      from: SMS_REGISTERED_SENDER,
     });
     const res = await fetch(
       "https://api.africastalking.com/version1/messaging",
@@ -179,7 +179,8 @@ export async function sendThrottledSms({
         error: err instanceof Error ? err.message : String(err),
       }),
     );
-    return { ok: await sendSmsRaw({ to, message }), reason: "send_failed" };
+    const sent = await sendSmsRaw({ to, message });
+    return sent ? { ok: true } : { ok: false, reason: "send_failed" };
   }
 
   if (globalCount > GLOBAL_CAP()) {
@@ -207,7 +208,8 @@ export async function sendThrottledSms({
           error: err instanceof Error ? err.message : String(err),
         }),
       );
-      return { ok: await sendSmsRaw({ to, message }), reason: "send_failed" };
+      const sent = await sendSmsRaw({ to, message });
+      return sent ? { ok: true } : { ok: false, reason: "send_failed" };
     }
     if (userCount > PER_USER_CAP()) {
       await decrementUserQuota(userId);

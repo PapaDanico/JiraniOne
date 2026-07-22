@@ -49,7 +49,15 @@ export const PRODUCTION_ORIGINS = [
   "https://jiranihub.netlify.app",
 ] as const;
 
-// SMS sender name prefix used in message bodies (distinct from the
-// carrier-registered alphanumeric sender ID, though they should match —
-// register "JiraniOne" with Africa's Talking when updating the account).
+// Brand prefix used inside SMS message bodies — safe to rebrand freely,
+// it's just text.
 export const SMS_SENDER_ID = "JiraniOne";
+
+// The alphanumeric sender ID passed to Africa's Talking's `from` field.
+// This MUST stay the carrier-registered value: AT rejects unregistered
+// sender IDs per-recipient while still returning HTTP 201, so sending
+// with an unregistered name silently drops every SMS (OTPs, visitor
+// passes, emergency alerts) with no error anywhere. Flip to "JiraniOne"
+// ONLY after the new name is registered and approved in the Africa's
+// Talking dashboard.
+export const SMS_REGISTERED_SENDER = "JiraniHub";

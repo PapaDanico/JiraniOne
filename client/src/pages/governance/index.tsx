@@ -190,7 +190,7 @@ export default function GovernancePage() {
   });
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Governance" />
       <main className="container-list pt-4 page-content">
         <div className="flex items-center justify-between mb-4">

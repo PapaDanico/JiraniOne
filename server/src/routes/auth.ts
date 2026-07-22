@@ -406,12 +406,13 @@ authRouter.get("/setup/:token", async (req, res) => {
   }
 
   const [user] = await db
-    .select({ phone: users.phone, name: users.name })
+    .select({ phone: users.phone, name: users.name, deletedAt: users.deletedAt })
     .from(users)
     .where(eq(users.id, record.userId))
     .limit(1);
 
-  if (!user) {
+  // Deactivated account = revoked invite; the link must read as dead.
+  if (!user || user.deletedAt) {
     res.status(404).json({ error: "Invalid or expired setup link" });
     return;
   }
@@ -430,25 +431,41 @@ authRouter.post("/setup", async (req, res) => {
 
   const tokenHash = createHash("sha256").update(token).digest("hex");
 
-  const [record] = await db
-    .select()
-    .from(userSetupTokens)
-    .where(eq(userSetupTokens.tokenHash, tokenHash))
-    .limit(1);
+  // Atomic claim: consume the token in the same statement that checks it's
+  // unconsumed and unexpired. The previous select-then-unconditional-update
+  // let two concurrent POSTs with the same token both pass the check before
+  // either write landed — both got sessions and the one-time token was
+  // effectively replayed. Now the second request's UPDATE matches 0 rows.
+  const claimed = await db
+    .update(userSetupTokens)
+    .set({ consumedAt: new Date() })
+    .where(and(
+      eq(userSetupTokens.tokenHash, tokenHash),
+      isNull(userSetupTokens.consumedAt),
+      gt(userSetupTokens.expiresAt, new Date()),
+    ))
+    .returning();
+  const record = claimed[0];
 
-  if (!record || record.consumedAt || record.expiresAt < new Date()) {
+  if (!record) {
+    res.status(404).json({ error: "Invalid or expired setup link" });
+    return;
+  }
+
+  // A deactivated account must not be claimable — deactivation is how an
+  // admin revokes a mistaken invite. Token is already consumed above, so
+  // the link is dead either way.
+  const [targetUser] = await db
+    .select({ deletedAt: users.deletedAt })
+    .from(users)
+    .where(eq(users.id, record.userId))
+    .limit(1);
+  if (!targetUser || targetUser.deletedAt) {
     res.status(404).json({ error: "Invalid or expired setup link" });
     return;
   }
 
   const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
-
-  // Mark token consumed BEFORE setting the password to prevent replay if the
-  // DB write succeeds but the response is retried.
-  await db
-    .update(userSetupTokens)
-    .set({ consumedAt: new Date() })
-    .where(eq(userSetupTokens.tokenHash, tokenHash));
 
   await db
     .update(users)

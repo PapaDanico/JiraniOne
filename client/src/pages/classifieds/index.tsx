@@ -304,7 +304,7 @@ export default function ClassifiedsPage() {
     : (data ?? []).filter((c) => c.category === activeFilter);
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Noticeboard" />
 
       <main className="container-list pt-5 pb-6 page-content">

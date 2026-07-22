@@ -245,7 +245,7 @@ export default function MarketplacePage() {
   }, {});
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Marketplace" />
       <main className="container-list pt-4 space-y-4 page-content">
         {verifyError && (

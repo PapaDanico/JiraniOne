@@ -129,7 +129,7 @@ export default function PaymentsPage() {
   });
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Payments" />
       <main className="container-list pt-4 space-y-6 page-content">
 

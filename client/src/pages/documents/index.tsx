@@ -127,7 +127,7 @@ export default function DocumentsPage() {
   });
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Documents" />
       <main className="container-list pt-5 pb-6 space-y-4 page-content">
         <div className="flex items-center justify-between">

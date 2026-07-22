@@ -44,6 +44,19 @@ export async function saveFile(
   await fs.writeFile(metaPath(filePath), contentType, "utf-8");
 }
 
+export async function deleteFile(key: string): Promise<void> {
+  if (useBlobs) {
+    const { getStore } = await import("@netlify/blobs");
+    const store = getStore("uploads");
+    await store.delete(key);
+    return;
+  }
+
+  const filePath = path.join(uploadsDir, key);
+  await fs.unlink(filePath).catch(() => {});
+  await fs.unlink(metaPath(filePath)).catch(() => {});
+}
+
 export async function readFile(
   key: string,
 ): Promise<{ buffer: Buffer; contentType: string } | null> {

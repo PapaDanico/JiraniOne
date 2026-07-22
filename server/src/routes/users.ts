@@ -225,6 +225,17 @@ usersRouter.delete("/:id", requireRole("admin"), async (req, res) => {
 
   await lucia.invalidateUserSessions(existing.id);
 
+  // Revoke any outstanding setup links too — deactivation is how an admin
+  // cancels a mistaken invite, and an unconsumed token would otherwise let
+  // the invitee set a password on the (later reactivated) account.
+  await db
+    .update(userSetupTokens)
+    .set({ consumedAt: new Date() })
+    .where(and(
+      eq(userSetupTokens.userId, existing.id),
+      isNull(userSetupTokens.consumedAt),
+    ));
+
   await writeAudit(req, {
     action: "user.deactivate",
     targetType: "user",

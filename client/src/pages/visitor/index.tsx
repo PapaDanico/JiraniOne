@@ -11,7 +11,7 @@ export default function VisitorsPage() {
   const isSecurityOrAdmin = user?.role === "security" || user?.role === "admin";
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Visitors" />
       <main className="container-list pt-4 page-content">
         {user?.role === "resident" && <VisitorList />}
