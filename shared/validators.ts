@@ -356,3 +356,20 @@ export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
 export type EmergencyAlertInput = z.infer<typeof emergencyAlertSchema>;
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
+
+// ─── Estates (self-serve creation + admin settings) ───────────────────────────
+
+export const createEstateSchema = z.object({
+  name: z.string().min(3, "Estate name must be at least 3 characters").max(150),
+  location: z.string().min(2).max(200),
+  totalUnits: z.number().int().min(1).max(10000).optional(),
+});
+
+export const updateEstateSchema = z.object({
+  name: z.string().min(3).max(150).optional(),
+  location: z.string().min(2).max(200).optional(),
+  totalUnits: z.number().int().min(1).max(10000).nullable().optional(),
+  securityPhone: kenyanPhone.nullable().optional(),
+  lat: z.number().min(-5).max(5).nullable().optional(),
+  lng: z.number().min(33).max(42).nullable().optional(),
+});

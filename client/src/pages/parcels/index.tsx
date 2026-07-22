@@ -465,7 +465,7 @@ export default function ParcelsPage() {
   const isStaff = user?.role === "admin" || user?.role === "security";
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Parcels" />
 
       <main className="container-list pt-5 pb-6 page-content">

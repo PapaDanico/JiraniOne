@@ -80,6 +80,7 @@ const MORE_LINKS: Array<{ href: string; label: string; roles: UserRole[] }> = [
   { href: "/emergency",     label: "Emergency",     roles: ["resident", "admin", "security"] },
   { href: "/notifications", label: "Notifications", roles: ["resident", "admin", "security", "vendor"] },
   { href: "/admin/users",   label: "Residents",     roles: ["admin"] },
+  { href: "/admin/settings",label: "Estate Settings", roles: ["admin"] },
   { href: "/documents",     label: "Documents",     roles: ["resident", "admin", "security", "vendor"] },
   { href: "/faq",           label: "Help & FAQ",    roles: ["resident", "admin", "security", "vendor"] },
 ];

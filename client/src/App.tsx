@@ -42,6 +42,7 @@ const NotificationsPage  = lazy(() => import("@/pages/notifications/index"));
 const AdminUsersPage     = lazy(() => import("@/pages/admin/users"));
 const AdminLeadsPage     = lazy(() => import("@/pages/admin/leads"));
 const ErrorLogsPage      = lazy(() => import("@/pages/admin/error-logs"));
+const AdminSettingsPage  = lazy(() => import("@/pages/admin/settings"));
 const ParcelsPage        = lazy(() => import("@/pages/parcels/index"));
 const ClassifiedsPage    = lazy(() => import("@/pages/classifieds/index"));
 const HarambeePage       = lazy(() => import("@/pages/harambee/index"));
@@ -118,6 +119,9 @@ function AppRoutes() {
         </Route>
         <Route path="/admin/leads">
           <RoleGate roles={["admin"]}><AdminLeadsPage /></RoleGate>
+        </Route>
+        <Route path="/admin/settings">
+          <RoleGate roles={["admin"]}><AdminSettingsPage /></RoleGate>
         </Route>
         {/* Platform-owner-only (server enforces via requirePlatformOwner) —
             no nav entry, reached by direct URL. RoleGate here is just the

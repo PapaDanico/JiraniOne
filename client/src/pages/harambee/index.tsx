@@ -102,7 +102,7 @@ export default function HarambeePage() {
   const btnGhost = "border border-[#C4B89A] text-[#6B5D45] text-sm px-3 py-1.5 rounded-lg hover:bg-[#EDE8DC] transition-colors";
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Harambee" />
       <main className="container-list pt-5 pb-6 space-y-5 page-content">
 

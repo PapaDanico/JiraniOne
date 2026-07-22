@@ -189,9 +189,12 @@ export default function EmergencyPage() {
       api.patch(`/api/emergency/${id}`, { status: "resolved" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["emergency"] }),
   });
+  // Which alert is being resolved — resolve.isPending alone put EVERY
+  // card's button into a loading state when any one was clicked.
+  const resolvingId = resolve.isPending ? resolve.variables : null;
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Emergency" />
       <main className="container-list pt-4 space-y-5 page-content">
 
@@ -270,7 +273,7 @@ export default function EmergencyPage() {
                             size="sm"
                             variant="secondary"
                             onClick={() => resolve.mutate(a.id)}
-                            loading={resolve.isPending}
+                            loading={resolvingId === a.id}
                             className="text-xs shrink-0"
                           >
                             Mark Resolved

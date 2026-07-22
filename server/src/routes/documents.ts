@@ -9,7 +9,8 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
 import { processUploadedDocument } from "../lib/documentUpload.js";
-import { readFile } from "../lib/blobStorage.js";
+import { readFile, deleteFile } from "../lib/blobStorage.js";
+import { logger } from "../lib/logger.js";
 import { writeAudit } from "../lib/audit.js";
 import { MAX_DOCUMENT_BYTES } from "@shared/constants.js";
 
@@ -111,7 +112,15 @@ documentsRouter.get("/:id/file", async (req, res) => {
 
   res.setHeader("Content-Type", file.contentType);
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Content-Disposition", `inline; filename="${doc.title.replace(/["\r\n]/g, "")}"`);
+  // filename= must be ASCII-only or Node throws "Invalid character in
+  // header content" and the download 500s (real case: a Word-pasted
+  // en-dash or emoji in the title). ASCII fallback + RFC 5987 filename*
+  // carries the true title for modern browsers.
+  const asciiName = doc.title.replace(/["\r\n]/g, "").replace(/[^\x20-\x7E]/g, "_") || "document";
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(doc.title)}`,
+  );
   res.send(file.buffer);
 });
 
@@ -130,6 +139,16 @@ documentsRouter.delete("/:id", requireRole("admin"), async (req, res) => {
   }
 
   await db.delete(documents).where(eq(documents.id, doc.id));
+
+  // Remove the payload too — without this every deleted document orphans
+  // its blob forever (unbounded storage growth, and "deleted" PII that
+  // was never actually destroyed). Best-effort: the DB row is already
+  // gone, so a failed blob delete just leaves an unreachable orphan.
+  try {
+    await deleteFile(doc.fileUrl);
+  } catch (err) {
+    logger.warn({ err, documentId: doc.id }, "document blob delete failed (orphaned)");
+  }
 
   void writeAudit(req, {
     action: "document.deleted",

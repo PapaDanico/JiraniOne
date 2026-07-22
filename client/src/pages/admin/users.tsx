@@ -209,7 +209,7 @@ export default function AdminUsersPage() {
   }, {});
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Users" />
       <main className="container-list pt-4 space-y-4 page-content">
         <div className="flex gap-2">

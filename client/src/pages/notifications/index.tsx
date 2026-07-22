@@ -60,7 +60,7 @@ export default function NotificationsPage() {
   const unreadCount = notifications?.filter((n) => !n.read).length ?? 0;
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Notifications" />
       <main className="container-list pt-4 space-y-4 page-content">
         {smsQuota && (

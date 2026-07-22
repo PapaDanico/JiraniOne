@@ -7,7 +7,7 @@ export default function MaintenancePage() {
   const { user } = useAuth();
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Maintenance" />
       <main className="container-list pt-4 page-content">
         {user?.role === "admin" ? <AdminTickets /> : <TicketList />}

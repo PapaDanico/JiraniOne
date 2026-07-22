@@ -266,3 +266,98 @@ analyticsRouter.get("/", async (_req, res) => {
     },
   });
 });
+
+// ─── CSV exports (AGM reports / accountant handoff) ──────────────────────────
+
+// Excel-safe CSV cell: quote everything, double internal quotes, and
+// neutralize formula-injection prefixes (=,+,-,@) — a resident named
+// "=HYPERLINK(...)" must not execute when the admin opens the export.
+function csvCell(v: unknown): string {
+  let s = v == null ? "" : String(v);
+  if (/^[=+\-@]/.test(s)) s = `'${s}`;
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
+function sendCsv(res: import("express").Response, filename: string, header: string[], rows: unknown[][]) {
+  const body = [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  // BOM so Excel opens UTF-8 names (e.g. accented) correctly.
+  res.send("﻿" + body);
+}
+
+// All levy payments for the estate, newest first.
+analyticsRouter.get("/export/levy", async (_req, res) => {
+  const user = res.locals.user!;
+  if (!user.estateId) { res.status(400).json({ error: "No estate assigned" }); return; }
+
+  const rows = await db
+    .select({
+      createdAt: payments.createdAt,
+      name: users.name,
+      unitNumber: users.unitNumber,
+      phone: users.phone,
+      amount: payments.amount,
+      status: payments.status,
+      mpesaRef: payments.mpesaRef,
+    })
+    .from(payments)
+    .innerJoin(users, eq(payments.userId, users.id))
+    .where(and(eq(payments.estateId, user.estateId), eq(payments.type, "levy")));
+
+  rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  sendCsv(res, "levy-payments.csv",
+    ["Date", "Resident", "Unit", "Phone", "Amount (KES)", "Status", "M-PESA Ref"],
+    rows.map((r) => [
+      r.createdAt.toISOString().slice(0, 10), r.name, r.unitNumber ?? "",
+      r.phone, r.amount, r.status, r.mpesaRef ?? "",
+    ]));
+});
+
+// Active resident register.
+analyticsRouter.get("/export/residents", async (_req, res) => {
+  const user = res.locals.user!;
+  if (!user.estateId) { res.status(400).json({ error: "No estate assigned" }); return; }
+
+  const rows = await db
+    .select({ name: users.name, unitNumber: users.unitNumber, phone: users.phone, role: users.role, createdAt: users.createdAt })
+    .from(users)
+    .where(and(eq(users.estateId, user.estateId), isNull(users.deletedAt)));
+
+  rows.sort((a, b) => (a.unitNumber ?? "").localeCompare(b.unitNumber ?? ""));
+  sendCsv(res, "residents.csv",
+    ["Name", "Unit", "Phone", "Role", "Joined"],
+    rows.map((r) => [r.name, r.unitNumber ?? "", r.phone, r.role, r.createdAt.toISOString().slice(0, 10)]));
+});
+
+// ─── Reconciliation status (admin card) ───────────────────────────────────────
+// Surfaces "is the M-PESA reconciliation keeping up" — a payment pending
+// for more than an hour means Daraja never confirmed AND the 5-minute
+// reconciliation cron hasn't settled it, which either means Safaricom is
+// slow or the cron is silently broken. Without this, that failure mode is
+// invisible until a resident complains.
+analyticsRouter.get("/reconciliation-status", async (_req, res) => {
+  const user = res.locals.user!;
+  if (!user.estateId) { res.status(400).json({ error: "No estate assigned" }); return; }
+
+  const stale = new Date(Date.now() - 60 * 60 * 1000);
+  const stuck = await db
+    .select({ id: payments.id, createdAt: payments.createdAt })
+    .from(payments)
+    .where(and(
+      eq(payments.estateId, user.estateId),
+      eq(payments.status, "pending"),
+    ));
+
+  const stuckOverHour = stuck.filter((p) => p.createdAt < stale);
+  const oldest = stuckOverHour.reduce<Date | null>(
+    (acc, p) => (acc == null || p.createdAt < acc ? p.createdAt : acc), null);
+
+  res.json({
+    data: {
+      pendingCount: stuck.length,
+      stuckCount: stuckOverHour.length,
+      oldestStuckAt: oldest?.toISOString() ?? null,
+    },
+  });
+});

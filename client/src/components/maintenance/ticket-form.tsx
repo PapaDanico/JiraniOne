@@ -106,12 +106,18 @@ export function TicketForm({ open, onClose }: Props) {
   });
 
   const mutation = useMutation({
-    mutationFn: (data: CreateTicketInput) => {
+    mutationFn: (data: CreateTicketInput & { clientDraftId: string }) => {
       const formData = new FormData();
       formData.append("title", data.title);
       formData.append("description", data.description);
       formData.append("category", data.category);
       formData.append("priority", data.priority);
+      // Sent on the FIRST attempt, not just offline retries — the dedup
+      // case this exists for is precisely "online submit timed out but the
+      // server actually processed it", and the later offline flush can
+      // only be recognized as a retry if the server saw this same id the
+      // first time.
+      formData.append("clientDraftId", data.clientDraftId);
       if (photos) Array.from(photos).forEach((f) => formData.append("photos", f));
       return api.upload("/api/maintenance", formData);
     },
@@ -134,7 +140,12 @@ export function TicketForm({ open, onClose }: Props) {
       }
       try {
         await saveDraft(MAINTENANCE_DRAFTS_STORE, {
-          id: crypto.randomUUID(),
+          // Reuse the SAME id the failed online attempt sent — if that
+          // request actually landed server-side (timeout after processing),
+          // the flush retry with this id is recognized as a duplicate
+          // instead of creating a second ticket. A fresh UUID here defeated
+          // the whole dedup mechanism.
+          id: data.clientDraftId,
           title: data.title,
           description: data.description,
           category: data.category,
@@ -143,6 +154,7 @@ export function TicketForm({ open, onClose }: Props) {
           createdAt: Date.now(),
         });
         setSavedOffline(true);
+        window.dispatchEvent(new Event("offline-drafts-changed"));
         reset();
         setPhotos(null); setPhotoLimitWarning(false); setPhotoSizeWarning(false);
       } catch {
@@ -154,7 +166,7 @@ export function TicketForm({ open, onClose }: Props) {
   const onSubmit = (data: CreateTicketInput) => {
     setServerError(null);
     setSavedOffline(false);
-    mutation.mutate(data);
+    mutation.mutate({ ...data, clientDraftId: crypto.randomUUID() });
   };
 
   const category = watch("category");

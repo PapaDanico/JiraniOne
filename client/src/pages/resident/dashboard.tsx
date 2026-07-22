@@ -15,6 +15,7 @@ import { KpiTile } from "@/components/shared/kpi-tile";
 import { Badge } from "@/components/ui/badge";
 import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
 import { LevyStatusWidget } from "@/components/shared/levy-status";
+import { CreateEstateCard } from "@/components/shared/create-estate-card";
 import { api } from "@/lib/api";
 import { formatRelative, formatDate } from "@/lib/utils";
 import type { Announcement, Event, MaintenanceTicket, Notification, Parcel, Poll } from "@shared/types";
@@ -201,6 +202,9 @@ export default function ResidentDashboard() {
           </div>
           <div className="mt-4 flag-bar w-24 relative z-10" />
         </div>
+
+        {/* ── No-estate onboarding: join (nav prompt) or create ── */}
+        {user && !user.estateId && <CreateEstateCard />}
 
         {/* ── Levy status ──────────────────────────────────────── */}
         <LevyStatusWidget />

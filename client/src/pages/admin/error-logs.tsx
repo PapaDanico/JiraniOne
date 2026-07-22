@@ -33,7 +33,7 @@ export default function ErrorLogsPage() {
   });
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Error Logs" />
       <main className="container-list pt-5 pb-6 page-content">
         <p className="text-sm text-tribal-earth mb-4">

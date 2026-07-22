@@ -45,12 +45,20 @@ export function useOfflineSync() {
           await api.upload("/api/maintenance", formData);
           await deleteDraft(MAINTENANCE_DRAFTS_STORE, draft.id);
         } catch (err) {
-          // ApiError means the server was reached and definitively rejected
-          // the draft (e.g. stale validation) — retrying it forever would
-          // just leave a dead entry cluttering the pending-sync count, so
-          // drop it. Anything else means the request never landed (still
-          // offline/flaky connection) — leave the draft to retry next time.
-          if (err instanceof ApiError) {
+          // Only drop the draft on a DEFINITIVE rejection — a 4xx that
+          // means the server understood and refused it (validation, too
+          // large, forbidden). Everything else is retryable and the draft
+          // must survive: network errors/timeouts (not ApiError at all),
+          // 401 (session expired while offline — resident logs in, next
+          // flush succeeds), 408/429 (transient), and all 5xx (Netlify
+          // cold-start flake, gateway errors). The previous version
+          // deleted on ANY ApiError, so one 502 on reconnect silently
+          // destroyed the resident's report forever.
+          if (
+            err instanceof ApiError &&
+            err.status >= 400 && err.status < 500 &&
+            err.status !== 401 && err.status !== 408 && err.status !== 429
+          ) {
             await deleteDraft(MAINTENANCE_DRAFTS_STORE, draft.id);
           }
         }
@@ -66,7 +74,16 @@ export function useOfflineSync() {
     refreshCount();
     flush();
     window.addEventListener("online", flush);
-    return () => window.removeEventListener("online", flush);
+    // Fired by ticket-form.tsx after saving a draft, so the "N reports
+    // saved offline" banner appears immediately instead of only after the
+    // next mount/flush — without this, an offline resident who closed the
+    // form saw no pending banner and no ticket, inviting a duplicate
+    // re-report.
+    window.addEventListener("offline-drafts-changed", refreshCount);
+    return () => {
+      window.removeEventListener("online", flush);
+      window.removeEventListener("offline-drafts-changed", refreshCount);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
