@@ -36,6 +36,7 @@ import { chamaRouter } from "./routes/chama.js";
 import { analyticsRouter } from "./routes/analytics.js";
 import { uploadsRouter } from "./routes/uploads.js";
 import { systemAdminRouter } from "./routes/systemAdmin.js";
+import { estatesRouter } from "./routes/estates.js";
 import { logger, captureException } from "./lib/logger.js";
 import { logErrorToDb } from "./lib/errorLog.js";
 import { getClientIp } from "./lib/httpUtils.js";
@@ -342,6 +343,7 @@ export function createApp(): express.Express {
   app.use("/api/documents", documentsRouter);
   app.use("/api/leads", leadsRouter);
   app.use("/api/system", systemAdminRouter);
+  app.use("/api/estates", estatesRouter);
 
   // ─── Health check ────────────────────────────────────────────────────────────
   // Returning OK without a DB ping means a DB outage looks healthy. Run a

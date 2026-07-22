@@ -142,6 +142,15 @@ export default function AdminDashboard() {
 
   const unpaidResidents = analytics?.payments.levyStatus.unpaidResidents ?? [];
 
+  // M-PESA reconciliation health — a payment pending >1h means the
+  // 5-minute reconciliation cron isn't keeping up (or is silently
+  // broken). Surfaces that instead of waiting for a resident complaint.
+  const { data: recon } = useQuery<{ pendingCount: number; stuckCount: number; oldestStuckAt: string | null }>({
+    queryKey: ["reconciliation-status"],
+    queryFn: () => api.get<{ pendingCount: number; stuckCount: number; oldestStuckAt: string | null }>("/api/analytics/reconciliation-status").then((r) => r.data),
+    staleTime: 2 * 60 * 1000,
+  });
+
   const monthlyData = (analytics?.payments.monthlyTotals ?? []).map((m) => ({
     label: m.month.slice(5),
     value: m.total,
@@ -435,6 +444,18 @@ export default function AdminDashboard() {
 
                   {/* Right rail */}
                   <div className="space-y-6">
+                  {recon && recon.stuckCount > 0 && (
+                    <div className="tribal-card p-4 border-l-4 border-l-brand-red">
+                      <p className="font-semibold text-sm text-tribal-charcoal">
+                        ⚠️ {recon.stuckCount} payment{recon.stuckCount > 1 ? "s" : ""} stuck pending &gt;1 hour
+                      </p>
+                      <p className="text-xs text-tribal-earth mt-1">
+                        M-PESA reconciliation may be behind. Oldest since{" "}
+                        {recon.oldestStuckAt ? new Date(recon.oldestStuckAt).toLocaleString("en-KE") : "—"}.
+                        If this persists, check Daraja credentials and the reconcile-payments function.
+                      </p>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
                     <WeatherWidget />
                     <TrafficWidget />
