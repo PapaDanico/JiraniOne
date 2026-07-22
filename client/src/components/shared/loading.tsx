@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@shared/brand";
 export function Spinner({ className = "h-6 w-6" }: { className?: string }) {
   return (
     <svg className={`animate-spin text-[#1B5E20] ${className}`} viewBox="0 0 24 24" fill="none">
@@ -12,7 +13,7 @@ export function PageLoader() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#F5F1E8] gap-4">
       <img
         src="/brand/logo-mark.webp"
-        alt="JiraniHub"
+        alt={BRAND_NAME}
         className="w-20 h-20 object-contain drop-shadow-md"
         onError={(e) => {
           const t = e.currentTarget;
@@ -28,7 +29,7 @@ export function PageLoader() {
         <span className="text-white font-black text-xl">JH</span>
       </div>
       <Spinner className="h-6 w-6" />
-      <p className="text-xs text-[#6B5D45] font-medium tracking-wide">JiraniHub</p>
+      <p className="text-xs text-[#6B5D45] font-medium tracking-wide">{BRAND_NAME}</p>
     </div>
   );
 }

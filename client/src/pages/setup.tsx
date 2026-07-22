@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { BRAND_NAME } from "@shared/brand";
 
 type Status = "loading" | "ready" | "done" | "invalid";
 
@@ -116,7 +117,7 @@ export default function SetupPage() {
           </div>
           <h1 className="text-2xl font-bold text-[#212121]">Set up your account</h1>
           <p className="text-sm text-[#757575] mt-1">
-            Welcome, {name}! Choose a password to activate your JiraniHub account.
+            Welcome, {name}! Choose a password to activate your {BRAND_NAME} account.
           </p>
         </div>
 

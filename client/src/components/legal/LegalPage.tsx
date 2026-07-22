@@ -1,12 +1,13 @@
 import { Link } from "wouter";
 import { LEGAL_SECTIONS, RIGHTS } from "./legalContent";
+import { BRAND_NAME } from "@shared/brand";
 
 export function LegalPage({ type }: { type: "privacy" | "terms" }) {
   const sections = LEGAL_SECTIONS[type === "privacy" ? "PRIVACY" : "TERMS"];
   const title = type === "privacy" ? "Privacy Policy" : "Terms of Use";
   const desc = type === "privacy"
     ? "Designed in line with Kenya's Data Protection Act, 2019"
-    : "Legal agreement for using JiraniHub";
+    : `Legal agreement for using ${BRAND_NAME}`;
 
   return (
     <div className="page-wrap">
@@ -48,7 +49,7 @@ export function LegalPage({ type }: { type: "privacy" | "terms" }) {
 
         <div className="bg-[#EDE7D8] border border-[#D4C9A8] rounded-xl p-4 mt-8">
           <p className="text-xs text-[#6B5D45] text-center">
-            © 2026 JiraniHub Ltd. All rights reserved. Questions?{" "}
+            © 2026 {BRAND_NAME} Ltd. All rights reserved. Questions?{" "}
             <a href="mailto:legal@jiranihub.co.ke" className="font-semibold text-[#1B5E20] underline">
               Contact us
             </a>

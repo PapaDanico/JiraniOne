@@ -6,20 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1A5C38" />
     <meta name="color-scheme" content="light" />
-    <meta name="description" content="JiraniHub — Smart Estate Management for Kenyan Communities" />
+    <!-- %TOKENS% below are stamped from shared/brand.ts by the brandHtml
+         plugin in vite.config.ts (index.html can't import TS itself). -->
+    <meta name="description" content="%BRAND_NAME% — %BRAND_TAGLINE%" />
 
     <!-- Open Graph / WhatsApp previews -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://www.jiranihub.co.ke/" />
-    <meta property="og:title" content="JiraniHub — Smart Estate Management" />
+    <meta property="og:url" content="%PRIMARY_URL%/" />
+    <meta property="og:title" content="%BRAND_NAME% — Smart Estate Management" />
     <meta property="og:description" content="Manage your estate smarter. Visitors, maintenance, payments, parcels & more — built for Kenyan communities." />
-    <meta property="og:image" content="https://www.jiranihub.co.ke/og-image.png" />
+    <meta property="og:image" content="%PRIMARY_URL%/og-image.png" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="JiraniHub — Smart Estate Management" />
+    <meta name="twitter:title" content="%BRAND_NAME% — Smart Estate Management" />
     <meta name="twitter:description" content="Manage your estate smarter. Built for Kenyan communities." />
-    <meta name="twitter:image" content="https://www.jiranihub.co.ke/og-image.png" />
+    <meta name="twitter:image" content="%PRIMARY_URL%/og-image.png" />
 
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
@@ -30,14 +32,14 @@
     <!-- Cormorant Garamond = warm italic accents on hero (echoes the           -->
     <!-- Diagnostic design language from the brief).                            -->
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet" />
-    <title>JiraniHub</title>
+    <title>%BRAND_NAME%</title>
   </head>
   <body>
     <div id="root"></div>
     <noscript>
       <div style="font-family:sans-serif;text-align:center;padding:60px 20px;color:#212121">
         <h2>JavaScript is required</h2>
-        <p>Please enable JavaScript in your browser to use JiraniHub.</p>
+        <p>Please enable JavaScript in your browser to use %BRAND_NAME%.</p>
       </div>
     </noscript>
     <script type="module" src="/src/main.tsx"></script>

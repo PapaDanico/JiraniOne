@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { CheckCircle2, Circle, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import type { EstateAnalytics, Facility, Announcement, ServiceProvider, EstateDocument } from "@shared/types";
+import { BRAND_NAME } from "@shared/brand";
 
 interface EstateUser { id: string }
 
@@ -10,7 +11,7 @@ const STEPS = [
   { key: "facility",     label: "Add a facility",          desc: "Clubhouse, pool, parking — anything residents can book.", href: "/bookings" },
   { key: "announcement", label: "Post an announcement",     desc: "Welcome residents and share the first estate notice.",    href: "/announcements" },
   { key: "provider",     label: "Add a service provider",   desc: "A plumber, electrician, or cleaner residents can call.",  href: "/marketplace" },
-  { key: "resident",     label: "Invite your residents",    desc: "Share JiraniHub with the households in your estate.",     href: "/admin/users" },
+  { key: "resident",     label: "Invite your residents",    desc: `Share ${BRAND_NAME} with the households in your estate.`,     href: "/admin/users" },
   { key: "document",     label: "Upload an estate document",desc: "Estate rules or AGM minutes residents can reference.",    href: "/documents" },
 ] as const;
 

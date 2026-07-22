@@ -15,6 +15,7 @@ import path from "path";
 import { createApp } from "./createApp.js";
 import { logger, captureException } from "./lib/logger.js";
 import { isProduction } from "./lib/env.js";
+import { BRAND_NAME } from "@shared/brand.js";
 
 // This entry point is for local dev (`npm run dev`) and any traditional
 // Node hosting fallback — not used by the deployed Netlify Function, which
@@ -54,5 +55,5 @@ process.on("uncaughtException", (err) => {
 const httpServer = createServer(app);
 
 httpServer.listen(PORT, () => {
-  logger.info({ port: PORT, env: process.env.NODE_ENV ?? "development" }, "JiraniHub server started");
+  logger.info({ port: PORT, env: process.env.NODE_ENV ?? "development" }, `${BRAND_NAME} server started`);
 });

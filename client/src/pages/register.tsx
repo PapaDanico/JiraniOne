@@ -10,6 +10,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
+import { BRAND_NAME } from "@shared/brand";
 
 interface EstateLite { id: string; name: string; location: string }
 
@@ -81,7 +82,7 @@ export default function RegisterPage() {
             >
               <img
                 src="/brand/logo-mark.webp"
-                alt="JiraniHub"
+                alt={BRAND_NAME}
                 className="h-12 w-12 object-contain"
                 onError={(e) => {
                   const t = e.currentTarget;
@@ -99,7 +100,7 @@ export default function RegisterPage() {
             </div>
           </div>
           <h1 className="font-display font-extrabold text-2xl text-white tracking-tight">
-            JiraniHub
+            {BRAND_NAME}
           </h1>
           <p className="font-medium text-base text-brand-gold mt-1">
             Create your resident account
@@ -203,7 +204,7 @@ export default function RegisterPage() {
                 <Link href="/terms" className="text-brand-green font-bold underline">
                   Terms of Service
                 </Link>
-                . I consent to JiraniHub processing my data under the Kenya Data
+                . I consent to {BRAND_NAME} processing my data under the Kenya Data
                 Protection Act, 2019.
               </span>
             </label>

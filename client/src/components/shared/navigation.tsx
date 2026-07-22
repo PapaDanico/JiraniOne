@@ -20,6 +20,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import type { UserRole } from "@shared/types";
+import { BRAND_NAME, SUPPORT_EMAIL } from "@shared/brand";
 
 interface EstateLite { id: string; name: string; location: string }
 
@@ -304,7 +305,7 @@ export function TopBar({ title }: { title?: string }) {
           <Link href={`/dashboard/${user.role}`} className="flex items-center gap-2.5 shrink-0">
             <img
               src="/brand/logo-mark.webp"
-              alt="JiraniHub"
+              alt={BRAND_NAME}
               className="h-8 w-8 object-contain"
               onError={(e) => {
                 const t = e.currentTarget;
@@ -319,7 +320,7 @@ export function TopBar({ title }: { title?: string }) {
             >
               <span className="text-tribal-charcoal font-bold text-xs">JH</span>
             </div>
-            <span className="font-bold text-lg tracking-tight font-display">JiraniHub</span>
+            <span className="font-bold text-lg tracking-tight font-display">{BRAND_NAME}</span>
             {title && (
               <>
                 <span className="text-white/30 mx-0.5 hidden sm:inline">/</span>
@@ -467,7 +468,7 @@ export function TopBar({ title }: { title?: string }) {
                 Terms of Service
               </Link>
               <a
-                href="mailto:support@jiranihub.co.ke"
+                href={`mailto:${SUPPORT_EMAIL}`}
                 className="text-xs text-white/50 hover:text-white/80 transition-colors"
               >
                 Support

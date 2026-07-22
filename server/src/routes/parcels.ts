@@ -12,6 +12,7 @@ import { newId } from "../lib/ids.js";
 import { createNotification } from "../lib/notify.js";
 import { sendThrottledSms } from "../lib/sms.js";
 import { logger } from "../lib/logger.js";
+import { SMS_SENDER_ID } from "@shared/brand.js";
 
 export const parcelsRouter = Router();
 parcelsRouter.use(requireAuth);
@@ -131,7 +132,7 @@ parcelsRouter.patch("/:id/received", requireRole("admin", "security"), async (re
       const sms = await sendThrottledSms({
         userId: parcel.residentId,
         to: resident.phone,
-        message: `JiraniHub: Your parcel (${parcel.description}) has arrived at the gate. Please collect it.`,
+        message: `${SMS_SENDER_ID}: Your parcel (${parcel.description}) has arrived at the gate. Please collect it.`,
         systemMessage: true,
       });
       if (!sms.ok) {

@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { BottomNav } from "@/components/shared/navigation";
+import { BRAND_NAME, SUPPORT_EMAIL } from "@shared/brand";
 
 // Public help page — reachable by prospects from the landing footer AND by
 // signed-in users from the menu, so it renders its own lightweight header
@@ -16,10 +17,10 @@ const SECTIONS: FaqSection[] = [
     title: "Getting Started",
     emoji: "🌍",
     items: [
-      { q: "What is JiraniHub?", a: "JiraniHub (\"jirani\" is Swahili for neighbour) is your estate's digital home — one app that replaces the WhatsApp groups, paper visitor logbooks, and levy spreadsheets. Visitors, maintenance, M-PESA payments, announcements, events, voting, and an emergency button, all in one place, built for Kenyan estates." },
+      { q: `What is ${BRAND_NAME}?`, a: `${BRAND_NAME} ("jirani" is Swahili for neighbour) is your estate's digital home — one app that replaces the WhatsApp groups, paper visitor logbooks, and levy spreadsheets. Visitors, maintenance, M-PESA payments, announcements, events, voting, and an emergency button, all in one place, built for Kenyan estates.` },
       { q: "How do I sign in?", a: "Use your Kenyan phone number (0722 123 456, +254722123456, and 254722123456 all work) and your password. If your estate admin registered you, they'll share a setup link or your first password out-of-band." },
       { q: "I forgot my password. What do I do?", a: "Tap \"Forgot password\" on the sign-in page. We send a 6-digit code to your phone by SMS — enter it and choose a new password. Codes expire after 15 minutes, and you can request at most 3 per day." },
-      { q: "Does it work on slow internet?", a: "Yes — JiraniHub is built for 3G. Pages are small and load only what you need. If a request fails mid-way, you'll see a clear error so you know whether it went through, instead of guessing." },
+      { q: "Does it work on slow internet?", a: `Yes — ${BRAND_NAME} is built for 3G. Pages are small and load only what you need. If a request fails mid-way, you'll see a clear error so you know whether it went through, instead of guessing.` },
       { q: "Is my data safe?", a: "Your data belongs to you and stays inside your estate — admins and gate staff only see what their job needs. We never sell data, there are no ad trackers, and visitor records are automatically anonymized after 90 days. Full details in our Privacy Policy." },
     ],
   },
@@ -61,9 +62,9 @@ const SECTIONS: FaqSection[] = [
     title: "Payments & M-PESA",
     emoji: "💚",
     items: [
-      { q: "How does the M-PESA prompt work?", a: "When you pay through JiraniHub, Safaricom pushes a payment request straight to your phone (STK push). You enter your M-PESA PIN on your own phone — JiraniHub never sees or stores your PIN." },
+      { q: "How does the M-PESA prompt work?", a: `When you pay through ${BRAND_NAME}, Safaricom pushes a payment request straight to your phone (STK push). You enter your M-PESA PIN on your own phone — ${BRAND_NAME} never sees or stores your PIN.` },
       { q: "The prompt didn't arrive or I cancelled it. Was I charged?", a: "If you didn't enter your PIN, no money moved — the payment shows as failed and you can simply try again. If your M-PESA statement shows a debit but the app shows pending, wait a few minutes: our reconciliation checks with Safaricom every 5 minutes and settles it automatically." },
-      { q: "Are there extra fees?", a: "JiraniHub adds no fees. You pay exactly the levy or donation amount plus Safaricom's standard M-PESA charges, if any." },
+      { q: "Are there extra fees?", a: `${BRAND_NAME} adds no fees. You pay exactly the levy or donation amount plus Safaricom's standard M-PESA charges, if any.` },
       { q: "Where are my receipts?", a: "Payments → history. Every completed payment keeps its M-PESA reference number, so you always have proof of payment." },
     ],
   },
@@ -85,7 +86,7 @@ export default function FaqPage() {
 
         <h1 className="font-black text-3xl text-[#212121] mt-4 mb-1">Help & FAQ</h1>
         <p className="text-sm text-[#6B5D45] mb-8">
-          Everything you need to run life on JiraniHub — <span className="italic">karibu, jirani</span>.
+          Everything you need to run life on {BRAND_NAME} — <span className="italic">karibu, jirani</span>.
         </p>
 
         <div className="space-y-8">
@@ -115,8 +116,8 @@ export default function FaqPage() {
         <div className="bg-[#EDE7D8] border border-[#D4C9A8] rounded-xl p-4 mt-10">
           <p className="text-xs text-[#6B5D45] text-center">
             Still stuck? Email{" "}
-            <a href="mailto:support@jiranihub.co.ke" className="font-semibold text-[#1B5E20] underline">
-              support@jiranihub.co.ke
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-[#1B5E20] underline">
+              {SUPPORT_EMAIL}
             </a>{" "}
             — a human replies.
           </p>
