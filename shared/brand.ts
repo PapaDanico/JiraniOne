@@ -16,13 +16,18 @@
 // - Netlify site name, GitHub repo name, and DNS are infrastructure, not
 //   code.
 
-export const BRAND_NAME = "JiraniHub";
+export const BRAND_NAME = "JiraniOne";
 export const BRAND_TAGLINE = "Smart Estate Management for Kenyan Communities";
 export const BRAND_TAGLINE_SHORT = "Smart estate management · Kenya";
 
 // Registered company name as it appears in legal copy (Terms/Privacy).
 export const COMPANY_NAME = `${BRAND_NAME} Ltd.`;
 
+// Emails and URLs below deliberately stay on jiranihub.* infrastructure —
+// the JiraniOne domains/mailboxes don't exist yet. Once jiranione.co.ke
+// (or equivalent) is registered, DNS is live, and mail is set up, update
+// these and append the new origins to PRODUCTION_ORIGINS (keeping the old
+// ones until the redirect is permanent).
 export const SUPPORT_EMAIL = "support@jiranihub.co.ke";
 export const PRIVACY_EMAIL = "privacy@jiranihub.co.ke";
 export const LEGAL_EMAIL = "legal@jiranihub.co.ke";
@@ -45,5 +50,6 @@ export const PRODUCTION_ORIGINS = [
 ] as const;
 
 // SMS sender name prefix used in message bodies (distinct from the
-// carrier-registered alphanumeric sender ID, though they should match).
-export const SMS_SENDER_ID = "JiraniHub";
+// carrier-registered alphanumeric sender ID, though they should match —
+// register "JiraniOne" with Africa's Talking when updating the account).
+export const SMS_SENDER_ID = "JiraniOne";
