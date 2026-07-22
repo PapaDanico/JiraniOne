@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SectionLoader } from "@/components/shared/loading";
 import { api } from "@/lib/api";
+import { BRAND_NAME } from "@shared/brand";
 
 interface EstateUser {
   id: string; phone: string; name: string;
@@ -300,7 +301,7 @@ export default function AdminUsersPage() {
         open={!!confirmRemove}
         onOpenChange={(v) => { if (!v) setConfirmRemove(null); }}
         title="Remove this user?"
-        description={confirmRemove ? `${confirmRemove.name} will lose access to JiraniHub immediately.` : ""}
+        description={confirmRemove ? `${confirmRemove.name} will lose access to ${BRAND_NAME} immediately.` : ""}
         confirmLabel="Remove"
         cancelLabel="Keep them"
         loading={deactivate.isPending}

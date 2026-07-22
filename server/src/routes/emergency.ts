@@ -8,6 +8,7 @@ import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
 import { sendThrottledSms } from "../lib/sms.js";
 import { logger } from "../lib/logger.js";
+import { SMS_SENDER_ID } from "@shared/brand.js";
 
 const ALERT_LABEL: Record<string, string> = {
   medical: "MEDICAL",
@@ -60,7 +61,7 @@ emergencyRouter.post("/", async (req, res) => {
 
     if (responders.length > 0) {
       const label = ALERT_LABEL[parsed.data.type] ?? "EMERGENCY";
-      const message = `JiraniHub ALERT: ${label} reported by ${user.name} (${user.phone}). Check the app now.`;
+      const message = `${SMS_SENDER_ID} ALERT: ${label} reported by ${user.name} (${user.phone}). Check the app now.`;
       const results = await Promise.all(
         responders.map((r) =>
           sendThrottledSms({ userId: r.id, to: r.phone, message, systemMessage: true })

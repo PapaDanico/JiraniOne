@@ -4,6 +4,7 @@ import { Check, Lock, ShieldCheck, MapPin, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/shared/navigation";
 import { RequestDemoDialog } from "./RequestDemoDialog";
+import { BRAND_NAME, COMPANY_NAME, SUPPORT_EMAIL } from "@shared/brand";
 
 const FEATURES = [
   { icon: "🚪", title: "Visitors", desc: "Digital QR check-in" },
@@ -48,8 +49,8 @@ export function LandingPage() {
           equivalent, styled to match. */}
       <header className="sticky top-0 z-40 bg-[#1B5E20] text-white">
         <div className="flex items-center gap-2.5 px-4 h-14 max-w-6xl mx-auto">
-          <img src="/brand/logo-mark.webp" alt="JiraniHub" className="h-8 w-8 object-contain" />
-          <span className="font-bold text-lg tracking-tight font-display">JiraniHub</span>
+          <img src="/brand/logo-mark.webp" alt={BRAND_NAME} className="h-8 w-8 object-contain" />
+          <span className="font-bold text-lg tracking-tight font-display">{BRAND_NAME}</span>
         </div>
       </header>
 
@@ -67,7 +68,7 @@ export function LandingPage() {
               Run Your Estate.<br />Not a WhatsApp Group.
             </h1>
             <p className="text-lg text-[#6B5D45] leading-relaxed">
-              JiraniHub replaces the WhatsApp groups, paper logbooks, and spreadsheets most Kenyan estates run on today with one platform for visitor security, maintenance, M-PESA levy collection, governance, and emergencies — built for estate management companies, residents' associations, and property developers.
+              {BRAND_NAME} replaces the WhatsApp groups, paper logbooks, and spreadsheets most Kenyan estates run on today with one platform for visitor security, maintenance, M-PESA levy collection, governance, and emergencies — built for estate management companies, residents' associations, and property developers.
             </p>
             <p className="text-sm italic text-[#D47A00] font-medium">
               "Jirani mwema ni hazina" — a good neighbour is a treasure.
@@ -75,7 +76,7 @@ export function LandingPage() {
           </div>
           <div className="flex flex-col gap-3 pt-4">
             <Button onClick={() => setDemoOpen(true)} className="w-full h-14 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
-              <Building2 className="w-5 h-5 mr-2" /> Bring JiraniHub to Your Estate
+              <Building2 className="w-5 h-5 mr-2" /> Bring {BRAND_NAME} to Your Estate
             </Button>
             <Button
               variant="secondary"
@@ -89,7 +90,7 @@ export function LandingPage() {
               onClick={() => setLocation("/register")}
               className="text-sm text-[#6B5D45] hover:text-[#1B5E20]"
             >
-              Already a resident of a JiraniHub estate? Create your account →
+              Already a resident of a {BRAND_NAME} estate? Create your account →
             </Button>
           </div>
         </section>
@@ -138,7 +139,7 @@ export function LandingPage() {
         {/* Benefits - Enhanced List */}
         <section className="max-w-lg mx-auto px-4 pt-8 pb-12 space-y-6">
           <div className="text-center space-y-2">
-            <h2 className="font-black text-3xl text-[#212121]">Why JiraniHub?</h2>
+            <h2 className="font-black text-3xl text-[#212121]">Why {BRAND_NAME}?</h2>
             <p className="text-sm text-[#6B5D45]">Built specifically for Kenyan community estates</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -235,7 +236,7 @@ export function LandingPage() {
           <div className="text-center space-y-3">
             <h2 className="font-black text-3xl text-[#212121]">Be Among the First</h2>
             <p className="text-base text-[#6B5D45]">
-              We're bringing modern estate management to Kenya one community at a time. Get in touch to bring JiraniHub to your estate.
+              We're bringing modern estate management to Kenya one community at a time. Get in touch to bring {BRAND_NAME} to your estate.
             </p>
           </div>
           <div className="space-y-3 bg-white rounded-2xl p-6 border border-[#E8E3D8] shadow-md">
@@ -244,7 +245,7 @@ export function LandingPage() {
             </Button>
             <p className="text-xs text-[#6B5D45] text-center font-medium">
               Prefer email? Reach us at{" "}
-              <a href="mailto:support@jiranihub.co.ke" className="text-[#1B5E20] underline">support@jiranihub.co.ke</a>
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[#1B5E20] underline">{SUPPORT_EMAIL}</a>
             </p>
             <div className="flex items-center justify-center gap-1 pt-1">
               <Button variant="link" size="sm" onClick={() => setLocation("/login")} className="text-xs">
@@ -260,7 +261,7 @@ export function LandingPage() {
 
         {/* Footer Links */}
         <section className="border-t border-[#E8E3D8] px-4 py-8 space-y-4 text-center">
-          <p className="text-xs font-semibold text-[#6B5D45]">© 2026 JiraniHub Ltd. Kenya</p>
+          <p className="text-xs font-semibold text-[#6B5D45]">© 2026 {COMPANY_NAME} Kenya</p>
           <div className="flex justify-center gap-4 text-xs font-semibold flex-wrap">
             <a href="/faq" className="text-[#1B5E20] hover:underline hover:opacity-80 transition-all">Help & FAQ</a>
             <span className="text-[#D4C9A8]">•</span>
@@ -268,7 +269,7 @@ export function LandingPage() {
             <span className="text-[#D4C9A8]">•</span>
             <a href="/terms" className="text-[#1B5E20] hover:underline hover:opacity-80 transition-all">Terms</a>
             <span className="text-[#D4C9A8]">•</span>
-            <a href="mailto:support@jiranihub.co.ke" className="text-[#1B5E20] hover:underline hover:opacity-80 transition-all">Support</a>
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[#1B5E20] hover:underline hover:opacity-80 transition-all">Support</a>
           </div>
         </section>
       </main>

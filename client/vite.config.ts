@@ -1,21 +1,43 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 import { fileURLToPath } from "url";
+import { BRAND_NAME, BRAND_TAGLINE, PRIMARY_URL } from "../shared/brand";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// index.html is static and can't import TS, so brand strings there are
+// %PLACEHOLDER% tokens stamped in at build/dev time from shared/brand.ts —
+// keeping the rebrand a one-file change even for HTML meta/OG tags.
+function brandHtml(): Plugin {
+  const tokens: Record<string, string> = {
+    "%BRAND_NAME%": BRAND_NAME,
+    "%BRAND_TAGLINE%": BRAND_TAGLINE,
+    "%PRIMARY_URL%": PRIMARY_URL,
+  };
+  return {
+    name: "brand-html",
+    transformIndexHtml(html) {
+      return Object.entries(tokens).reduce(
+        (out, [token, value]) => out.replaceAll(token, value),
+        html,
+      );
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
+    brandHtml(),
     react(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["icons/favicon-32.png", "icons/favicon-16.png", "icons/apple-touch-icon.png"],
       manifest: {
-        name: "JiraniHub",
-        short_name: "JiraniHub",
-        description: "Smart Estate Management for Kenyan Communities",
+        name: BRAND_NAME,
+        short_name: BRAND_NAME,
+        description: BRAND_TAGLINE,
         start_url: "/",
         display: "standalone",
         background_color: "#F5F0E8",

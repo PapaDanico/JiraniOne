@@ -5,6 +5,7 @@ import { db } from "./db.js";
 import { estates, users } from "@shared/schema.js";
 import { newId } from "./lib/ids.js";
 import { eq } from "drizzle-orm";
+import { BRAND_NAME } from "@shared/brand.js";
 
 async function seed() {
   // HARD GUARD against ever running this in production. The audit flagged
@@ -18,7 +19,7 @@ async function seed() {
     process.exit(1);
   }
 
-  console.log("🌱 Seeding JiraniHub...");
+  console.log(`🌱 Seeding ${BRAND_NAME}...`);
 
   // Estate. `estates.name` has no unique constraint, so `onConflictDoNothing`
   // can never detect a collision here — look the row up by name first

@@ -15,6 +15,7 @@ import { sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { smsQuotas, smsGlobalQuota } from "@shared/schema.js";
 import { isProduction } from "./env.js";
+import { SMS_SENDER_ID } from "@shared/brand.js";
 
 interface SmsOptions {
   to: string;
@@ -128,7 +129,7 @@ export async function sendSmsRaw({ to, message }: SmsOptions): Promise<boolean> 
       username,
       to,
       message,
-      from: "JiraniHub",
+      from: SMS_SENDER_ID,
     });
     const res = await fetch(
       "https://api.africastalking.com/version1/messaging",

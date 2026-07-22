@@ -40,6 +40,7 @@ import { logger, captureException } from "./lib/logger.js";
 import { logErrorToDb } from "./lib/errorLog.js";
 import { getClientIp } from "./lib/httpUtils.js";
 import { isProduction } from "./lib/env.js";
+import { PRODUCTION_ORIGINS } from "@shared/brand.js";
 
 export function createApp(): express.Express {
   const isProd = isProduction();
@@ -77,7 +78,7 @@ export function createApp(): express.Express {
               styleSrc:        ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
               fontSrc:         ["https://fonts.gstatic.com"],
               imgSrc:          ["'self'", "data:", "https:"],
-              connectSrc:      ["'self'", "https://jiranihub.org", "https://www.jiranihub.co.ke"],
+              connectSrc:      ["'self'", ...PRODUCTION_ORIGINS],
               frameAncestors:  ["'none'"],
               baseUri:         ["'self'"],
               formAction:      ["'self'"],
@@ -113,20 +114,15 @@ export function createApp(): express.Express {
   // are always present regardless of env, and the netlify.app apex is
   // hardcoded so login doesn't even depend on CLIENT_URL being set.
   //
-  // jiranihub.org (not jiranihub.co.ke — the .co.ke domain referenced
-  // elsewhere was never actually the live one) is the site's real custom
-  // domain per Netlify's project config. Its absence here was the actual
-  // cause of the "Internal server error" on every login: the `cors`
+  // The production origins live in @shared/brand.ts (single source of
+  // truth for a rebrand/domain migration). History lesson kept here: the
+  // live custom domain missing from this list was the actual cause of the
+  // 2026-07-20 "Internal server error" on every login — the `cors`
   // middleware calls `next(err)` on a rejected origin with no status of
-  // its own, so the request fell through to the generic 500 handler
-  // instead of a CORS-specific rejection — indistinguishable from a
-  // server crash from the client's point of view.
+  // its own, so the request fell through to the generic 500 handler,
+  // indistinguishable from a server crash from the client's point of view.
   const ALLOWED_ORIGINS = [
-    "https://jiranihub.org",
-    "https://www.jiranihub.org",
-    "https://www.jiranihub.co.ke",
-    "https://jiranihub.co.ke",
-    "https://jiranihub.netlify.app",
+    ...PRODUCTION_ORIGINS,
     process.env.CLIENT_URL,
     "http://localhost:3000",
     "http://localhost:5173",

@@ -17,6 +17,7 @@ import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
 import { writeAudit } from "../lib/audit.js";
 import { logger } from "../lib/logger.js";
+import { PRIMARY_URL } from "@shared/brand.js";
 
 const log = logger.child({ component: "users" });
 
@@ -121,7 +122,7 @@ usersRouter.post("/", requireRole("admin"), async (req, res) => {
     metadata: { role: newUser.role, unitNumber: newUser.unitNumber, setupLinkIssued: true },
   });
 
-  const clientUrl = process.env.CLIENT_URL ?? "https://www.jiranihub.co.ke";
+  const clientUrl = process.env.CLIENT_URL ?? PRIMARY_URL;
 
   res.status(201).json({
     data: {

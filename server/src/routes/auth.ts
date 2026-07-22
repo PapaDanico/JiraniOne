@@ -17,6 +17,7 @@ import { newId } from "../lib/ids.js";
 import { sendThrottledSms } from "../lib/sms.js";
 import { logger } from "../lib/logger.js";
 import type { AuthUser } from "@shared/types.js";
+import { SMS_SENDER_ID } from "@shared/brand.js";
 
 const OTP_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const OTP_MAX_ATTEMPTS = 5;
@@ -244,7 +245,7 @@ authRouter.post("/forgot-password", async (req, res) => {
       const sms = await sendThrottledSms({
         userId: user.id,
         to: phone,
-        message: `JiraniHub: Your password reset code is ${otp}. It expires in 15 minutes. If you did not request this, ignore this SMS.`,
+        message: `${SMS_SENDER_ID}: Your password reset code is ${otp}. It expires in 15 minutes. If you did not request this, ignore this SMS.`,
       });
       // The response below is intentionally generic regardless of outcome
       // (anti phone-enumeration) — but that means a delivery failure is

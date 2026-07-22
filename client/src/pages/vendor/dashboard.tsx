@@ -13,6 +13,7 @@ import { SectionLoader } from "@/components/shared/loading";
 import { api } from "@/lib/api";
 import { formatRelative } from "@/lib/utils";
 import type { ServiceProvider, ServiceReview } from "@shared/types";
+import { BRAND_NAME } from "@shared/brand";
 
 export default function VendorDashboard() {
   const { user } = useAuth();
@@ -67,7 +68,7 @@ export default function VendorDashboard() {
               <h1 className="font-display font-extrabold text-xl leading-tight">
                 {user?.name}
               </h1>
-              <p className="font-medium text-sm text-white/70">JiraniHub Marketplace</p>
+              <p className="font-medium text-sm text-white/70">{BRAND_NAME} Marketplace</p>
             </div>
           </div>
           <div className="mt-4 flag-bar w-24 relative z-10" />

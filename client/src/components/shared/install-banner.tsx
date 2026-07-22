@@ -1,5 +1,6 @@
 import { Download, X } from "lucide-react";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
+import { BRAND_NAME } from "@shared/brand";
 
 // Slim, dismissible banner shown once Chrome/Edge/Android signal the app
 // is installable. Sits above the page content rather than the TopBar
@@ -14,7 +15,7 @@ export function InstallBanner() {
       <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-3">
         <Download className="h-4 w-4 text-brand-green shrink-0" />
         <p className="flex-1 text-xs sm:text-sm font-medium text-tribal-charcoal">
-          Install JiraniHub for quicker access and offline support.
+          Install {BRAND_NAME} for quicker access and offline support.
         </p>
         <button
           onClick={promptInstall}

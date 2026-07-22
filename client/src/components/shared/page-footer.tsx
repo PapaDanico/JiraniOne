@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { SUPPORT_EMAIL } from "@shared/brand";
 
 // Privacy/Terms/FAQ/Support already live in the nav drawer (☰), but that's
 // one tap deep — this puts them at zero taps on every functional page,
@@ -16,7 +17,7 @@ export function PageFooter() {
         Terms of Service
       </Link>
       <a
-        href="mailto:support@jiranihub.co.ke"
+        href={`mailto:${SUPPORT_EMAIL}`}
         className="text-xs text-tribal-earth hover:text-brand-green transition-colors"
       >
         Support

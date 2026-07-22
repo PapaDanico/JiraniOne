@@ -9,6 +9,7 @@ import { newId } from "../lib/ids.js";
 import { createNotifications } from "../lib/notify.js";
 import { sendThrottledSms } from "../lib/sms.js";
 import { logger } from "../lib/logger.js";
+import { SMS_SENDER_ID } from "@shared/brand.js";
 
 export const announcementsRouter = Router();
 announcementsRouter.use(requireAuth);
@@ -124,7 +125,7 @@ announcementsRouter.post("/", requireRole("admin"), async (req, res) => {
       });
 
       if (parsed.data.priority === "urgent") {
-        const message = `JiraniHub URGENT: ${parsed.data.title} — ${parsed.data.body}`.slice(0, 300);
+        const message = `${SMS_SENDER_ID} URGENT: ${parsed.data.title} — ${parsed.data.body}`.slice(0, 300);
         const results = await Promise.all(
           estateUsers.map((u) =>
             sendThrottledSms({ userId: u.id, to: u.phone, message, systemMessage: true })

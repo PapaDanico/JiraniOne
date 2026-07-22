@@ -9,6 +9,7 @@ import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
 import { sendThrottledSms } from "../lib/sms.js";
 import { safeCsvCell, csvRow } from "../lib/csv.js";
+import { SMS_SENDER_ID } from "@shared/brand.js";
 
 export const visitorsRouter = Router();
 visitorsRouter.use(requireAuth);
@@ -112,7 +113,7 @@ visitorsRouter.post("/", async (req, res) => {
   // a malicious resident cannot turn the SMS into a smishing message
   // (e.g. setting their name to "URGENT: send M-PESA to 0712...").
   const safeHostName = user.name.replace(/[^\p{L}\p{N}\s'\-]/gu, "").slice(0, 40);
-  const smsText = `JiraniHub: You have a visitor pass to ${safeHostName}. Show this SMS at the gate. Pass ID: ${id.slice(0, 8).toUpperCase()}`;
+  const smsText = `${SMS_SENDER_ID}: You have a visitor pass to ${safeHostName}. Show this SMS at the gate. Pass ID: ${id.slice(0, 8).toUpperCase()}`;
   const sms = await sendThrottledSms({
     userId: user.id,
     to: parsed.data.phone,

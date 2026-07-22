@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { BRAND_NAME } from "@shared/brand";
 
 type Step = "request" | "verify" | "done";
 
@@ -83,7 +84,7 @@ export default function ForgotPasswordPage() {
               {step === "done" ? "Password reset" : "Reset password"}
             </h1>
             <p className="text-white/70 text-xs mt-1 tracking-wide uppercase font-semibold">
-              JiraniHub Account Recovery
+              {BRAND_NAME} Account Recovery
             </p>
           </div>
 

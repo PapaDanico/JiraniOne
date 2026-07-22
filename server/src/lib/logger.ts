@@ -18,6 +18,7 @@
 import pino from "pino";
 import * as Sentry from "@sentry/node";
 import { isProduction } from "./env.js";
+import { BRAND_NAME } from "@shared/brand.js";
 
 const isProd = isProduction();
 const envLabel = isProd ? "production" : (process.env.NODE_ENV ?? "development");
@@ -60,7 +61,7 @@ export const logger = pino({
   // Keep a stable timestamp format. ISO 8601 is what most aggregators want.
   timestamp: pino.stdTimeFunctions.isoTime,
   base: {
-    service: "jiranihub",
+    service: BRAND_NAME.toLowerCase(),
     env: envLabel,
   },
 });

@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/utils";
 import type { Visitor } from "@shared/types";
+import { BRAND_NAME } from "@shared/brand";
 
 export function QrScanner() {
   const qc = useQueryClient();
@@ -88,7 +89,7 @@ export function QrScanner() {
         <div>
           <p className="text-sm font-semibold text-[#212121]">QR Code Scanning</p>
           <p className="text-xs text-[#6B5D45] mt-0.5">
-            Camera scanning requires the JiraniHub mobile app. For now, use phone number search.
+            Camera scanning requires the {BRAND_NAME} mobile app. For now, use phone number search.
           </p>
         </div>
       </div>

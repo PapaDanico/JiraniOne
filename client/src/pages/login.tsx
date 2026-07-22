@@ -5,6 +5,7 @@ import { AuthGate } from "@/components/shared/role-gate";
 import { LoginForm, type LoginFormHandle } from "@/components/auth/login-form";
 import { DemoBench } from "@/components/auth/demo-bench";
 import { cn } from "@/lib/utils";
+import { BRAND_NAME, SUPPORT_EMAIL } from "@shared/brand";
 
 export default function LoginPage() {
   const formRef = useRef<LoginFormHandle | null>(null);
@@ -26,7 +27,7 @@ export default function LoginPage() {
               >
                 <img
                   src="/brand/logo-mark.webp"
-                  alt="JiraniHub"
+                  alt={BRAND_NAME}
                   className="h-14 w-14 object-contain"
                   onError={(e) => {
                     const t = e.currentTarget;
@@ -44,7 +45,7 @@ export default function LoginPage() {
               </div>
             </div>
             <h1 className="font-display font-extrabold text-3xl text-white tracking-tight">
-              JiraniHub
+              {BRAND_NAME}
             </h1>
             <p className="font-medium text-base text-brand-gold mt-1">
               Smart estate management · Kenya
@@ -120,7 +121,7 @@ export default function LoginPage() {
               ) : (
                 <p className="mt-5 text-xs text-tribal-earth text-center leading-snug">
                   Staff accounts are created by your estate admin. Need one set up?{" "}
-                  <a href="mailto:support@jiranihub.co.ke" className="text-brand-green font-bold underline">
+                  <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand-green font-bold underline">
                     Contact support
                   </a>
                   .
@@ -146,7 +147,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-[11px] text-white/50 mt-6">
-            © {new Date().getFullYear()} JiraniHub · Built for Kenya
+            © {new Date().getFullYear()} {BRAND_NAME} · Built for Kenya
           </p>
         </div>
       </div>

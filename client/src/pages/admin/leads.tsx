@@ -7,6 +7,7 @@ import { SectionLoader } from "@/components/shared/loading";
 import { api } from "@/lib/api";
 import { formatRelative } from "@/lib/utils";
 import type { Lead } from "@shared/types";
+import { BRAND_NAME } from "@shared/brand";
 
 export default function AdminLeadsPage() {
   const { data: leads = [], isLoading } = useQuery<Lead[]>({
@@ -21,7 +22,7 @@ export default function AdminLeadsPage() {
       <main className="container-app pt-5 pb-6 space-y-4 page-content">
         <p className="text-sm text-tribal-earth">
           Prospects who requested a walkthrough from the landing page — the
-          B2B pipeline for new estates joining JiraniHub.
+          B2B pipeline for new estates joining {BRAND_NAME}.
         </p>
 
         {isLoading ? (

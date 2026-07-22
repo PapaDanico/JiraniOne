@@ -18,6 +18,7 @@ import { LevyStatusWidget } from "@/components/shared/levy-status";
 import { api } from "@/lib/api";
 import { formatRelative, formatDate } from "@/lib/utils";
 import type { Announcement, Event, MaintenanceTicket, Notification, Parcel, Poll } from "@shared/types";
+import { BRAND_NAME } from "@shared/brand";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -187,7 +188,7 @@ export default function ResidentDashboard() {
               <p className="font-medium text-base text-white/70 mt-0.5">
                 {estate
                   ? `${estate.name}${user?.unitNumber ? ` · Unit ${user.unitNumber}` : ""}`
-                  : "Welcome to JiraniHub"}
+                  : `Welcome to ${BRAND_NAME}`}
               </p>
             </div>
             {hasAlert && (

@@ -12,6 +12,7 @@ import {
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { AlertCircle, Building2, CheckCircle2 } from "lucide-react";
+import { BRAND_NAME } from "@shared/brand";
 
 interface Props {
   open: boolean;
@@ -64,7 +65,7 @@ export function RequestDemoDialog({ open, onClose }: Props) {
             <DialogTitle>Thank you!</DialogTitle>
             <p className="text-sm text-[#6B5D45]">
               We've received your details and will reach out shortly to set up
-              JiraniHub for your estate.
+              {BRAND_NAME} for your estate.
             </p>
             <Button onClick={handleClose} className="w-full mt-2">
               Done
@@ -78,7 +79,7 @@ export function RequestDemoDialog({ open, onClose }: Props) {
                   <Building2 className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <DialogTitle>Bring JiraniHub to Your Estate</DialogTitle>
+                  <DialogTitle>Bring {BRAND_NAME} to Your Estate</DialogTitle>
                   <DialogDescription>
                     Tell us about your estate and we'll set up a walkthrough.
                   </DialogDescription>
