@@ -16,7 +16,6 @@ import { db } from "../db.js";
 import { smsQuotas, smsGlobalQuota } from "@shared/schema.js";
 import { isProduction } from "./env.js";
 import { sendWhatsApp } from "./whatsapp.js";
-import { SMS_REGISTERED_SENDER } from "@shared/brand.js";
 
 interface SmsOptions {
   to: string;
@@ -135,11 +134,20 @@ export async function sendSmsRaw({ to, message }: SmsOptions): Promise<boolean> 
   }
 
   try {
+    // Alphanumeric sender ID ("JiraniOne") — env-driven and OMITTED unless
+    // set. Africa's Talking silently drops messages whose `from` isn't a
+    // sender ID registered+approved on THIS account (HTTP 201 either way,
+    // no error anywhere), so defaulting to a brand name would blackhole
+    // every OTP/visitor pass/emergency SMS on a fresh account. Unset =
+    // AT's shared default shortcode, which always delivers. Set
+    // SMS_REGISTERED_SENDER_ID only after the dashboard shows the sender
+    // ID as approved.
+    const from = process.env.SMS_REGISTERED_SENDER_ID;
     const body = new URLSearchParams({
       username,
       to,
       message,
-      from: SMS_REGISTERED_SENDER,
+      ...(from ? { from } : {}),
     });
     const res = await fetch(
       "https://api.africastalking.com/version1/messaging",
