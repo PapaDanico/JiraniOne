@@ -343,9 +343,10 @@ If referencing the Replit export for logic, SKIP these entirely:
 - Market: Kenyan gated communities, housing estates, apartment blocks
 - Revenue model: SaaS (per-estate monthly subscription, tiered by unit count)
   — implemented: pricing/tiers in `shared/billing.ts` (Starter ≤40 units
-  KES 2,500/mo; Growth 41–150 KES 6,500/mo; Enterprise 151+ KES 15,000/mo;
+  KES 4,000/mo; Growth 41–150 KES 10,000/mo; Enterprise 151+ KES 20,000/mo;
   30-day trial, 7-day due window, 14-day grace, soft suspension — banners
-  only, safety features and data never cut)
+  only, safety features and data never cut; 400+ units = custom pricing,
+  handled in sales not code)
 - Target customer: Estate management companies, residents' associations,
   property developers
 - Competitive context: Most estates run on WhatsApp + paper + spreadsheets

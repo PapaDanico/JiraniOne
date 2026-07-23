@@ -4,17 +4,27 @@
 // Revenue model (CLAUDE.md): SaaS, per-estate monthly subscription, tiered
 // by unit count. Prices are deliberately a small fraction of what an estate
 // already collects in service charges (a 40-unit estate collecting even a
-// modest KES 3,000/unit levy handles KES 120,000/month — Starter is ~2% of
+// modest KES 3,000/unit levy handles KES 120,000/month — Starter is ~3% of
 // that), so the subscription reads as an operating cost, not a project.
+//
+// Pricing revised 2026-07-23 (owner-directed) to reflect real running
+// costs: SMS spend alone for an active estate runs KES 1,000–4,000/month,
+// on top of hosting, M-PESA reconciliation infrastructure, support, and
+// continuous development. Per-unit-at-capacity: Starter KES 100, Growth
+// ~KES 67, Enterprise ≤KES 132 — still at/below the KES 100–150/unit the
+// Kenyan market pays for far less capable tools, and cheap pricing was
+// signalling "toy" to professional management companies anyway.
 //
 // Kenyan-market notes baked into these numbers:
 //   - KES, round figures — they get typed into M-PESA reconciliation
 //     spreadsheets and read out at AGMs.
-//   - Committee-approval friendly: under ~KES 30k/year (Starter) is within
-//     most estate committees' discretionary spend, avoiding a full AGM vote
-//     to adopt the platform.
+//   - Committee-approval friendly: Starter at KES 48k/year is still within
+//     most committees' discretionary spend, avoiding a full AGM vote.
 //   - Every new estate gets a 30-day full-featured trial (no payment
 //     details needed — M-PESA means there's nothing to "put on file").
+//   - Estates above ~400 units deserve a custom conversation (the flat
+//     Enterprise price is the floor, not the ceiling) — handled in sales,
+//     not in code, until there's a real pipeline of them.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type SubscriptionTier = "starter" | "growth" | "enterprise";
@@ -34,21 +44,21 @@ export const PLANS: Record<SubscriptionTier, Plan> = {
     tier: "starter",
     label: "Starter",
     maxUnits: 40,
-    monthlyKes: 2500,
+    monthlyKes: 4000,
     blurb: "For courts and small gated compounds — up to 40 units.",
   },
   growth: {
     tier: "growth",
     label: "Growth",
     maxUnits: 150,
-    monthlyKes: 6500,
+    monthlyKes: 10000,
     blurb: "For mid-size estates and apartment blocks — 41 to 150 units.",
   },
   enterprise: {
     tier: "enterprise",
     label: "Enterprise",
     maxUnits: Infinity,
-    monthlyKes: 15000,
+    monthlyKes: 20000,
     blurb: "For large estates and multi-phase developments — 151+ units.",
   },
 };

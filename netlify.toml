@@ -19,6 +19,21 @@
   # hash-format-compatible replacement with no native binary to break.
   external_node_modules = ["sharp"]
 
+# Security headers for everything the CDN serves (the HTML/JS/CSS). The
+# Express/helmet CSP only rides on /api/* responses — JSON, where CSP does
+# nothing — because static assets never pass through the function. This is
+# the enforcement point that actually governs the app pages. ENFORCED (not
+# report-only): verified against the built bundle — no inline <script>
+# anywhere (registerSW.js is a file, not inline), fonts are the only
+# third-party origin, all API/data fetches are same-origin.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), payment=(), usb=()"
+
 # Order matters — first match wins. API and upload routes must be caught
 # before the SPA fallback, or every request would 200 with index.html.
 [[redirects]]
