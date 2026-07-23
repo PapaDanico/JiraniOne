@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, CheckCheck, MessageCircle } from "lucide-react";
+import { Bell, BellRing, CheckCheck, MessageCircle } from "lucide-react";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { SectionLoader } from "@/components/shared/loading";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { api, ApiError } from "@/lib/api";
 import { formatRelative } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -16,7 +18,40 @@ const TYPE_CONFIG: Record<string, { label: string; color: string; emoji: string 
   payment:         { label: "Payment",     color: "bg-[#D4A017]/10 text-[#9A6E00]",   emoji: "💳" },
   emergency:       { label: "Emergency",   color: "bg-[#B71C1C]/10 text-[#B71C1C]",   emoji: "🚨" },
   announcement:    { label: "Announcement",color: "bg-[#6B5D45]/10 text-[#6B5D45]",   emoji: "📢" },
+  billing:         { label: "Billing",     color: "bg-[#D4A017]/10 text-[#9A6E00]",   emoji: "🧾" },
 };
+
+// Device-level Web Push opt-in — hidden entirely when the browser can't do
+// push or the server has no VAPID keys yet, so it never shows a dead toggle.
+function PushOptInCard() {
+  const { status, busy, subscribe, unsubscribe } = usePushNotifications();
+  if (status === "loading" || status === "unsupported") return null;
+
+  return (
+    <Card>
+      <CardContent className="py-3">
+        <div className="flex items-center gap-3">
+          <BellRing className="h-5 w-5 text-[#1B5E20] flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm text-[#212121]">Push notifications</p>
+            <p className="text-xs text-[#6B5D45] mt-0.5">
+              {status === "denied"
+                ? "Blocked in your browser — allow notifications for this site in your browser settings to turn these on."
+                : "Get alerts on this device even when the app is closed."}
+            </p>
+          </div>
+          {status !== "denied" && (
+            <Switch
+              checked={status === "subscribed"}
+              disabled={busy}
+              onCheckedChange={(on) => (on ? subscribe() : unsubscribe())}
+            />
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function NotificationsPage() {
   const qc = useQueryClient();
@@ -63,6 +98,7 @@ export default function NotificationsPage() {
     <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Notifications" />
       <main className="container-list pt-4 space-y-4 page-content">
+        <PushOptInCard />
         {smsQuota && (
           <Card className={smsQuota.percentUsed > 80 ? "border-amber-500" : ""}>
             <CardContent className="py-3">

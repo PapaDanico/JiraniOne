@@ -15,6 +15,7 @@ import { sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { smsQuotas, smsGlobalQuota } from "@shared/schema.js";
 import { isProduction } from "./env.js";
+import { sendWhatsApp } from "./whatsapp.js";
 import { SMS_REGISTERED_SENDER } from "@shared/brand.js";
 
 interface SmsOptions {
@@ -105,6 +106,15 @@ async function decrementGlobalQuota(): Promise<void> {
   `);
 }
 
+// Single channel dispatch point: WhatsApp first when the flag is on
+// (cheaper per message, richer delivery), SMS otherwise or on any
+// WhatsApp failure. Callers and quota accounting are channel-agnostic —
+// a message is a message against the daily caps either way.
+async function sendViaChannels(opts: SmsOptions): Promise<boolean> {
+  if (await sendWhatsApp(opts)) return true;
+  return sendSmsRaw(opts);
+}
+
 // Raw send — does NOT check quotas. Internal use only.
 export async function sendSmsRaw({ to, message }: SmsOptions): Promise<boolean> {
   const apiKey = process.env.SMS_API_KEY;
@@ -179,7 +189,7 @@ export async function sendThrottledSms({
         error: err instanceof Error ? err.message : String(err),
       }),
     );
-    const sent = await sendSmsRaw({ to, message });
+    const sent = await sendViaChannels({ to, message });
     return sent ? { ok: true } : { ok: false, reason: "send_failed" };
   }
 
@@ -208,7 +218,7 @@ export async function sendThrottledSms({
           error: err instanceof Error ? err.message : String(err),
         }),
       );
-      const sent = await sendSmsRaw({ to, message });
+      const sent = await sendViaChannels({ to, message });
       return sent ? { ok: true } : { ok: false, reason: "send_failed" };
     }
     if (userCount > PER_USER_CAP()) {
@@ -225,7 +235,7 @@ export async function sendThrottledSms({
     }
   }
 
-  const ok = await sendSmsRaw({ to, message });
+  const ok = await sendViaChannels({ to, message });
   if (!ok) {
     if (userId && !systemMessage) await decrementUserQuota(userId);
     await decrementGlobalQuota();

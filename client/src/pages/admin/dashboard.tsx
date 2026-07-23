@@ -16,6 +16,7 @@ import { SectionTitle } from "@/components/shared/section-title";
 import { KpiTile } from "@/components/shared/kpi-tile";
 import { InfoBox } from "@/components/shared/info-box";
 import { OnboardingChecklist } from "@/components/admin/onboarding-checklist";
+import { BillingBanner } from "@/components/admin/billing-card";
 import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -226,6 +227,7 @@ export default function AdminDashboard() {
             ) : (
               analytics && (
                 <>
+                  <BillingBanner />
                   <OnboardingChecklist />
 
                   {/* Desktop 2/3 + 1/3 split via two wrapper columns.

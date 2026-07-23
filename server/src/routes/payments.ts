@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { db, dbTx, type DBTx } from "../db.js";
-import { payments, fundraisingCampaigns, donations, chamaContributions } from "@shared/schema.js";
+import { payments, fundraisingCampaigns, donations, chamaContributions, subscriptionInvoices } from "@shared/schema.js";
 import {
   initiatePaymentSchema,
   createCampaignSchema,
@@ -89,6 +89,42 @@ export async function applyPaymentResult(
             event: "donation_settled_after_campaign_closed",
             paymentId: payment.id,
             campaignId,
+            amount: payment.amount,
+          }),
+        );
+      }
+    }
+  } else if (payment.type === "subscription") {
+    // Platform subscription invoice (server/src/routes/billing.ts). Flip
+    // the linked invoice to paid — guarded on status so a duplicate
+    // callback or a reconciliation re-settle is a no-op, and so a payment
+    // arriving after an admin already paid via another channel (invoice
+    // manually waived, second device) can't double-mark.
+    const meta = payment.metadata ?? {};
+    const invoiceId = meta.invoiceId as string | undefined;
+    if (invoiceId) {
+      const updated = await tx
+        .update(subscriptionInvoices)
+        .set({
+          status: "paid",
+          paymentId: payment.id,
+          mpesaRef: result.mpesaRef,
+          paidAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(subscriptionInvoices.id, invoiceId),
+          eq(subscriptionInvoices.status, "pending"),
+        ))
+        .returning({ id: subscriptionInvoices.id });
+      if (updated.length === 0) {
+        // Real money arrived for an invoice that's no longer pending —
+        // needs a human decision (refund vs credit), never silent.
+        console.error(
+          JSON.stringify({
+            event: "subscription_paid_but_invoice_not_pending",
+            paymentId: payment.id,
+            invoiceId,
             amount: payment.amount,
           }),
         );

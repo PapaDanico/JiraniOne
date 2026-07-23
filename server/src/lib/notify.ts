@@ -1,6 +1,12 @@
 import { db } from "../db.js";
 import { notifications } from "@shared/schema.js";
 import { newId } from "./ids.js";
+import { sendPushToUsers } from "./push.js";
+
+// Every in-app notification is also fanned out via Web Push (best-effort,
+// no-op until VAPID keys are configured) — the notification row in the DB
+// remains the source of truth; push is just delivery. sendPushToUsers
+// never throws, so callers keep their existing error surface.
 
 export async function createNotification(opts: {
   userId: string;
@@ -16,6 +22,12 @@ export async function createNotification(opts: {
     body: opts.body,
     type: opts.type,
     linkTo: opts.linkTo ?? null,
+  });
+  await sendPushToUsers([opts.userId], {
+    title: opts.title,
+    body: opts.body,
+    linkTo: opts.linkTo,
+    tag: opts.type,
   });
 }
 
@@ -40,4 +52,10 @@ export async function createNotifications(opts: {
       linkTo: opts.linkTo ?? null,
     })),
   );
+  await sendPushToUsers(opts.userIds, {
+    title: opts.title,
+    body: opts.body,
+    linkTo: opts.linkTo,
+    tag: opts.type,
+  });
 }

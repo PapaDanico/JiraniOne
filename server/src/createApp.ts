@@ -37,6 +37,8 @@ import { analyticsRouter } from "./routes/analytics.js";
 import { uploadsRouter } from "./routes/uploads.js";
 import { systemAdminRouter } from "./routes/systemAdmin.js";
 import { estatesRouter } from "./routes/estates.js";
+import { billingRouter } from "./routes/billing.js";
+import { pushRouter } from "./routes/push.js";
 import { logger, captureException } from "./lib/logger.js";
 import { logErrorToDb } from "./lib/errorLog.js";
 import { getClientIp } from "./lib/httpUtils.js";
@@ -252,6 +254,20 @@ export function createApp(): express.Express {
     }),
   );
 
+  // Subscription billing STK push — same shape of abuse surface as the
+  // resident payment path, same limit.
+  app.use(
+    "/api/billing/pay",
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 5,
+      standardHeaders: true,
+      legacyHeaders: false,
+      keyGenerator: getClientIp,
+      message: { error: "Too many payment requests. Please wait before retrying." },
+    }),
+  );
+
   // ─── Origin check on mutating requests ──────────────────────────────────────
   // Layered defence on top of SameSite=lax. Rejects state-changing requests
   // whose Origin header is not in the CORS allowlist. The CORS middleware
@@ -344,6 +360,8 @@ export function createApp(): express.Express {
   app.use("/api/leads", leadsRouter);
   app.use("/api/system", systemAdminRouter);
   app.use("/api/estates", estatesRouter);
+  app.use("/api/billing", billingRouter);
+  app.use("/api/push", pushRouter);
 
   // ─── Health check ────────────────────────────────────────────────────────────
   // Returning OK without a DB ping means a DB outage looks healthy. Run a
