@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEstate } from "@/hooks/useEstate";
 import { api, ApiError } from "@/lib/api";
+import { displayPhone } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 
 // Estate-level settings — until this page existed, estate name/location/
@@ -32,7 +33,9 @@ export default function AdminSettingsPage() {
         location: estate.location ?? "",
         totalUnits: estate.totalUnits != null ? String(estate.totalUnits) : "",
         monthlyLevy: estate.monthlyLevy != null ? String(Math.round(Number(estate.monthlyLevy))) : "",
-        securityPhone: (estate as { securityPhone?: string | null }).securityPhone ?? "",
+        // Show the friendly 07XX form, not the stored +254 — the server
+        // normalizes whatever format comes back on save.
+        securityPhone: estate.securityPhone ? displayPhone(estate.securityPhone) : "",
       });
     }
   }, [estate]);
