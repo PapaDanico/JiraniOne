@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Public (logged-out) pages only — the app itself is behind auth and
+     disallowed in robots.txt. Keep URLs in sync with robots.txt and
+     shared/brand.ts PRIMARY_URL. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://jiranisync.work/</loc><priority>1.0</priority></url>
+  <url><loc>https://jiranisync.work/login</loc><priority>0.8</priority></url>
+  <url><loc>https://jiranisync.work/register</loc><priority>0.7</priority></url>
+  <url><loc>https://jiranisync.work/faq</loc><priority>0.6</priority></url>
+  <url><loc>https://jiranisync.work/privacy</loc><priority>0.3</priority></url>
+  <url><loc>https://jiranisync.work/terms</loc><priority>0.3</priority></url>
+</urlset>
