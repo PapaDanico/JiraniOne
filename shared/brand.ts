@@ -61,11 +61,10 @@ export const PRODUCTION_ORIGINS = [
 // it's just text.
 export const SMS_SENDER_ID = "JiraniOne";
 
-// The alphanumeric sender ID passed to Africa's Talking's `from` field.
-// This MUST stay the carrier-registered value: AT rejects unregistered
-// sender IDs per-recipient while still returning HTTP 201, so sending
-// with an unregistered name silently drops every SMS (OTPs, visitor
-// passes, emergency alerts) with no error anywhere. Flip to "JiraniOne"
-// ONLY after the new name is registered and approved in the Africa's
-// Talking dashboard.
-export const SMS_REGISTERED_SENDER = "JiraniHub";
+// The alphanumeric sender ID for Africa's Talking's `from` field is NOT a
+// brand constant anymore — it's the SMS_REGISTERED_SENDER_ID env var
+// (server/src/lib/sms.ts), unset by default. AT silently drops messages
+// from sender IDs not approved on the sending account (HTTP 201 either
+// way), so the safe default is omitting `from` entirely (AT's shared
+// shortcode always delivers). Set the env var to "JiraniOne" only once
+// the AT dashboard shows that sender ID approved.
