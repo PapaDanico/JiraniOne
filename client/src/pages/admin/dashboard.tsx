@@ -298,7 +298,7 @@ export default function AdminDashboard() {
                               <CreditCard className="h-4 w-4 text-brand-red shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-sm text-tribal-charcoal">
-                                  {unpaidResidents.length} resident{unpaidResidents.length > 1 ? "s" : ""} haven't paid levy this month
+                                  {unpaidResidents.length} resident{unpaidResidents.length > 1 ? "s haven't" : " hasn't"} paid levy this month
                                 </p>
                                 <p className="text-xs text-tribal-earth mt-0.5 truncate">
                                   {unpaidResidents.slice(0, 2).map((r) => r.name).join(" · ")}
@@ -390,7 +390,7 @@ export default function AdminDashboard() {
                         {analytics.payments.levyStatus.unpaidResidents.length > 0 && (
                           <details className="pt-1">
                             <summary className="text-xs font-bold text-brand-red cursor-pointer">
-                              {analytics.payments.levyStatus.unpaidResidents.length} haven't paid yet
+                              {analytics.payments.levyStatus.unpaidResidents.length} {analytics.payments.levyStatus.unpaidResidents.length > 1 ? "haven't" : "hasn't"} paid yet
                             </summary>
                             <ul className="mt-2 space-y-1.5 max-h-56 overflow-y-auto">
                               {analytics.payments.levyStatus.unpaidResidents.map((r) => (
