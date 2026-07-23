@@ -2,16 +2,21 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { CheckCircle2, Circle, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
+import { useEstate } from "@/hooks/useEstate";
 import type { EstateAnalytics, Facility, Announcement, ServiceProvider, EstateDocument } from "@shared/types";
 import { BRAND_NAME } from "@shared/brand";
 
 interface EstateUser { id: string }
 
+// Ordered by real-world urgency for a brand-new estate: the security desk
+// phone first (it's what the SOS page dials — a placeholder number there
+// is a safety gap, not a cosmetic one), then people, then content.
 const STEPS = [
-  { key: "facility",     label: "Add a facility",          desc: "Clubhouse, pool, parking — anything residents can book.", href: "/bookings" },
-  { key: "announcement", label: "Post an announcement",     desc: "Welcome residents and share the first estate notice.",    href: "/announcements" },
-  { key: "provider",     label: "Add a service provider",   desc: "A plumber, electrician, or cleaner residents can call.",  href: "/marketplace" },
+  { key: "security",     label: "Set your security desk phone", desc: "Residents one-tap call this number from the SOS page.",   href: "/admin/settings" },
   { key: "resident",     label: "Invite your residents",    desc: `Share ${BRAND_NAME} with the households in your estate.`,     href: "/admin/users" },
+  { key: "announcement", label: "Post an announcement",     desc: "Welcome residents and share the first estate notice.",    href: "/announcements" },
+  { key: "facility",     label: "Add a facility",          desc: "Clubhouse, pool, parking — anything residents can book.", href: "/bookings" },
+  { key: "provider",     label: "Add a service provider",   desc: "A plumber, electrician, or cleaner residents can call.",  href: "/marketplace" },
   { key: "document",     label: "Upload an estate document",desc: "Estate rules or AGM minutes residents can reference.",    href: "/documents" },
 ] as const;
 
@@ -46,9 +51,12 @@ export function OnboardingChecklist() {
     queryFn: () => api.get<EstateUser[]>("/api/users").then((r) => r.data),
   });
 
+  const { data: estate } = useEstate();
+
   // Undefined (still loading) counts as "not done yet" so the checklist
   // doesn't flash all-complete before data arrives.
   const done: Record<(typeof STEPS)[number]["key"], boolean> = {
+    security: !!estate?.securityPhone,
     facility: (facilities?.length ?? 0) > 0,
     announcement: (announcements?.length ?? 0) > 0,
     provider: (services?.length ?? 0) > 0,

@@ -113,6 +113,13 @@ export const estates = pgTable(
       .notNull()
       .default("starter"),
     totalUnits: integer("total_units").default(0),
+    // Platform-revenue billing (shared/billing.ts). trialEndsAt is set on
+    // creation (30-day full trial); billingExempt marks pilot/partner
+    // estates that are never invoiced. Billing STATE (trialing/active/
+    // past_due/suspended) is always derived from these facts + unpaid
+    // invoices, never stored — no status column to drift.
+    trialEndsAt: timestamp("trial_ends_at"),
+    billingExempt: boolean("billing_exempt").notNull().default(false),
     // Nullable — the emergency page's "call security directly" one-tap links
     // fall back to a generic placeholder number when unset, but every estate
     // should eventually set its own so residents actually reach their gate.
@@ -1035,6 +1042,54 @@ export const chamaContributions = pgTable(
   }),
 );
 
+// ─── Platform Subscription Billing ───────────────────────────────────────────
+// JiraniOne's own revenue (estate pays the platform), completely separate
+// from resident-facing payments (levy, harambee, chama). One invoice per
+// estate per calendar month once the trial lapses; settled via the same
+// M-PESA STK push + callback + reconciliation machinery as everything else
+// (payments.type = "subscription", metadata.invoiceId links back here).
+
+export const invoiceStatusEnum = pgEnum("invoice_status", [
+  "pending",
+  "paid",
+  "waived",
+  "cancelled",
+]);
+
+export const subscriptionInvoices = pgTable(
+  "subscription_invoices",
+  {
+    id: text("id").primaryKey(),
+    estateId: text("estate_id")
+      .notNull()
+      .references(() => estates.id),
+    // "YYYY-MM" — the calendar month this invoice covers.
+    period: varchar("period", { length: 7 }).notNull(),
+    tier: subscriptionTierEnum("tier").notNull(),
+    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+    status: invoiceStatusEnum("status").notNull().default("pending"),
+    dueDate: timestamp("due_date").notNull(),
+    paymentId: text("payment_id").references(() => payments.id),
+    mpesaRef: varchar("mpesa_ref", { length: 50 }),
+    paidAt: timestamp("paid_at"),
+    // Idempotency guard for the overdue-nag notification (billing cron) —
+    // same pattern as events.reminder24hSentAt.
+    overdueNotifiedAt: timestamp("overdue_notified_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    estateIdIdx: index("subscription_invoices_estate_id_idx").on(t.estateId),
+    statusIdx: index("subscription_invoices_status_idx").on(t.status),
+    // One invoice per estate per month — DB-level backstop so a doubled
+    // cron run (Netlify retry, overlapping invocation) can't double-bill.
+    estatePeriodUq: uniqueIndex("subscription_invoices_estate_period_uq").on(
+      t.estateId,
+      t.period,
+    ),
+  }),
+);
+
 // One-time setup links: admin creates user → tokenHash stored here →
 // link e-mailed/shared with new resident → /setup/:token page lets them set
 // their own password. Token is 32 random bytes (base64url, ~192 bits).
@@ -1054,6 +1109,32 @@ export const userSetupTokens = pgTable(
   (t) => ({
     userIdIdx: index("user_setup_tokens_user_id_idx").on(t.userId),
     expiresAtIdx: index("user_setup_tokens_expires_at_idx").on(t.expiresAt),
+  }),
+);
+
+// ─── Web Push Subscriptions ───────────────────────────────────────────────────
+// One row per browser/device push subscription. A user can have several
+// (phone + laptop); a device that unsubscribes or whose endpoint 404s/410s
+// on send gets its row deleted. Keys are the standard Web Push p256dh/auth
+// pair from PushSubscription.toJSON().
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: varchar("user_agent", { length: 300 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    userIdIdx: index("push_subscriptions_user_id_idx").on(t.userId),
+    // The same browser re-subscribing must upsert, not duplicate — the
+    // endpoint URL is unique per subscription at the push service.
+    endpointUq: uniqueIndex("push_subscriptions_endpoint_uq").on(t.endpoint),
   }),
 );
 

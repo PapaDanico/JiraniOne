@@ -56,6 +56,10 @@ export default defineConfig({
         // shell (JS/CSS/HTML) plus runtime-caches static image assets, never
         // /api/* or /uploads/*.
         globPatterns: ["**/*.{js,css,html,svg,woff2}"],
+        // Web Push handlers live in a separate plain-JS file pulled into
+        // the generated SW — keeps generateSW (precache config stays
+        // declarative) while still handling push/notificationclick.
+        importScripts: ["push-sw.js"],
         runtimeCaching: [
           {
             urlPattern: /\/(brand|icons)\/.*\.(png|webp|svg)$/,

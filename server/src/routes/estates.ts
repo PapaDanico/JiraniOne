@@ -7,6 +7,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
 import { writeAudit } from "../lib/audit.js";
+import { TRIAL_DAYS } from "@shared/billing.js";
 
 export const estatesRouter = Router();
 estatesRouter.use(requireAuth);
@@ -43,6 +44,9 @@ estatesRouter.post("/", async (req, res) => {
       location,
       totalUnits: totalUnits ?? null,
       adminId: user.id,
+      // 30-day full-featured trial starts now (shared/billing.ts) — the
+      // billing cron only ever invoices estates whose trial has lapsed.
+      trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
     }).returning();
 
     await tx.update(users)

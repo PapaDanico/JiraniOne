@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Building2, Download, Save } from "lucide-react";
+import { Building2, CreditCard, Download, Save } from "lucide-react";
+import { BillingCard } from "@/components/admin/billing-card";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { PageFooter } from "@/components/shared/page-footer";
 import { SectionTitle } from "@/components/shared/section-title";
@@ -97,6 +98,11 @@ export default function AdminSettingsPage() {
               <Save className="h-4 w-4" /> Save changes
             </Button>
           </div>
+        </section>
+
+        <section>
+          <SectionTitle icon={<CreditCard className="h-4 w-4" />}>Your plan</SectionTitle>
+          <BillingCard />
         </section>
 
         <section>
