@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useState } from "react";
 import {
@@ -19,7 +19,8 @@ import { OnboardingChecklist } from "@/components/admin/onboarding-checklist";
 import { BillingBanner } from "@/components/admin/billing-card";
 import { WeatherWidget, TrafficWidget } from "@/components/shared/weather-traffic";
 import { cn } from "@/lib/utils";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
 import type { EstateAnalytics, MaintenanceTicket, ServiceProvider, Lead } from "@shared/types";
 
 // ─── Module shortcuts ────────────────────────────────────────────────────────
@@ -107,6 +108,16 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const toast = useToast();
+  const remind = useMutation({
+    mutationFn: () => api.post<{ reminded: number }>("/api/payments/levy-remind", {}),
+    onSuccess: (r) => toast(
+      r.data.reminded > 0
+        ? `Reminder sent to ${r.data.reminded} resident${r.data.reminded > 1 ? "s" : ""} — in-app, push & SMS`
+        : "Everyone has paid — nothing to remind!",
+    ),
+    onError: (e) => toast(e instanceof ApiError ? e.message : "Failed to send reminders.", "error"),
+  });
   const { data: estate } = useEstate();
   const [tab, setTab] = useState<TabKey>("overview");
 
@@ -387,6 +398,15 @@ export default function AdminDashboard() {
                             }}
                           />
                         </div>
+                        {analytics.payments.levyStatus.unpaidResidents.length > 0 && (
+                          <button
+                            onClick={() => remind.mutate()}
+                            disabled={remind.isPending}
+                            className="text-xs font-bold text-brand-green bg-brand-green/10 hover:bg-brand-green/20 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-50"
+                          >
+                            {remind.isPending ? "Sending…" : "📣 Send payment reminder"}
+                          </button>
+                        )}
                         {analytics.payments.levyStatus.unpaidResidents.length > 0 && (
                           <details className="pt-1">
                             <summary className="text-xs font-bold text-brand-red cursor-pointer">
