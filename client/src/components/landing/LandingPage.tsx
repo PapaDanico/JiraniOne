@@ -82,7 +82,7 @@ export function LandingPage() {
             <Button
               variant="secondary"
               onClick={() => setLocation("/login")}
-              className="w-full md:w-auto md:px-8 h-14 text-base font-semibold rounded-xl border-2 hover:bg-[#1B5E20]/5 transition-all duration-300"
+              className="w-full md:w-auto md:px-8 h-14 text-base font-semibold rounded-xl border-2 border-[#1B5E20]/60 text-[#1B5E20] bg-white hover:bg-[#1B5E20]/5 transition-all duration-300"
             >
               Sign In
             </Button>
