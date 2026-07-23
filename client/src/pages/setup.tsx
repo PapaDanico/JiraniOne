@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useParams, useLocation } from "wouter";
+import { useParams } from "wouter";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { BRAND_NAME } from "@shared/brand";
 
@@ -16,7 +16,6 @@ const inputBase =
 
 export default function SetupPage() {
   const { token } = useParams<{ token: string }>();
-  const [, setLocation] = useLocation();
 
   const [status, setStatus] = useState<Status>("loading");
   const [phone, setPhone] = useState("");
@@ -30,10 +29,13 @@ export default function SetupPage() {
   useEffect(() => {
     if (!token) { setStatus("invalid"); return; }
 
-    api.get<{ data: { phone: string; name: string } }>(`/api/auth/setup/${token}`)
+    // api.get already unwraps to { data: T } — double-wrapping the generic
+    // here made data.data undefined at runtime, so EVERY valid link threw
+    // in this .then and rendered as "invalid or expired".
+    api.get<{ phone: string; name: string }>(`/api/auth/setup/${token}`)
       .then(({ data }) => {
-        setPhone(data.data.phone);
-        setName(data.data.name);
+        setPhone(data.phone);
+        setName(data.name);
         setStatus("ready");
       })
       .catch(() => setStatus("invalid"));
@@ -59,13 +61,23 @@ export default function SetupPage() {
     setSubmitting(true);
     try {
       await api.post("/api/auth/setup", { token, password });
+      // The session cookie is set — ask who we are so guards land on the
+      // gate dashboard and vendors on theirs, not on the resident one.
+      // Full-page navigation (not setLocation) so AuthProvider boots
+      // fresh with the new session instead of serving its stale
+      // logged-out state.
+      const me = await api
+        .get<{ role: string }>("/api/auth/me")
+        .then((r) => r.data)
+        .catch(() => null);
       setStatus("done");
-      // Brief pause then send to dashboard — session cookie is now set.
-      setTimeout(() => setLocation("/dashboard/resident"), 1800);
+      setTimeout(() => {
+        window.location.href = me ? `/dashboard/${me.role}` : "/login";
+      }, 1500);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: string } } }).response?.data?.error ??
-        "Something went wrong. The link may have expired.";
+      const msg = err instanceof ApiError
+        ? err.message
+        : "Something went wrong. The link may have expired.";
       setError(msg);
     } finally {
       setSubmitting(false);

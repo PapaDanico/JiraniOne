@@ -22,6 +22,7 @@ const SECTIONS: FaqSection[] = [
       { q: "I forgot my password. What do I do?", a: "Tap \"Forgot password\" on the sign-in page. We send a 6-digit code to your phone by SMS — enter it and choose a new password. Codes expire after 15 minutes, and you can request at most 3 per day." },
       { q: "Does it work on slow internet?", a: `Yes — ${BRAND_NAME} is built for 3G. Pages are small and load only what you need. If a request fails mid-way, you'll see a clear error so you know whether it went through, instead of guessing.` },
       { q: "Is my data safe?", a: "Your data belongs to you and stays inside your estate — admins and gate staff only see what their job needs. We never sell data, there are no ad trackers, and visitor records are automatically anonymized after 90 days. Full details in our Privacy Policy." },
+      { q: "How much does it cost?", a: `Residents never pay to use ${BRAND_NAME} — the estate subscribes. Plans are per estate per month, by unit count: Starter (up to 40 units) KES 2,500, Growth (41–150) KES 6,500, Enterprise (151+) KES 15,000. Every estate starts with a 30-day free trial of everything, no card needed, and pays via M-PESA.` },
     ],
   },
   {
@@ -41,7 +42,8 @@ const SECTIONS: FaqSection[] = [
     emoji: "🗝️",
     items: [
       { q: "How do I set up my estate?", a: "Your dashboard shows a Getting Started checklist: add a bookable facility (clubhouse, pool), post your first announcement, add a trusted service provider, invite residents, and upload your estate rules. Work through it and your estate is live." },
-      { q: "How do I add residents?", a: "Residents → Add User. Enter their name, phone, unit, and role. Residents can also self-register and pick your estate — you'll see them appear in your user list." },
+      { q: "How do I add residents?", a: "Users → Add User. Enter their name, phone, and unit, and you'll get a one-time invite link to share by WhatsApp or SMS — they open it and set their own password. Residents can also self-register and pick your estate." },
+      { q: "How do I add my security guards and vendors?", a: "Same place: Users → Add User, then pick the Security or Vendor role. Guards get gate-only access (visitor check-in, parcels, SOS response); vendors see only their marketplace listings and bookings. Share the invite link and they're in. Lost link? Tap the link icon next to their name for a fresh one." },
       { q: "How do announcements reach people?", a: "Post under Notices with a priority (info, warning, or urgent). Residents see it in-app on their dashboard and get notified. Urgent notices are visually flagged so they're impossible to miss." },
       { q: "How do facility bookings and approvals work?", a: "Add facilities under Bookings and choose whether each needs your approval. Residents book time slots; double-bookings are blocked automatically. Pending requests appear in your All tab for one-tap approve or reject." },
       { q: "Where do I put the estate rules and AGM minutes?", a: "Documents → Upload. PDFs and images up to 3MB. Every resident can read and download them — transparency without printing a single page." },
