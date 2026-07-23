@@ -4,4 +4,4 @@ Disallow: /dashboard/
 Disallow: /admin/
 Disallow: /api/
 
-Sitemap: https://www.jiranihub.co.ke/sitemap.xml
+Sitemap: https://jiranisync.work/sitemap.xml

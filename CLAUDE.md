@@ -331,7 +331,8 @@ If referencing the Replit export for logic, SKIP these entirely:
     same reason.
 
 ### Domain
-- Custom domain: jiranihub.co.ke (or similar .co.ke)
+- Primary domain: jiranisync.work (Jirani Sync Africa Ltd corporate domain,
+  Netlify primary since 2026-07-23); jiranihub.org still attached/redirecting
 - HTTPS enforced
 - M-PESA callback URL must be HTTPS — Netlify provides this by default
 
