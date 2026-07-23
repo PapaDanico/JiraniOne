@@ -20,8 +20,13 @@ export const BRAND_NAME = "JiraniOne";
 export const BRAND_TAGLINE = "Smart Estate Management for Kenyan Communities";
 export const BRAND_TAGLINE_SHORT = "Smart estate management · Kenya";
 
-// Registered company name as it appears in legal copy (Terms/Privacy).
-export const COMPANY_NAME = `${BRAND_NAME} Ltd.`;
+// Legal entity name as it appears in legal copy (Terms/Privacy) and the
+// footer. The company is Jirani Sync Africa Ltd (BRS conversion from
+// business name BN-RRS338M6 to private limited, filed 2025-07-01);
+// "JiraniOne" is its product/trading name. Deliberately NOT derived from
+// BRAND_NAME — a product rebrand must never silently rewrite who the
+// contracting legal entity is.
+export const COMPANY_NAME = "Jirani Sync Africa Ltd";
 
 // Emails and URLs below deliberately stay on jiranihub.* infrastructure —
 // the JiraniOne domains/mailboxes don't exist yet. Once jiranione.co.ke

@@ -261,7 +261,7 @@ export function LandingPage() {
 
         {/* Footer Links */}
         <section className="border-t border-[#E8E3D8] px-4 py-8 space-y-4 text-center">
-          <p className="text-xs font-semibold text-[#6B5D45]">© 2026 {COMPANY_NAME} Kenya</p>
+          <p className="text-xs font-semibold text-[#6B5D45]">© 2026 {COMPANY_NAME} · Kenya</p>
           <div className="flex justify-center gap-4 text-xs font-semibold flex-wrap">
             <a href="/faq" className="text-[#1B5E20] hover:underline hover:opacity-80 transition-all">Help & FAQ</a>
             <span className="text-[#D4C9A8]">•</span>
