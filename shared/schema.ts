@@ -120,6 +120,11 @@ export const estates = pgTable(
     // invoices, never stored — no status column to drift.
     trialEndsAt: timestamp("trial_ends_at"),
     billingExempt: boolean("billing_exempt").notNull().default(false),
+    // Standard monthly service charge per household, in KES. Set by the
+    // admin in Estate Settings; prefills the resident "Pay Levy" dialog
+    // and powers the arrears calculation. Nullable — estates that haven't
+    // set it keep the old free-amount behavior.
+    monthlyLevy: decimal("monthly_levy", { precision: 12, scale: 2 }),
     // Nullable — the emergency page's "call security directly" one-tap links
     // fall back to a generic placeholder number when unset, but every estate
     // should eventually set its own so residents actually reach their gate.

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { db, dbTx, type DBTx } from "../db.js";
-import { payments, fundraisingCampaigns, donations, chamaContributions, subscriptionInvoices, users } from "@shared/schema.js";
+import { payments, fundraisingCampaigns, donations, chamaContributions, subscriptionInvoices, users, estates } from "@shared/schema.js";
 import { periodLabel } from "@shared/billing.js";
 import { BRAND_NAME } from "@shared/brand.js";
 import { createNotification } from "../lib/notify.js";
@@ -446,6 +446,71 @@ paymentsRouter.post("/stk-push", async (req, res) => {
     metadata: { amount, type },
   });
   res.json({ data: payment, message: result.CustomerMessage });
+});
+
+// Resident: levy arrears — how many of the recent months have no completed
+// levy payment, valued at the estate's standard monthly levy. Window: the
+// last 6 calendar months (including the current one), clipped to when the
+// account was created so a resident who joined last month can never be
+// "5 months behind". Advisory, not an invoice — the estate's own records
+// remain authoritative for disputes.
+paymentsRouter.get("/levy-arrears", async (_req, res) => {
+  const user = res.locals.user!;
+  if (!user.estateId) {
+    res.json({ data: null });
+    return;
+  }
+
+  const [estate] = await db
+    .select({ monthlyLevy: estates.monthlyLevy })
+    .from(estates)
+    .where(eq(estates.id, user.estateId))
+    .limit(1);
+  const monthlyLevy = estate?.monthlyLevy ? Number(estate.monthlyLevy) : null;
+
+  const [me] = await db
+    .select({ createdAt: users.createdAt })
+    .from(users)
+    .where(eq(users.id, user.id))
+    .limit(1);
+
+  const now = new Date();
+  const windowStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const joined = me?.createdAt ?? now;
+  const joinedMonth = new Date(joined.getFullYear(), joined.getMonth(), 1);
+  const start = joinedMonth > windowStart ? joinedMonth : windowStart;
+
+  const rows = await db
+    .select({ createdAt: payments.createdAt })
+    .from(payments)
+    .where(and(
+      eq(payments.userId, user.id),
+      eq(payments.type, "levy"),
+      eq(payments.status, "completed"),
+      sql`${payments.createdAt} >= ${start.toISOString()}`,
+    ));
+
+  const paidMonths = new Set(
+    rows.map((r) => `${r.createdAt.getFullYear()}-${r.createdAt.getMonth()}`),
+  );
+
+  let monthsBehind = 0;
+  let monthsChecked = 0;
+  const cursor = new Date(start);
+  while (cursor <= now) {
+    monthsChecked++;
+    if (!paidMonths.has(`${cursor.getFullYear()}-${cursor.getMonth()}`)) monthsBehind++;
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  res.json({
+    data: {
+      monthlyLevy,
+      monthsChecked,
+      monthsBehind,
+      amountOwed: monthlyLevy != null ? monthsBehind * monthlyLevy : null,
+    },
+  });
 });
 
 // Resident: my payment history

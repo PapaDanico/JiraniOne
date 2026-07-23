@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, CheckCircle, Clock, XCircle, Heart, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEstate } from "@/hooks/useEstate";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,22 +29,45 @@ const STATUS_LABEL: Record<string, string> = {
   completed: "Paid", pending: "Pending", failed: "Failed",
 };
 
+interface LevyArrears {
+  monthlyLevy: number | null;
+  monthsChecked: number;
+  monthsBehind: number;
+  amountOwed: number | null;
+}
+
+function useLevyArrears() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["levy-arrears"],
+    queryFn: () => api.get<LevyArrears | null>("/api/payments/levy-arrears").then((r) => r.data),
+    enabled: !!user?.estateId && user.role === "resident",
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 function PayDialog({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
+  const { data: estate } = useEstate();
   const qc = useQueryClient();
-  const [amount, setAmount] = useState("");
+  // Prefill with the estate's standard levy — the whole point of the
+  // preset is that most residents just tap "Pay" without typing anything.
+  const [amount, setAmount] = useState(() => "");
+  const levyPreset = estate?.monthlyLevy ? String(Math.round(Number(estate.monthlyLevy))) : "";
+  const effectiveAmount = amount || levyPreset;
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: () =>
       api.post<{ message?: string; stub?: boolean }>("/api/payments/stk-push", {
-        amount: Math.trunc(Number(amount)),
+        amount: Math.trunc(Number(effectiveAmount)),
         type: "levy",
         description: "Monthly levy",
       }),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["payments"] });
+      qc.invalidateQueries({ queryKey: ["levy-arrears"] });
       setError(null);
       setMsg(
         res.data.message ??
@@ -79,10 +103,15 @@ function PayDialog({ onClose }: { onClose: () => void }) {
             <Input
               type="number"
               min={1}
-              value={amount}
+              value={effectiveAmount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="e.g. 5000"
+              placeholder={levyPreset ? undefined : "e.g. 5000"}
             />
+            {levyPreset && (
+              <p className="text-xs text-[#6B5D45] mt-1">
+                Your estate&apos;s standard levy is KES {Number(levyPreset).toLocaleString()}/month — adjust if you&apos;re paying a different amount.
+              </p>
+            )}
           </div>
           {msg && (
             <div className="bg-[#1B5E20]/8 border border-[#1B5E20]/20 rounded-xl px-4 py-3 text-sm text-[#1B5E20] font-medium">
@@ -101,9 +130,9 @@ function PayDialog({ onClose }: { onClose: () => void }) {
             <Button
               onClick={() => mutation.mutate()}
               loading={mutation.isPending}
-              disabled={!amount || Number(amount) < 1}
+              disabled={!effectiveAmount || Number(effectiveAmount) < 1}
             >
-              Pay KES {amount || "—"}
+              Pay KES {effectiveAmount ? Number(effectiveAmount).toLocaleString() : "—"}
             </Button>
           )}
         </DialogFooter>
@@ -116,6 +145,7 @@ export default function PaymentsPage() {
   const { user } = useAuth();
   const [payOpen, setPayOpen] = useState(false);
   const isAdmin = user?.role === "admin";
+  const { data: arrears } = useLevyArrears();
 
   const { data: myPayments, isLoading } = useQuery({
     queryKey: ["payments"],
@@ -132,6 +162,24 @@ export default function PaymentsPage() {
     <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Payments" />
       <main className="container-list pt-4 space-y-6 page-content">
+
+        {/* Arrears reminder — only when the estate has set a standard levy
+            AND the resident has unpaid months in the 6-month window. */}
+        {arrears && arrears.monthlyLevy != null && arrears.monthsBehind > 0 && (
+          <button
+            onClick={() => setPayOpen(true)}
+            className={`w-full text-left tribal-card p-4 border-l-4 ${arrears.monthsBehind >= 2 ? "border-l-[#B71C1C]" : "border-l-[#D47A00]"}`}
+          >
+            <p className="text-sm font-semibold text-[#212121]">
+              {arrears.monthsBehind >= 2
+                ? `You're ${arrears.monthsBehind} months behind on the estate levy`
+                : "This month's levy hasn't been paid yet"}
+            </p>
+            <p className="text-xs text-[#6B5D45] mt-0.5">
+              Estimated balance: KES {Number(arrears.amountOwed).toLocaleString()} ({arrears.monthsBehind} × KES {Number(arrears.monthlyLevy).toLocaleString()}) — tap to pay via M-PESA.
+            </p>
+          </button>
+        )}
 
         {/* Harambee / Fundraising campaigns — "Harambee" branding kept intentionally */}
         {(campaigns?.length ?? 0) > 0 && (

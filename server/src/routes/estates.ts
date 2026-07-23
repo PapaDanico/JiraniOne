@@ -87,6 +87,7 @@ estatesRouter.patch("/me", requireRole("admin"), async (req, res) => {
       ...(p.name !== undefined ? { name: p.name } : {}),
       ...(p.location !== undefined ? { location: p.location } : {}),
       ...(p.totalUnits !== undefined ? { totalUnits: p.totalUnits } : {}),
+      ...(p.monthlyLevy !== undefined ? { monthlyLevy: p.monthlyLevy == null ? null : String(p.monthlyLevy) } : {}),
       ...(p.securityPhone !== undefined ? { securityPhone: p.securityPhone } : {}),
       ...(p.lat !== undefined ? { lat: p.lat == null ? null : String(p.lat) } : {}),
       ...(p.lng !== undefined ? { lng: p.lng == null ? null : String(p.lng) } : {}),
