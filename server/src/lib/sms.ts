@@ -149,8 +149,17 @@ export async function sendSmsRaw({ to, message }: SmsOptions): Promise<boolean> 
       message,
       ...(from ? { from } : {}),
     });
+    // AT's sandbox is a separate environment with its own host — the
+    // literal username "sandbox" is how AT identifies it (every real
+    // account gets a distinct username). Sandbox sends appear only in
+    // AT's simulator, never on real phones, and sandbox interaction is
+    // what AT requires before granting production access.
+    const apiBase =
+      username === "sandbox"
+        ? "https://api.sandbox.africastalking.com"
+        : "https://api.africastalking.com";
     const res = await fetch(
-      "https://api.africastalking.com/version1/messaging",
+      `${apiBase}/version1/messaging`,
       {
         method: "POST",
         headers: {
