@@ -7,6 +7,7 @@ interface EstateInfo {
   name: string;
   location: string;
   totalUnits: number | null;
+  monthlyLevy: string | null;
   securityPhone: string | null;
 }
 

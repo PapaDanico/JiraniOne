@@ -19,7 +19,7 @@ export default function AdminSettingsPage() {
   const qc = useQueryClient();
   const { data: estate } = useEstate();
 
-  const [form, setForm] = useState({ name: "", location: "", totalUnits: "", securityPhone: "" });
+  const [form, setForm] = useState({ name: "", location: "", totalUnits: "", monthlyLevy: "", securityPhone: "" });
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +30,7 @@ export default function AdminSettingsPage() {
         name: estate.name ?? "",
         location: estate.location ?? "",
         totalUnits: estate.totalUnits != null ? String(estate.totalUnits) : "",
+        monthlyLevy: estate.monthlyLevy != null ? String(Math.round(Number(estate.monthlyLevy))) : "",
         securityPhone: (estate as { securityPhone?: string | null }).securityPhone ?? "",
       });
     }
@@ -43,6 +44,7 @@ export default function AdminSettingsPage() {
         name: form.name.trim(),
         location: form.location.trim(),
         totalUnits: form.totalUnits ? Number(form.totalUnits) : null,
+        monthlyLevy: form.monthlyLevy ? Number(form.monthlyLevy) : null,
         securityPhone: form.securityPhone.trim() || null,
       }),
     onSuccess: () => {
@@ -71,6 +73,14 @@ export default function AdminSettingsPage() {
             <div>
               <Label className="font-semibold">Location</Label>
               <Input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="e.g. Athi River, Machakos" />
+            </div>
+            <div>
+              <Label className="font-semibold">Monthly levy (KES)</Label>
+              <Input type="number" min={1} value={form.monthlyLevy} onChange={(e) => set("monthlyLevy", e.target.value)} placeholder="e.g. 3000" />
+              <p className="text-xs text-tribal-earth mt-1">
+                Standard service charge per household — prefills residents&apos;
+                Pay Levy screen and powers their arrears reminder.
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

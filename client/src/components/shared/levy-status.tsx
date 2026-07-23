@@ -5,6 +5,8 @@ import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { Payment } from "@shared/types";
 
+interface LevyArrears { monthlyLevy: number | null; monthsBehind: number; amountOwed: number | null }
+
 // Mirrors the "levy status this month" definition already used by the admin
 // analytics dashboard (server/src/routes/analytics.ts) — a completed levy
 // payment dated on/after the 1st of the current calendar month counts as
@@ -16,6 +18,11 @@ export function LevyStatusWidget() {
     queryKey: ["payments"],
     queryFn: () => api.get<Payment[]>("/api/payments/my").then((r) => r.data),
     staleTime: 2 * 60 * 1000,
+  });
+  const { data: arrears } = useQuery({
+    queryKey: ["levy-arrears"],
+    queryFn: () => api.get<LevyArrears | null>("/api/payments/levy-arrears").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
   });
 
   if (isLoading) {
@@ -83,6 +90,12 @@ export function LevyStatusWidget() {
                 : "Due by the end of the month"}
             </p>
           </>
+        )}
+
+        {arrears && arrears.monthlyLevy != null && arrears.monthsBehind >= 2 && (
+          <p className="text-xs font-semibold text-[#B71C1C] mt-1.5">
+            ⚠ {arrears.monthsBehind} months outstanding — est. KES {Number(arrears.amountOwed).toLocaleString()}
+          </p>
         )}
 
         <div className="mt-2.5 h-1.5 w-full bg-[#EDE7D8] rounded-full overflow-hidden">

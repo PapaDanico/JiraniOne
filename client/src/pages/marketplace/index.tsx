@@ -283,6 +283,8 @@ export default function MarketplacePage() {
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [filter, setFilter] = useState("");
+  const [availFilter, setAvailFilter] = useState("");
+  const [topRated, setTopRated] = useState(false);
   const [rateTarget, setRateTarget] = useState<ServiceProvider | null>(null);
   const [expandedReviews, setExpandedReviews] = useState<string | null>(null);
   const canAdd = user?.role === "admin" || user?.role === "vendor";
@@ -301,16 +303,29 @@ export default function MarketplacePage() {
     },
   });
 
-  const filtered = providers?.filter((p) =>
-    !filter ||
-    p.name.toLowerCase().includes(filter.toLowerCase()) ||
-    p.category.toLowerCase().includes(filter.toLowerCase()),
-  ) ?? [];
+  const filtered = (providers ?? []).filter((p) =>
+    (!filter ||
+      p.name.toLowerCase().includes(filter.toLowerCase()) ||
+      p.category.toLowerCase().includes(filter.toLowerCase())) &&
+    // "everyday" and "on_call" providers satisfy any availability ask.
+    (!availFilter ||
+      p.availability === availFilter ||
+      p.availability === "everyday" ||
+      p.availability === "on_call"),
+  );
 
-  const grouped = filtered.reduce<Record<string, ServiceProvider[]>>((acc, p) => {
-    (acc[p.category] = acc[p.category] ?? []).push(p);
-    return acc;
-  }, {});
+  // "Top rated" flattens the category grouping into one ranked list —
+  // rating is cross-category by nature (you're choosing WHO, not WHAT).
+  const sorted = topRated
+    ? [...filtered].sort((a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0) || b.ratingCount - a.ratingCount)
+    : filtered;
+
+  const grouped = topRated
+    ? { "⭐ Top rated": sorted }
+    : sorted.reduce<Record<string, ServiceProvider[]>>((acc, p) => {
+        (acc[p.category] = acc[p.category] ?? []).push(p);
+        return acc;
+      }, {});
 
   return (
     <div className="page-wrap" data-bottomnav="true">
@@ -334,6 +349,31 @@ export default function MarketplacePage() {
               <Plus className="h-4 w-4" />
             </Button>
           )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 -mt-1">
+          <select
+            value={availFilter}
+            onChange={(e) => setAvailFilter(e.target.value)}
+            className="rounded-xl border border-[#D4C9A8] bg-white px-3 py-1.5 text-xs font-medium text-[#6B5D45] focus:outline-none focus:ring-2 focus:ring-[#1B5E20]/30"
+            aria-label="Filter by availability"
+          >
+            <option value="">Any availability</option>
+            {AVAILABILITY_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setTopRated((v) => !v)}
+            className={`text-xs px-3 py-1.5 rounded-xl border font-medium transition-colors ${
+              topRated
+                ? "bg-[#D4A017] text-white border-[#D4A017]"
+                : "border-[#D4C9A8] text-[#6B5D45] hover:border-[#D4A017]/50"
+            }`}
+          >
+            ⭐ Top rated first
+          </button>
         </div>
 
         {isLoading ? (

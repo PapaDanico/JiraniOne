@@ -380,6 +380,7 @@ export const updateEstateSchema = z.object({
   name: z.string().min(3).max(150).optional(),
   location: z.string().min(2).max(200).optional(),
   totalUnits: z.number().int().min(1).max(10000).nullable().optional(),
+  monthlyLevy: z.number().int().min(1).max(1_000_000).nullable().optional(),
   securityPhone: kenyanPhone.nullable().optional(),
   lat: z.number().min(-5).max(5).nullable().optional(),
   lng: z.number().min(33).max(42).nullable().optional(),
