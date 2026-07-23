@@ -16,6 +16,7 @@ import { api, ApiError } from "@/lib/api";
 import { SectionLoader } from "@/components/shared/loading";
 import { formatRelative } from "@/lib/utils";
 import type { Classified, ClassifiedCategory } from "@shared/types";
+import { CLASSIFIED_CONDITIONS, conditionLabel } from "@shared/options";
 
 // ─── Category config ───────────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ function CreateListingModal({ open, onClose }: { open: boolean; onClose: () => v
   const [price, setPrice]           = useState("");
   const [category, setCategory]     = useState<ClassifiedCategory>("sell");
   const [contactPhone, setContact]  = useState("");
+  const [condition, setCondition]   = useState("");
   const [error, setError]           = useState("");
 
   const { mutate, isPending } = useMutation({
@@ -55,11 +57,12 @@ function CreateListingModal({ open, onClose }: { open: boolean; onClose: () => v
         description,
         price: category === "sell" && price ? Number(price) : undefined,
         category,
+        condition: (category === "sell" || category === "give") && condition ? condition : undefined,
         contactPhone: contactPhone || undefined,
       }).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["classifieds"] });
-      setTitle(""); setDesc(""); setPrice(""); setCategory("sell"); setContact(""); setError("");
+      setTitle(""); setDesc(""); setPrice(""); setCategory("sell"); setContact(""); setCondition(""); setError("");
       onClose();
     },
     onError: (e) => {
@@ -133,6 +136,27 @@ function CreateListingModal({ open, onClose }: { open: boolean; onClose: () => v
             </div>
           )}
 
+          {(category === "sell" || category === "give") && (
+            <div className="space-y-1.5">
+              <Label>Condition</Label>
+              <div className="flex gap-2">
+                {CLASSIFIED_CONDITIONS.map((c) => (
+                  <button
+                    key={c.value}
+                    onClick={() => setCondition(condition === c.value ? "" : c.value)}
+                    className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                      condition === c.value
+                        ? "border-[#1B5E20] bg-[#1B5E20] text-white"
+                        : "border-[#D4C9A8] text-[#6B5D45] hover:border-[#1B5E20]/40"
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor="phone">Contact Phone (optional)</Label>
             <Input id="phone" placeholder="e.g. 0712 345 678" value={contactPhone} onChange={(e) => setContact(e.target.value)} />
@@ -203,6 +227,11 @@ function ListingCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
             <CategoryBadge category={listing.category} />
+            {listing.condition && (
+              <span className="text-[11px] text-[#6B5D45] border border-[#D4C9A8] rounded-full px-2 py-0.5">
+                {conditionLabel(listing.condition)}
+              </span>
+            )}
             {listing.status === "sold" && (
               <span className="text-xs font-semibold text-[#6B5D45] bg-[#D4C9A8]/50 px-2 py-0.5 rounded-full">SOLD</span>
             )}

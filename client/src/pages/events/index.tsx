@@ -13,16 +13,18 @@ import { SectionLoader } from "@/components/shared/loading";
 import { api, ApiError } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import type { Event } from "@shared/types";
+import { EVENT_TYPES, eventTypeCfg } from "@shared/options";
 
 function CreateEventDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
     title: "", description: "", location: "", startTime: "", endTime: "",
   });
+  const [eventType, setEventType] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: () => api.post("/api/events", form),
+    mutationFn: () => api.post("/api/events", { ...form, eventType: eventType || undefined }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); onClose(); },
     onError: (err) => {
       setError(err instanceof ApiError ? err.message : "Failed to create event. Please try again.");
@@ -43,6 +45,25 @@ function CreateEventDialog({ onClose }: { onClose: () => void }) {
           </div>
         </DialogHeader>
         <div className="px-6 pb-2 space-y-3">
+          <div>
+            <Label className="text-[#212121] font-semibold">Event Type</Label>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {EVENT_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setEventType(eventType === t.value ? "" : t.value)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                    eventType === t.value
+                      ? "bg-[#1B5E20] text-white border-[#1B5E20]"
+                      : "border-[#D4C9A8] text-[#6B5D45] hover:border-[#1B5E20]/40"
+                  }`}
+                >
+                  {t.emoji} {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div>
             <Label className="text-[#212121] font-semibold">Event Name</Label>
             <Input
@@ -143,7 +164,14 @@ export default function EventsPage() {
                 <CardContent className="py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-[#212121]">{e.title}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-sm text-[#212121]">{e.title}</p>
+                        {eventTypeCfg(e.eventType) && (
+                          <span className="text-[11px] text-[#6B5D45] bg-[#1B5E20]/8 rounded-full px-2 py-0.5">
+                            {eventTypeCfg(e.eventType)!.emoji} {eventTypeCfg(e.eventType)!.label}
+                          </span>
+                        )}
+                      </div>
                       {e.description && (
                         <p className="text-sm text-[#6B5D45] mt-0.5 leading-relaxed">{e.description}</p>
                       )}

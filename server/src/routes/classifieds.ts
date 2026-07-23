@@ -52,7 +52,7 @@ classifiedsRouter.post("/", async (req, res) => {
     res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
-  const { title, description, price, category, contactPhone, imageUrl } = parsed.data;
+  const { title, description, price, category, condition, contactPhone, imageUrl } = parsed.data;
 
   const [listing] = await db
     .insert(classifieds)
@@ -64,6 +64,7 @@ classifiedsRouter.post("/", async (req, res) => {
       description: description.trim(),
       price: price !== undefined ? String(price) : null,
       category,
+      condition: condition ?? null,
       contactPhone: contactPhone ?? null,
       imageUrl: imageUrl ?? null,
       status: "active",

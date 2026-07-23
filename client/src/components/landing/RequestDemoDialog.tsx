@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { AlertCircle, Building2, CheckCircle2 } from "lucide-react";
 import { BRAND_NAME } from "@shared/brand";
+import { LEAD_ROLES, LEAD_UNIT_RANGES } from "@shared/options";
 
 interface Props {
   open: boolean;
@@ -145,19 +146,29 @@ export function RequestDemoDialog({ open, onClose }: Props) {
               </div>
 
               <div>
-                <Label htmlFor="lunits" className="text-[#212121] font-semibold">
-                  Number of Units{" "}
+                <Label htmlFor="lrole" className="text-[#212121] font-semibold">
+                  Your Role{" "}
                   <span className="font-normal text-[#9C8A6A] text-xs">(optional)</span>
                 </Label>
-                <Input
-                  id="lunits"
-                  type="number"
-                  placeholder="e.g. 120"
-                  {...register("unitsCount", {
-                    setValueAs: (v) => (v === "" || v == null ? undefined : Number(v)),
-                  })}
-                  error={errors.unitsCount?.message}
-                />
+                <select id="lrole" {...register("contactRole", { setValueAs: (v) => v || undefined })} className="w-full rounded-xl border border-input bg-white px-3 py-2.5 text-sm min-h-[44px] focus:outline-none focus:ring-2 focus:ring-[#1B5E20]/30 focus:border-[#1B5E20] text-[#212121]">
+                  <option value="">Select…</option>
+                  {LEAD_ROLES.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <Label htmlFor="lunits" className="text-[#212121] font-semibold">
+                  Estate Size{" "}
+                  <span className="font-normal text-[#9C8A6A] text-xs">(optional)</span>
+                </Label>
+                <select id="lunits" {...register("unitsRange")} className="w-full rounded-xl border border-input bg-white px-3 py-2.5 text-sm min-h-[44px] focus:outline-none focus:ring-2 focus:ring-[#1B5E20]/30 focus:border-[#1B5E20] text-[#212121]">
+                  <option value="">Number of units…</option>
+                  {LEAD_UNIT_RANGES.map((r) => (
+                    <option key={r} value={r}>{r} units</option>
+                  ))}
+                </select>
               </div>
 
               <div>
