@@ -11,12 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { SectionLoader } from "@/components/shared/loading";
 import { api, ApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
 import { formatDateTime } from "@/lib/utils";
 import type { Event } from "@shared/types";
 import { EVENT_TYPES, eventTypeCfg } from "@shared/options";
 
 function CreateEventDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const [form, setForm] = useState({
     title: "", description: "", location: "", startTime: "", endTime: "",
   });
@@ -25,7 +27,7 @@ function CreateEventDialog({ onClose }: { onClose: () => void }) {
 
   const mutation = useMutation({
     mutationFn: () => api.post("/api/events", { ...form, eventType: eventType || undefined }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); onClose(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); toast("Event created — residents will see it on their calendar"); onClose(); },
     onError: (err) => {
       setError(err instanceof ApiError ? err.message : "Failed to create event. Please try again.");
     },

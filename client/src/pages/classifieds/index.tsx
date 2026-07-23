@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api, ApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
 import { SectionLoader } from "@/components/shared/loading";
 import { formatRelative } from "@/lib/utils";
 import type { Classified, ClassifiedCategory } from "@shared/types";
@@ -42,6 +43,7 @@ function CategoryBadge({ category }: { category: ClassifiedCategory }) {
 
 function CreateListingModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const [title, setTitle]           = useState("");
   const [description, setDesc]      = useState("");
   const [price, setPrice]           = useState("");
@@ -63,6 +65,7 @@ function CreateListingModal({ open, onClose }: { open: boolean; onClose: () => v
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["classifieds"] });
       setTitle(""); setDesc(""); setPrice(""); setCategory("sell"); setContact(""); setCondition(""); setError("");
+      toast("Listing posted to the noticeboard");
       onClose();
     },
     onError: (e) => {

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEstate } from "@/hooks/useEstate";
 import { api, ApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
 
 // Estate-level settings — until this page existed, estate name/location/
 // security phone could only be changed by direct SQL. The security phone
@@ -17,10 +18,10 @@ import { api, ApiError } from "@/lib/api";
 // never sets it leaves residents calling a placeholder number.
 export default function AdminSettingsPage() {
   const qc = useQueryClient();
+  const toast = useToast();
   const { data: estate } = useEstate();
 
   const [form, setForm] = useState({ name: "", location: "", totalUnits: "", monthlyLevy: "", securityPhone: "" });
-  const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Populate once the estate loads (and re-sync after saves).
@@ -50,10 +51,9 @@ export default function AdminSettingsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["estate"] });
       setError(null);
-      setMsg("Settings saved.");
+      toast("Estate settings saved");
     },
     onError: (e) => {
-      setMsg(null);
       setError(e instanceof ApiError ? e.message : "Failed to save settings.");
     },
   });
@@ -61,11 +61,11 @@ export default function AdminSettingsPage() {
   return (
     <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Estate Settings" />
-      <main className="container-list pt-5 pb-6 space-y-6 page-content">
-
+      <main className="container-list pt-5 pb-6 page-content">
+       <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
         <section>
           <SectionTitle icon={<Building2 className="h-4 w-4" />}>Estate details</SectionTitle>
-          <div className="tribal-card p-5 space-y-4 max-w-xl">
+          <div className="tribal-card p-5 space-y-4">
             <div>
               <Label className="font-semibold">Estate name</Label>
               <Input value={form.name} onChange={(e) => set("name", e.target.value)} />
@@ -96,11 +96,10 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            {msg && <p className="text-sm text-brand-green bg-brand-green/10 rounded-xl px-3 py-2">✓ {msg}</p>}
             {error && <p className="text-sm text-brand-red bg-brand-red/10 rounded-xl px-3 py-2">{error}</p>}
 
             <Button
-              onClick={() => { setMsg(null); mutation.mutate(); }}
+              onClick={() => mutation.mutate()}
               loading={mutation.isPending}
               disabled={form.name.trim().length < 3 || form.location.trim().length < 2}
               className="gap-1.5"
@@ -110,6 +109,7 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
+        <div className="space-y-6">
         <section>
           <SectionTitle icon={<CreditCard className="h-4 w-4" />}>Your plan</SectionTitle>
           <BillingCard />
@@ -117,7 +117,7 @@ export default function AdminSettingsPage() {
 
         <section>
           <SectionTitle icon={<Download className="h-4 w-4" />}>Reports & exports</SectionTitle>
-          <div className="tribal-card p-5 space-y-3 max-w-xl">
+          <div className="tribal-card p-5 space-y-3">
             <p className="text-sm text-tribal-earth">
               CSV downloads for AGMs, committee meetings, or your accountant.
             </p>
@@ -131,6 +131,8 @@ export default function AdminSettingsPage() {
             </div>
           </div>
         </section>
+        </div>
+       </div>
       </main>
 
       <PageFooter />
