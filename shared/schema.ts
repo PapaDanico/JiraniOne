@@ -154,6 +154,10 @@ export const leads = pgTable(
     phone: varchar("phone", { length: 20 }).notNull(),
     email: varchar("email", { length: 200 }),
     unitsCount: integer("units_count"),
+    // Structured lead facts (shared/options.ts) — who is asking, and how
+    // big the estate is as a range (prospects rarely know exact counts).
+    contactRole: varchar("contact_role", { length: 40 }),
+    unitsRange: varchar("units_range", { length: 20 }),
     message: text("message"),
     status: leadStatusEnum("status").notNull().default("new"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -574,6 +578,9 @@ export const events = pgTable(
     title: varchar("title", { length: 200 }).notNull(),
     description: text("description"),
     location: varchar("location", { length: 200 }),
+    // Event type slug (shared/options.ts EVENT_TYPES) — calendar icons +
+    // future filtering. Nullable: legacy events predate it.
+    eventType: varchar("event_type", { length: 30 }),
     startTime: timestamp("start_time").notNull(),
     endTime: timestamp("end_time").notNull(),
     recurring: boolean("recurring").notNull().default(false),
@@ -911,6 +918,8 @@ export const classifieds = pgTable(
     description: text("description").notNull(),
     price: decimal("price", { precision: 10, scale: 2 }),
     category: classifiedCategoryEnum("category").notNull().default("sell"),
+    // "new" | "like_new" | "used" (shared/options.ts) — sell/give listings.
+    condition: varchar("condition", { length: 20 }),
     status: classifiedStatusEnum("status").notNull().default("active"),
     contactPhone: varchar("contact_phone", { length: 20 }),
     imageUrl: text("image_url"),

@@ -155,6 +155,7 @@ export interface Event {
   title: string;
   description: string | null;
   location: string | null;
+  eventType: string | null;
   startTime: string;
   endTime: string;
   recurring: boolean;
@@ -276,6 +277,7 @@ export interface Classified {
   description: string;
   price: string | null;
   category: ClassifiedCategory;
+  condition: string | null;
   status: "active" | "sold" | "closed";
   contactPhone: string | null;
   imageUrl: string | null;
@@ -415,6 +417,8 @@ export interface Lead {
   phone: string;
   email: string | null;
   unitsCount: number | null;
+  contactRole: string | null;
+  unitsRange: string | null;
   message: string | null;
   status: LeadStatus;
   createdAt: string;

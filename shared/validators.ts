@@ -172,6 +172,7 @@ export const createEventSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().optional(),
   location: z.string().max(200).optional(),
+  eventType: z.enum(["agm", "cleanup", "sports", "kids", "social", "security", "other"]).optional(),
   startTime: localDatetime,
   endTime: localDatetime,
   recurring: z.boolean().default(false),
@@ -276,6 +277,7 @@ export const createClassifiedSchema = z.object({
   description: z.string().min(10).max(5000),
   price: z.number().min(0).max(10_000_000).optional(),
   category: z.enum(["sell", "buy", "give", "service"]).default("sell"),
+  condition: z.enum(["new", "like_new", "used"]).optional(),
   contactPhone: kenyanPhone.optional(),
   imageUrl: z.string().url().max(500).optional(),
 });
@@ -350,6 +352,8 @@ export const createLeadSchema = z.object({
   // gets a clean NULL in storage instead of a stored empty string.
   email: z.string().email().max(200).optional().or(z.literal("")).transform((v) => v || undefined),
   unitsCount: z.number().int().positive().max(100000).optional(),
+  contactRole: z.enum(["management_company", "committee", "developer", "resident", "other"]).optional(),
+  unitsRange: z.string().max(20).optional().transform((v) => v || undefined),
   message: z.string().max(1000).optional().transform((v) => v || undefined),
 });
 

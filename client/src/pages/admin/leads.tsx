@@ -7,6 +7,7 @@ import { SectionLoader } from "@/components/shared/loading";
 import { api } from "@/lib/api";
 import { formatRelative } from "@/lib/utils";
 import type { Lead } from "@shared/types";
+import { leadRoleLabel } from "@shared/options";
 import { BRAND_NAME } from "@shared/brand";
 
 export default function AdminLeadsPage() {
@@ -43,12 +44,14 @@ export default function AdminLeadsPage() {
                         {l.estateName}
                       </p>
                       <p className="text-xs text-tribal-earth">
-                        {l.contactName} · {formatRelative(l.createdAt)}
+                        {l.contactName}
+                        {l.contactRole && <> · {leadRoleLabel(l.contactRole)}</>}
+                        {" · "}{formatRelative(l.createdAt)}
                       </p>
                     </div>
-                    {l.unitsCount != null && (
+                    {(l.unitsRange || l.unitsCount != null) && (
                       <span className="flex items-center gap-1 text-xs font-semibold text-tribal-earth shrink-0">
-                        <Users className="h-3.5 w-3.5" /> {l.unitsCount} units
+                        <Users className="h-3.5 w-3.5" /> {l.unitsRange ?? l.unitsCount} units
                       </span>
                     )}
                   </div>

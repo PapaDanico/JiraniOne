@@ -52,6 +52,7 @@ eventsRouter.post("/", requireRole("admin"), async (req, res) => {
     title: parsed.data.title,
     description: parsed.data.description ?? null,
     location: parsed.data.location ?? null,
+    eventType: parsed.data.eventType ?? null,
     startTime: new Date(parsed.data.startTime),
     endTime: new Date(parsed.data.endTime),
     recurring: parsed.data.recurring,

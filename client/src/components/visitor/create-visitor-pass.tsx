@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { AlertCircle, AlertTriangle, UserPlus } from "lucide-react";
 import type { Visitor } from "@shared/types";
+import { VISITOR_PURPOSES } from "@shared/options";
 
 interface Props {
   open: boolean;
@@ -149,12 +150,19 @@ export function CreateVisitorPass({ open, onClose }: Props) {
               Purpose of Visit{" "}
               <span className="font-normal text-[#9C8A6A] text-xs">(optional)</span>
             </Label>
-            <Input
+            {/* Native select (not shadcn) — registers directly with
+                react-hook-form, and structured purposes make the gate log
+                analysable instead of a pile of free-text variations. */}
+            <select
               id="vpurpose"
-              placeholder="e.g. Home visit, delivery"
               {...register("purpose")}
-              error={errors.purpose?.message}
-            />
+              className="w-full rounded-xl border border-input bg-white px-3 py-2.5 text-sm min-h-[44px] focus:outline-none focus:ring-2 focus:ring-[#1B5E20]/30 focus:border-[#1B5E20] text-[#212121]"
+            >
+              <option value="">Select purpose…</option>
+              {VISITOR_PURPOSES.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
           </div>
 
           <div>
