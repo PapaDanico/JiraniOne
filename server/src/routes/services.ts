@@ -53,7 +53,7 @@ servicesRouter.post("/", requireRole("admin", "vendor"), async (req, res) => {
     res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
-  const { name, category, phone, description } = parsed.data;
+  const { name, category, phone, description, experienceYears, rateCard, availability, specializations } = parsed.data;
 
   const [row] = await db.insert(serviceProviders).values({
     id: newId(),
@@ -63,6 +63,10 @@ servicesRouter.post("/", requireRole("admin", "vendor"), async (req, res) => {
     category,
     phone,
     description: description ?? null,
+    experienceYears: experienceYears ?? null,
+    rateCard: rateCard ?? null,
+    availability: availability ?? null,
+    specializations: specializations ?? [],
   }).returning();
   res.status(201).json({ data: row });
 });
