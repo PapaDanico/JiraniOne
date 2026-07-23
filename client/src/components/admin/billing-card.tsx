@@ -87,7 +87,7 @@ export function BillingCard() {
     : null;
 
   return (
-    <div className="tribal-card p-5 space-y-4 max-w-xl">
+    <div className="tribal-card p-5 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-green/10 flex items-center justify-center">

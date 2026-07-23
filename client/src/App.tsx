@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { RoleGate } from "@/components/shared/role-gate";
 import { PageLoader } from "@/components/shared/loading";
 import { InstallBanner } from "@/components/shared/install-banner";
+import { ToastProvider } from "@/components/ui/toast";
 
 // CLAUDE.md cares about emergency and visitor flows on 3G. These two are
 // eagerly imported (NOT lazy()) so the panic button and gate scanner don't
@@ -163,7 +164,9 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <AppRoutes />
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

@@ -22,6 +22,7 @@ import {
 } from "@shared/marketplace";
 import { SectionLoader } from "@/components/shared/loading";
 import { api, ApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
 import { displayPhone, formatRelative } from "@/lib/utils";
 import type { ServiceProvider, ServiceReview } from "@shared/types";
 
@@ -29,6 +30,7 @@ const CAT_MAP = Object.fromEntries(PROVIDER_CATEGORIES.map((c) => [c.value, c]))
 
 function AddProviderDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const [form, setForm] = useState({ name: "", category: "", phone: "", description: "" });
   const [experience, setExperience] = useState<string>("");
   const [rateCard, setRateCard] = useState<string>("");
@@ -50,7 +52,11 @@ function AddProviderDialog({ onClose }: { onClose: () => void }) {
       availability: availability || undefined,
       specializations: specs.length ? specs : undefined,
     }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["services"] }); onClose(); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["services"] });
+      toast("Provider added — pending verification");
+      onClose();
+    },
   });
 
   return (
@@ -201,6 +207,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 
 function RateProviderDialog({ provider, onClose }: { provider: ServiceProvider; onClose: () => void }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
 
@@ -209,6 +216,7 @@ function RateProviderDialog({ provider, onClose }: { provider: ServiceProvider; 
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["services"] });
       qc.invalidateQueries({ queryKey: ["services", provider.id, "reviews"] });
+      toast("Asante! Your rating helps your neighbours.");
       onClose();
     },
   });
