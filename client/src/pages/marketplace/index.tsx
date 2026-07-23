@@ -9,36 +9,46 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  PROVIDER_CATEGORIES,
+  RATE_CARDS,
+  AVAILABILITY_OPTIONS,
+  EXPERIENCE_OPTIONS,
+  SPECIALIZATIONS,
+  MAX_SPECIALIZATIONS,
+  experienceLabel,
+  availabilityLabel,
+} from "@shared/marketplace";
 import { SectionLoader } from "@/components/shared/loading";
 import { api, ApiError } from "@/lib/api";
 import { displayPhone, formatRelative } from "@/lib/utils";
 import type { ServiceProvider, ServiceReview } from "@shared/types";
 
-const CATEGORIES = [
-  { value: "Plumber",        emoji: "🔧", label: "Plumber" },
-  { value: "Electrician",    emoji: "⚡", label: "Electrician" },
-  { value: "Cleaner",        emoji: "🧹", label: "Cleaner" },
-  { value: "Painter",        emoji: "🎨", label: "Painter" },
-  { value: "Carpenter",      emoji: "🪚", label: "Carpenter" },
-  { value: "Security Guard", emoji: "🛡️", label: "Security Guard" },
-  { value: "Gardener",       emoji: "🌿", label: "Gardener" },
-  { value: "Handyman",       emoji: "🛠️", label: "Handyman" },
-  { value: "Driver",         emoji: "🚗", label: "Driver" },
-  { value: "Tutor",          emoji: "📚", label: "Tutor" },
-  { value: "Other",          emoji: "📋", label: "Other" },
-];
-
-const CAT_MAP = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));
+const CAT_MAP = Object.fromEntries(PROVIDER_CATEGORIES.map((c) => [c.value, c]));
 
 function AddProviderDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({ name: "", category: "", phone: "", description: "" });
+  const [experience, setExperience] = useState<string>("");
+  const [rateCard, setRateCard] = useState<string>("");
+  const [availability, setAvailability] = useState<string>("");
+  const [specs, setSpecs] = useState<string[]>([]);
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const toggleSpec = (sp: string) =>
+    setSpecs((cur) =>
+      cur.includes(sp) ? cur.filter((x) => x !== sp) : cur.length < MAX_SPECIALIZATIONS ? [...cur, sp] : cur,
+    );
+  const specOptions = SPECIALIZATIONS[form.category] ?? [];
 
   const mutation = useMutation({
     mutationFn: () => api.post("/api/services", {
       ...form,
       description: form.description || undefined,
+      experienceYears: experience ? Number(experience) : undefined,
+      rateCard: rateCard || undefined,
+      availability: availability || undefined,
+      specializations: specs.length ? specs : undefined,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["services"] }); onClose(); },
   });
@@ -67,11 +77,11 @@ function AddProviderDialog({ onClose }: { onClose: () => void }) {
           <div>
             <Label className="text-[#212121] font-semibold">Service Type</Label>
             <div className="flex flex-wrap gap-2 mt-1">
-              {CATEGORIES.map((c) => (
+              {PROVIDER_CATEGORIES.map((c) => (
                 <button
                   key={c.value}
                   type="button"
-                  onClick={() => set("category", c.value)}
+                  onClick={() => { set("category", c.value); setSpecs([]); }}
                   className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                     form.category === c.value
                       ? "bg-[#1B5E20] text-white border-[#1B5E20]"
@@ -87,13 +97,71 @@ function AddProviderDialog({ onClose }: { onClose: () => void }) {
             <Label className="text-[#212121] font-semibold">Phone</Label>
             <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="07XXXXXXXX" />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-[#212121] font-semibold">Experience</Label>
+              <Select value={experience} onValueChange={setExperience}>
+                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <SelectContent>
+                  {EXPERIENCE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-[#212121] font-semibold">Rate card</Label>
+              <Select value={rateCard} onValueChange={setRateCard}>
+                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <SelectContent>
+                  {RATE_CARDS.map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <div>
-            <Label className="text-[#212121] font-semibold">Description</Label>
+            <Label className="text-[#212121] font-semibold">Availability</Label>
+            <Select value={availability} onValueChange={setAvailability}>
+              <SelectTrigger><SelectValue placeholder="When can customers reach them?" /></SelectTrigger>
+              <SelectContent>
+                {AVAILABILITY_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {specOptions.length > 0 && (
+            <div>
+              <Label className="text-[#212121] font-semibold">
+                Specialisations <span className="font-normal text-xs text-[#6B5D45]">(up to {MAX_SPECIALIZATIONS})</span>
+              </Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {specOptions.map((sp) => (
+                  <button
+                    key={sp}
+                    type="button"
+                    onClick={() => toggleSpec(sp)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                      specs.includes(sp)
+                        ? "bg-[#D47A00] text-white border-[#D47A00]"
+                        : "border-[#D4C9A8] text-[#6B5D45] hover:border-[#D47A00]/40"
+                    }`}
+                  >
+                    {sp}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div>
+            <Label className="text-[#212121] font-semibold">Anything else <span className="font-normal text-xs text-[#6B5D45]">(optional)</span></Label>
             <Textarea
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
               rows={2}
-              placeholder="Experience, rates, specialisations..."
+              placeholder="e.g. serves nearby estates too, has own tools & transport"
             />
           </div>
           {mutation.isError && (
@@ -302,6 +370,26 @@ export default function MarketplacePage() {
                                 <BadgeCheck className="h-4 w-4 text-[#1B5E20]" aria-label="Verified" />
                               )}
                             </div>
+                            {(p.experienceYears || p.rateCard || p.availability) && (
+                              <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-[#6B5D45]">
+                                {p.experienceYears != null && p.experienceYears > 0 && (
+                                  <span className="bg-[#1B5E20]/8 rounded-full px-2 py-0.5">💼 {experienceLabel(p.experienceYears)}</span>
+                                )}
+                                {p.rateCard && (
+                                  <span className="bg-[#D4A017]/12 rounded-full px-2 py-0.5">💰 {p.rateCard}</span>
+                                )}
+                                {p.availability && (
+                                  <span className="bg-[#D47A00]/10 rounded-full px-2 py-0.5">🕒 {availabilityLabel(p.availability)}</span>
+                                )}
+                              </div>
+                            )}
+                            {(p.specializations?.length ?? 0) > 0 && (
+                              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                {p.specializations!.map((sp) => (
+                                  <span key={sp} className="text-[11px] text-[#6B5D45] border border-[#D4C9A8] rounded-full px-2 py-0.5">{sp}</span>
+                                ))}
+                              </div>
+                            )}
                             {p.description && (
                               <p className="text-xs text-[#6B5D45] mt-0.5">{p.description}</p>
                             )}

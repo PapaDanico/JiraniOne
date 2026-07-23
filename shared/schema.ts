@@ -675,6 +675,12 @@ export const serviceProviders = pgTable(
     category: varchar("category", { length: 50 }).notNull(),
     phone: varchar("phone", { length: 20 }).notNull(),
     description: text("description"),
+    // Structured listing facts (shared/marketplace.ts option lists) — all
+    // nullable so legacy free-text-only listings stay valid.
+    experienceYears: integer("experience_years"),
+    rateCard: varchar("rate_card", { length: 50 }),
+    availability: varchar("availability", { length: 20 }),
+    specializations: jsonb("specializations").$type<string[]>().default([]),
     rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
     ratingCount: integer("rating_count").notNull().default(0),
     verified: boolean("verified").notNull().default(false),

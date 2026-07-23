@@ -245,6 +245,13 @@ export const createServiceProviderSchema = z.object({
   category: z.string().min(2).max(50),
   phone: kenyanPhone,
   description: z.string().max(500).optional(),
+  // Structured listing facts — validated against shared/marketplace.ts
+  // option shapes (values themselves stay open strings so the option
+  // lists can evolve without a lockstep validator change).
+  experienceYears: z.number().int().min(0).max(60).optional(),
+  rateCard: z.string().max(50).optional(),
+  availability: z.enum(["everyday", "weekdays", "weekends", "on_call"]).optional(),
+  specializations: z.array(z.string().min(1).max(40)).max(8).optional(),
 });
 
 export const createReviewSchema = z.object({

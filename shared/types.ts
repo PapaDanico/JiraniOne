@@ -218,6 +218,10 @@ export interface ServiceProvider {
   category: string;
   phone: string;
   description: string | null;
+  experienceYears: number | null;
+  rateCard: string | null;
+  availability: string | null;
+  specializations: string[] | null;
   rating: string | null;
   ratingCount: number;
   verified: boolean;
