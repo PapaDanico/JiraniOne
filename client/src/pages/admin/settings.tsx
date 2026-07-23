@@ -125,6 +125,9 @@ export default function AdminSettingsPage() {
               CSV downloads for AGMs, committee meetings, or your accountant.
             </p>
             <div className="flex flex-wrap gap-3">
+              <a href="/admin/report" className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-brand-green hover:opacity-90 rounded-xl px-4 py-2 transition-opacity">
+                📄 Monthly report (print / PDF)
+              </a>
               <a href="/api/analytics/export/levy" className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-green bg-brand-green/10 hover:bg-brand-green/20 rounded-xl px-4 py-2 transition-colors">
                 <Download className="h-4 w-4" /> Levy payments (CSV)
               </a>

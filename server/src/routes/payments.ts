@@ -513,6 +513,97 @@ paymentsRouter.get("/levy-arrears", async (_req, res) => {
   });
 });
 
+// Admin: one-tap levy reminder to every resident who hasn't paid this
+// month — in-app notification (rides Web Push) + best-effort SMS. Guarded
+// to once per estate per day: nagging is a collections tool, spam is a
+// churn tool.
+paymentsRouter.post("/levy-remind", requireRole("admin"), async (req, res) => {
+  const user = res.locals.user!;
+  if (!user.estateId) {
+    res.status(400).json({ error: "No estate on this account" });
+    return;
+  }
+
+  const [estate] = await db
+    .select({ name: estates.name, monthlyLevy: estates.monthlyLevy })
+    .from(estates)
+    .where(eq(estates.id, user.estateId))
+    .limit(1);
+
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  // Once-per-day guard: any levy_reminder created today for this estate's
+  // residents means an admin already nudged.
+  const already = await db.execute<{ n: number }>(sql`
+    SELECT count(*)::int AS n
+      FROM notifications n
+      JOIN users u ON u.id = n.user_id
+     WHERE u.estate_id = ${user.estateId}
+       AND n.type = 'levy_reminder'
+       AND n.created_at >= ${startOfDay.toISOString()}
+  `);
+  if ((already[0]?.n ?? 0) > 0) {
+    res.status(429).json({ error: "A reminder was already sent today — give residents a day to act on it." });
+    return;
+  }
+
+  const unpaid = await db.execute<{ id: string; phone: string; name: string }>(sql`
+    SELECT u.id, u.phone, u.name
+      FROM users u
+     WHERE u.estate_id = ${user.estateId}
+       AND u.role = 'resident'
+       AND u.deleted_at IS NULL
+       AND NOT EXISTS (
+         SELECT 1 FROM payments p
+          WHERE p.user_id = u.id
+            AND p.type = 'levy'
+            AND p.status = 'completed'
+            AND p.created_at >= ${startOfMonth.toISOString()}
+       )
+  `);
+
+  if (unpaid.length === 0) {
+    res.json({ data: { reminded: 0 } });
+    return;
+  }
+
+  const monthName = new Date().toLocaleDateString("en-KE", { month: "long" });
+  const amountLine = estate?.monthlyLevy
+    ? ` (KES ${Number(estate.monthlyLevy).toLocaleString("en-KE")})`
+    : "";
+
+  for (const r of unpaid) {
+    await createNotification({
+      userId: r.id,
+      title: `${monthName} levy reminder`,
+      body: `A friendly reminder from ${estate?.name ?? "your estate"}: the ${monthName} service charge${amountLine} hasn't been received yet. Pay in a tap via M-PESA.`,
+      type: "levy_reminder",
+      linkTo: "/payments",
+    });
+    // Best-effort SMS — capped by the normal quotas; a failed SMS doesn't
+    // undo the in-app reminder.
+    await sendThrottledSms({
+      userId: r.id,
+      to: r.phone,
+      message: `${BRAND_NAME}: ${monthName} levy${amountLine} for ${estate?.name ?? "your estate"} is due. Open the app to pay via M-PESA. Karibu.`,
+      systemMessage: true,
+    });
+  }
+
+  await writeAudit(req, {
+    action: "levy.reminder_sent",
+    targetType: "estate",
+    targetId: user.estateId,
+    metadata: { reminded: unpaid.length },
+  });
+
+  res.json({ data: { reminded: unpaid.length } });
+});
+
 // Resident: my payment history
 paymentsRouter.get("/my", async (_req, res) => {
   const user = res.locals.user!;
