@@ -21,6 +21,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/dm-sans": "^5.3.0",
+    "@fontsource/plus-jakarta-sans": "^5.3.0",
     "@hookform/resolvers": "^3.9.0",
     "@lucia-auth/adapter-drizzle": "^1.1.0",
     "@netlify/blobs": "^10.7.9",
