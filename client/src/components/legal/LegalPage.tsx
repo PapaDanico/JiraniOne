@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { LEGAL_SECTIONS, RIGHTS } from "./legalContent";
-import { BRAND_NAME } from "@shared/brand";
+import { BRAND_NAME, COMPANY_NAME, LEGAL_EMAIL } from "@shared/brand";
 
 export function LegalPage({ type }: { type: "privacy" | "terms" }) {
   const sections = LEGAL_SECTIONS[type === "privacy" ? "PRIVACY" : "TERMS"];
@@ -49,8 +49,8 @@ export function LegalPage({ type }: { type: "privacy" | "terms" }) {
 
         <div className="bg-[#EDE7D8] border border-[#D4C9A8] rounded-xl p-4 mt-8">
           <p className="text-xs text-[#6B5D45] text-center">
-            © 2026 {BRAND_NAME} Ltd. All rights reserved. Questions?{" "}
-            <a href="mailto:legal@jiranihub.co.ke" className="font-semibold text-[#1B5E20] underline">
+            © 2026 {COMPANY_NAME}. All rights reserved. Questions?{" "}
+            <a href={`mailto:${LEGAL_EMAIL}`} className="font-semibold text-[#1B5E20] underline">
               Contact us
             </a>
           </p>

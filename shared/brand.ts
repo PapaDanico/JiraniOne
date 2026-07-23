@@ -28,12 +28,12 @@ export const BRAND_TAGLINE_SHORT = "Smart estate management · Kenya";
 // contracting legal entity is.
 export const COMPANY_NAME = "Jirani Sync Africa Ltd";
 
-// Emails deliberately stay on jiranihub.* infrastructure — mailboxes on
-// the new domain don't exist yet. Once mail is set up on jiranisync.work
-// (or a jiranione domain), update these.
-export const SUPPORT_EMAIL = "support@jiranihub.co.ke";
-export const PRIVACY_EMAIL = "privacy@jiranihub.co.ke";
-export const LEGAL_EMAIL = "legal@jiranihub.co.ke";
+// Official company mailbox (confirmed by the owner 2026-07-23). One
+// address for all three purposes for now; split into dedicated
+// support@/privacy@/legal@ mailboxes later without touching call sites.
+export const SUPPORT_EMAIL = "info@jiranisyncafrica.com";
+export const PRIVACY_EMAIL = "info@jiranisyncafrica.com";
+export const LEGAL_EMAIL = "info@jiranisyncafrica.com";
 
 // Primary public URL — used for OG tags, invite links, and anywhere a
 // single canonical address is needed. jiranisync.work (the Jirani Sync

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/shared/navigation";
 import { RequestDemoDialog } from "./RequestDemoDialog";
 import { BRAND_NAME, COMPANY_NAME, SUPPORT_EMAIL } from "@shared/brand";
+import { PLANS, TRIAL_DAYS } from "@shared/billing";
 
 const FEATURES = [
   { icon: "🚪", title: "Visitors", desc: "Digital QR check-in" },
@@ -56,7 +57,7 @@ export function LandingPage() {
 
       <main className="page-content">
         {/* Hero */}
-        <section className="max-w-lg mx-auto px-4 pt-12 pb-8 text-center space-y-6">
+        <section className="max-w-lg md:max-w-3xl mx-auto px-4 pt-12 md:pt-16 pb-8 text-center space-y-6">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#1B5E20]/10 rounded-full border border-[#1B5E20]/20">
               <MapPin className="w-3 h-3 text-[#1B5E20]" />
@@ -64,7 +65,7 @@ export function LandingPage() {
                 Now onboarding gated communities across Kenya
               </span>
             </div>
-            <h1 className="font-black text-5xl leading-tight text-[#212121]">
+            <h1 className="font-black text-5xl md:text-6xl leading-tight text-[#212121]">
               Run Your Estate.<br />Not a WhatsApp Group.
             </h1>
             <p className="text-lg text-[#6B5D45] leading-relaxed">
@@ -74,14 +75,14 @@ export function LandingPage() {
               "Jirani mwema ni hazina" — a good neighbour is a treasure.
             </p>
           </div>
-          <div className="flex flex-col gap-3 pt-4">
-            <Button onClick={() => setDemoOpen(true)} className="w-full h-14 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+          <div className="flex flex-col md:flex-row md:justify-center md:items-center gap-3 pt-4">
+            <Button onClick={() => setDemoOpen(true)} className="w-full md:w-auto md:px-8 h-14 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
               <Building2 className="w-5 h-5 mr-2" /> Bring {BRAND_NAME} to Your Estate
             </Button>
             <Button
               variant="secondary"
               onClick={() => setLocation("/login")}
-              className="w-full h-14 text-base font-semibold rounded-xl border-2 hover:bg-[#1B5E20]/5 transition-all duration-300"
+              className="w-full md:w-auto md:px-8 h-14 text-base font-semibold rounded-xl border-2 hover:bg-[#1B5E20]/5 transition-all duration-300"
             >
               Sign In
             </Button>
@@ -96,7 +97,7 @@ export function LandingPage() {
         </section>
 
         {/* Stats - Modern Grid */}
-        <section className="max-w-lg mx-auto px-4 py-8">
+        <section className="max-w-lg md:max-w-2xl mx-auto px-4 py-8">
           <div className="grid grid-cols-3 gap-3">
             {STATS.map((s, i) => (
               <div
@@ -114,7 +115,7 @@ export function LandingPage() {
         </section>
 
         {/* Features - Interactive Cards */}
-        <section className="max-w-lg mx-auto px-4 pt-12 pb-8 space-y-6">
+        <section className="max-w-lg md:max-w-4xl mx-auto px-4 pt-12 pb-8 space-y-6">
           <div className="text-center space-y-2">
             <h2 className="font-black text-3xl text-[#212121]">Everything You Need</h2>
             <p className="text-sm text-[#6B5D45]">9 core modules designed for Kenyan estates</p>
@@ -137,12 +138,12 @@ export function LandingPage() {
         </section>
 
         {/* Benefits - Enhanced List */}
-        <section className="max-w-lg mx-auto px-4 pt-8 pb-12 space-y-6">
+        <section className="max-w-lg md:max-w-4xl mx-auto px-4 pt-8 pb-12 space-y-6">
           <div className="text-center space-y-2">
             <h2 className="font-black text-3xl text-[#212121]">Why {BRAND_NAME}?</h2>
             <p className="text-sm text-[#6B5D45]">Built specifically for Kenyan community estates</p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {BENEFITS.map((b, i) => (
               <div
                 key={i}
@@ -156,12 +157,12 @@ export function LandingPage() {
         </section>
 
         {/* How it works - 3 steps */}
-        <section className="max-w-lg mx-auto px-4 pb-12 space-y-5">
+        <section className="max-w-lg md:max-w-4xl mx-auto px-4 pb-12 space-y-5">
           <div className="text-center space-y-2">
             <h2 className="font-black text-3xl text-[#212121]">How It Works</h2>
             <p className="text-sm text-[#6B5D45]">From WhatsApp chaos to calm, in three steps</p>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
             {[
               { n: "1", title: "Your estate joins", desc: "Management sets up the estate, adds facilities and rules, and invites every household." },
               { n: "2", title: "You sign in with your phone number", desc: "No email needed. Invite visitors, report issues, book the clubhouse, and follow estate news — all from one app." },
@@ -181,12 +182,12 @@ export function LandingPage() {
         </section>
 
         {/* Who it's for - target buyers */}
-        <section className="max-w-lg mx-auto px-4 pb-12 space-y-5">
+        <section className="max-w-lg md:max-w-4xl mx-auto px-4 pb-12 space-y-5">
           <div className="text-center space-y-2">
             <h2 className="font-black text-3xl text-[#212121]">Built For</h2>
             <p className="text-sm text-[#6B5D45]">Whoever runs the estate day-to-day</p>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
             {[
               { icon: "🏘️", title: "Estate Management Companies", desc: "Run every property you manage from one dashboard — levies, tickets, gate logs, and reports, per estate." },
               { icon: "🤝", title: "Residents' Associations & Committees", desc: "Replace the group-admin burden of chasing payments and forwarding notices with transparent, auditable tools." },
@@ -204,7 +205,7 @@ export function LandingPage() {
         </section>
 
         {/* Security - Premium Card */}
-        <section className="max-w-lg mx-auto px-4 pb-12">
+        <section className="max-w-lg md:max-w-2xl mx-auto px-4 pb-12">
           <div className="relative overflow-hidden bg-gradient-to-br from-[#1B5E20] via-[#0F4D2A] to-[#1B5E20] rounded-3xl p-8 text-center text-white shadow-xl">
             <div className="absolute inset-0 opacity-10">
               <div className="absolute top-0 right-0 w-40 h-40 bg-[#D47A00] rounded-full blur-3xl" />
@@ -231,8 +232,45 @@ export function LandingPage() {
           </div>
         </section>
 
+        {/* Pricing — straight from shared/billing.ts so the public page can
+            never drift from what the app actually invoices. */}
+        <section className="max-w-lg md:max-w-4xl mx-auto px-4 pb-12 space-y-5">
+          <div className="text-center space-y-2">
+            <h2 className="font-black text-3xl text-[#212121]">Simple, Honest Pricing</h2>
+            <p className="text-sm text-[#6B5D45]">
+              Per estate, per month — priced by unit count. Every plan starts with a {TRIAL_DAYS}-day free trial. No card needed, M-PESA when you're ready.
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {Object.values(PLANS).map((plan) => (
+              <div
+                key={plan.tier}
+                className={`relative bg-white rounded-2xl p-5 border shadow-sm text-center space-y-2 ${plan.tier === "growth" ? "border-[#1B5E20] border-2" : "border-[#E8E3D8]"}`}
+              >
+                {plan.tier === "growth" && (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-wide bg-[#1B5E20] text-white rounded-full px-2.5 py-0.5">
+                    Most estates
+                  </span>
+                )}
+                <p className="font-bold text-sm text-[#212121]">{plan.label}</p>
+                <p className="font-black text-2xl text-[#1B5E20]">
+                  KES {plan.monthlyKes.toLocaleString("en-KE")}
+                  <span className="text-xs font-semibold text-[#6B5D45]">/mo</span>
+                </p>
+                <p className="text-xs text-[#6B5D45]">
+                  {plan.tier === "starter" ? "Up to 40 units" : plan.tier === "growth" ? "41 – 150 units" : "151+ units"}
+                </p>
+                <p className="text-xs text-[#6B5D45] leading-snug">{plan.blurb}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-[#6B5D45] text-center">
+            All 9 modules on every plan. Safety features and your data are never cut off over billing.
+          </p>
+        </section>
+
         {/* CTA - Modern Form */}
-        <section className="max-w-lg mx-auto px-4 pb-20 space-y-6">
+        <section className="max-w-lg md:max-w-2xl mx-auto px-4 pb-20 space-y-6">
           <div className="text-center space-y-3">
             <h2 className="font-black text-3xl text-[#212121]">Be Among the First</h2>
             <p className="text-base text-[#6B5D45]">

@@ -134,6 +134,59 @@ usersRouter.post("/", requireRole("admin"), async (req, res) => {
   });
 });
 
+// Admin: re-issue a setup link for an existing user — the clean path when
+// a security guard or vendor lost their invite, it expired, or they need
+// their password reset without SMS. Revokes any outstanding tokens first
+// (exactly one live invite per user), then mints a fresh 7-day link.
+// NOTE: consuming the link only sets a password; it does not log other
+// sessions out (auth.ts POST /setup handles that).
+usersRouter.post("/:id/setup-link", requireRole("admin"), async (req, res) => {
+  const admin = res.locals.user!;
+
+  const [target] = await db.select().from(users)
+    .where(and(
+      eq(users.id, req.params['id']!),
+      eq(users.estateId, admin.estateId!),
+      isNull(users.deletedAt),
+    ))
+    .limit(1);
+  if (!target) { res.status(404).json({ error: "User not found" }); return; }
+
+  await db
+    .update(userSetupTokens)
+    .set({ consumedAt: new Date() })
+    .where(and(
+      eq(userSetupTokens.userId, target.id),
+      isNull(userSetupTokens.consumedAt),
+    ));
+
+  const { createHash } = await import("crypto");
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  await db.insert(userSetupTokens).values({
+    id: newId(),
+    userId: target.id,
+    tokenHash,
+    expiresAt,
+  });
+
+  await writeAudit(req, {
+    action: "user.setup_link_reissued",
+    targetType: "user",
+    targetId: target.id,
+    metadata: { role: target.role },
+  });
+
+  const clientUrl = process.env.CLIENT_URL ?? PRIMARY_URL;
+  res.json({
+    data: { id: target.id, name: target.name, phone: target.phone },
+    setupLink: `${clientUrl}/setup/${token}`,
+    setupLinkExpiresAt: expiresAt.toISOString(),
+  });
+});
+
 // Admin: update user (unit number, role, reactivate)
 usersRouter.patch("/:id", requireRole("admin"), async (req, res) => {
   const admin = res.locals.user!;
