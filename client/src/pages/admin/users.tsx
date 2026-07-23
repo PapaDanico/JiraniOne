@@ -235,6 +235,7 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [confirmRemove, setConfirmRemove] = useState<EstateUser | null>(null);
   const [linkResult, setLinkResult] = useState<SetupLinkResult | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Re-issue an invite/setup link — the recovery path when a guard or
   // vendor lost their link, it expired, or they've forgotten their
@@ -243,9 +244,10 @@ export default function AdminUsersPage() {
     mutationFn: (id: string) => api.post<{ name: string; phone: string }>(`/api/users/${id}/setup-link`, {}),
     onSuccess: (res) => {
       const r = res as unknown as { data: { name: string; phone: string }; setupLink: string; setupLinkExpiresAt: string };
+      setActionError(null);
       setLinkResult({ name: r.data.name, phone: r.data.phone, link: r.setupLink, expiresAt: r.setupLinkExpiresAt });
     },
-    onError: (err) => alert(err instanceof Error ? err.message : "Failed to create invite link."),
+    onError: (err) => setActionError(err instanceof Error ? err.message : "Failed to create invite link."),
   });
 
   const { data: users, isLoading } = useQuery({
@@ -255,8 +257,8 @@ export default function AdminUsersPage() {
 
   const deactivate = useMutation({
     mutationFn: (id: string) => api.delete(`/api/users/${id}`),
-    onSuccess: () => { setConfirmRemove(null); qc.invalidateQueries({ queryKey: ["estate-users"] }); },
-    onError: (err) => alert(err instanceof Error ? err.message : "Failed to remove user."),
+    onSuccess: () => { setConfirmRemove(null); setActionError(null); qc.invalidateQueries({ queryKey: ["estate-users"] }); },
+    onError: (err) => { setConfirmRemove(null); setActionError(err instanceof Error ? err.message : "Failed to remove user."); },
   });
 
   const filtered = users?.filter((u) =>
@@ -275,6 +277,12 @@ export default function AdminUsersPage() {
     <div className="page-wrap" data-bottomnav="true">
       <TopBar title="Users" />
       <main className="container-list pt-4 space-y-4 page-content">
+        {actionError && (
+          <div role="alert" className="flex items-start justify-between gap-2 rounded-xl bg-[#B71C1C]/10 border border-[#B71C1C]/20 px-3 py-2.5 text-sm text-[#B71C1C]">
+            <span>{actionError}</span>
+            <button onClick={() => setActionError(null)} className="font-bold px-1" aria-label="Dismiss">×</button>
+          </div>
+        )}
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B5D45]" />
