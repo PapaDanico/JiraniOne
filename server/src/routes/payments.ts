@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { db, dbTx, type DBTx } from "../db.js";
-import { payments, fundraisingCampaigns, donations, chamaContributions, subscriptionInvoices } from "@shared/schema.js";
+import { payments, fundraisingCampaigns, donations, chamaContributions, subscriptionInvoices, users } from "@shared/schema.js";
+import { periodLabel } from "@shared/billing.js";
+import { BRAND_NAME } from "@shared/brand.js";
+import { createNotification } from "../lib/notify.js";
+import { sendThrottledSms } from "../lib/sms.js";
 import {
   initiatePaymentSchema,
   createCampaignSchema,
@@ -23,6 +27,13 @@ import { isProduction } from "../lib/env.js";
 // contribution row and the campaign total credit whenever a callback was
 // lost). Caller must run this inside a transaction with the payment row
 // already locked FOR UPDATE, or use settlePaymentById below.
+//
+// Returns an optional post-commit action (receipt notification/SMS). It
+// MUST be invoked by the caller only AFTER the transaction commits — a
+// receipt sent from inside the transaction could confirm a payment whose
+// settlement then rolls back.
+export type PostSettleAction = () => Promise<void>;
+
 export async function applyPaymentResult(
   tx: DBTx,
   payment: {
@@ -34,7 +45,7 @@ export async function applyPaymentResult(
     metadata: Record<string, unknown> | null;
   },
   result: { success: boolean; mpesaRef: string | null },
-): Promise<void> {
+): Promise<PostSettleAction | undefined> {
   // Idempotency guard: if the payment already settled, do nothing.
   if (payment.status !== "pending") return;
 
@@ -116,7 +127,7 @@ export async function applyPaymentResult(
           eq(subscriptionInvoices.id, invoiceId),
           eq(subscriptionInvoices.status, "pending"),
         ))
-        .returning({ id: subscriptionInvoices.id });
+        .returning({ id: subscriptionInvoices.id, period: subscriptionInvoices.period });
       if (updated.length === 0) {
         // Real money arrived for an invoice that's no longer pending —
         // needs a human decision (refund vs credit), never silent.
@@ -128,6 +139,46 @@ export async function applyPaymentResult(
             amount: payment.amount,
           }),
         );
+      } else {
+        // Receipt — this is the moment a paying estate judges whether the
+        // billing is trustworthy. Runs post-commit (see settlePaymentById /
+        // the callback handler), best-effort: a receipt failure never
+        // un-settles a payment.
+        const period = updated[0]!.period;
+        const amountKes = Number(payment.amount).toLocaleString("en-KE");
+        const refLine = result.mpesaRef ? ` M-PESA ref ${result.mpesaRef}.` : "";
+        return async () => {
+          try {
+            await createNotification({
+              userId: payment.user_id,
+              title: "Subscription payment received",
+              body: `KES ${amountKes} received for ${periodLabel(period)}. Your estate is in good standing.${refLine} Thank you!`,
+              type: "billing",
+              linkTo: "/admin/settings",
+            });
+            const [payer] = await db
+              .select({ phone: users.phone })
+              .from(users)
+              .where(eq(users.id, payment.user_id))
+              .limit(1);
+            if (payer) {
+              await sendThrottledSms({
+                userId: payment.user_id,
+                to: payer.phone,
+                message: `${BRAND_NAME}: payment of KES ${amountKes} received for your ${periodLabel(period)} subscription.${refLine} Asante!`,
+                systemMessage: true,
+              });
+            }
+          } catch (err) {
+            console.error(
+              JSON.stringify({
+                event: "subscription_receipt_failed",
+                paymentId: payment.id,
+                error: err instanceof Error ? err.message : String(err),
+              }),
+            );
+          }
+        };
       }
     }
   } else if (payment.type === "chama_contribution") {
@@ -177,6 +228,7 @@ export async function settlePaymentById(
   paymentId: string,
   result: { success: boolean; mpesaRef: string | null },
 ): Promise<void> {
+  let afterCommit: PostSettleAction | undefined;
   await dbTx.transaction(async (tx) => {
     const rows = await tx.execute<{
       id: string;
@@ -193,8 +245,9 @@ export async function settlePaymentById(
     `);
     const payment = rows[0];
     if (!payment) return;
-    await applyPaymentResult(tx, payment, result);
+    afterCommit = await applyPaymentResult(tx, payment, result);
   });
+  if (afterCommit) await afterCommit();
 }
 
 // ─── Public M-PESA callback router ───────────────────────────────────────────
@@ -222,6 +275,7 @@ mpesaCallbackRouter.post(
     };
 
     try {
+      let afterCommit: PostSettleAction | undefined;
       await dbTx.transaction(async (tx) => {
         // Lock the payment row for the duration of this transaction so
         // concurrent retries from Safaricom serialize on it.
@@ -251,8 +305,13 @@ mpesaCallbackRouter.post(
           items.find((i) => i.Name === name)?.Value;
         const mpesaRef = String(get("MpesaReceiptNumber") ?? "");
 
-        await applyPaymentResult(tx, payment, { success: true, mpesaRef });
+        afterCommit = await applyPaymentResult(tx, payment, { success: true, mpesaRef });
       });
+      // Post-commit receipt — awaited (not fire-and-forget) because a
+      // serverless function can be frozen right after the response; the
+      // callback ack below only goes out after this completes, still well
+      // inside Safaricom's timeout.
+      if (afterCommit) await afterCommit();
     } catch (err) {
       // A unique-violation here means a concurrent callback already settled.
       // That is the desired idempotent outcome — log and ack.
