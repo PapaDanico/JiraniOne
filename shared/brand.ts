@@ -28,18 +28,18 @@ export const BRAND_TAGLINE_SHORT = "Smart estate management · Kenya";
 // contracting legal entity is.
 export const COMPANY_NAME = "Jirani Sync Africa Ltd";
 
-// Emails and URLs below deliberately stay on jiranihub.* infrastructure —
-// the JiraniOne domains/mailboxes don't exist yet. Once jiranione.co.ke
-// (or equivalent) is registered, DNS is live, and mail is set up, update
-// these and append the new origins to PRODUCTION_ORIGINS (keeping the old
-// ones until the redirect is permanent).
+// Emails deliberately stay on jiranihub.* infrastructure — mailboxes on
+// the new domain don't exist yet. Once mail is set up on jiranisync.work
+// (or a jiranione domain), update these.
 export const SUPPORT_EMAIL = "support@jiranihub.co.ke";
 export const PRIVACY_EMAIL = "privacy@jiranihub.co.ke";
 export const LEGAL_EMAIL = "legal@jiranihub.co.ke";
 
 // Primary public URL — used for OG tags, invite links, and anywhere a
-// single canonical address is needed.
-export const PRIMARY_URL = "https://jiranihub.org";
+// single canonical address is needed. jiranisync.work (the Jirani Sync
+// Africa Ltd corporate domain) is the Netlify primary domain as of
+// 2026-07-23; jiranihub.org remains attached and redirecting.
+export const PRIMARY_URL = "https://jiranisync.work";
 
 // Every origin the production app may be served from. Feeds the CORS
 // allowlist and CSP connect-src in server/src/createApp.ts. During a
@@ -47,11 +47,14 @@ export const PRIMARY_URL = "https://jiranihub.org";
 // stops redirecting — a missing entry here 500s every login (see the
 // 2026-07-20 outage note in createApp.ts).
 export const PRODUCTION_ORIGINS = [
+  "https://jiranisync.work",
+  "https://www.jiranisync.work",
   "https://jiranihub.org",
   "https://www.jiranihub.org",
   "https://www.jiranihub.co.ke",
   "https://jiranihub.co.ke",
   "https://jiranihub.netlify.app",
+  "https://jiranione.netlify.app",
 ] as const;
 
 // Brand prefix used inside SMS message bodies — safe to rebrand freely,
