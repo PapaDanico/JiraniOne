@@ -110,13 +110,37 @@ function ReadReceipts({ announcementId }: { announcementId: string }) {
 
   if (isLoading) return <p className="text-xs text-[#6B5D45]/60">Loading…</p>;
   if (!data) return null;
-  if (data.readers.length === 0) {
-    return <p className="text-xs text-[#6B5D45]/60">No one has acknowledged this yet.</p>;
-  }
+
+  const pct = data.totalRecipients > 0
+    ? Math.round((data.acknowledgedCount / data.totalRecipients) * 100)
+    : 0;
 
   return (
-    <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-lg bg-[#1B5E20]/5 p-2.5">
-      {data.readers.map((r, i) => (
+    <div className="space-y-2">
+      {/* Compliance headline — the metric an admin actually checks: did
+          this notice reach people? */}
+      <div>
+        <div className="flex items-center justify-between text-xs mb-1">
+          <span className="font-semibold text-[#212121]">
+            {data.acknowledgedCount} of {data.totalRecipients} acknowledged
+          </span>
+          <span className={`font-bold ${pct >= 70 ? "text-[#1B5E20]" : pct >= 40 ? "text-[#D47A00]" : "text-[#B71C1C]"}`}>
+            {pct}%
+          </span>
+        </div>
+        <div className="h-1.5 w-full bg-[#EDE7D8] rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${pct >= 70 ? "bg-[#1B5E20]" : pct >= 40 ? "bg-[#D47A00]" : "bg-[#B71C1C]"}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+
+      {data.readers.length === 0 ? (
+        <p className="text-xs text-[#6B5D45]/60">No one has acknowledged this yet.</p>
+      ) : (
+        <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-lg bg-[#1B5E20]/5 p-2.5">
+          {data.readers.map((r, i) => (
         <div key={i} className="flex items-center justify-between text-xs">
           <span className="text-[#212121]">
             {r.name}
@@ -124,7 +148,9 @@ function ReadReceipts({ announcementId }: { announcementId: string }) {
           </span>
           <span className="text-[#6B5D45]/60">{formatRelative(r.readAt)}</span>
         </div>
-      ))}
+          ))}
+        </div>
+      )}
     </div>
   );
 }
