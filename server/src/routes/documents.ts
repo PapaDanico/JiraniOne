@@ -73,6 +73,7 @@ documentsRouter.post("/", requireRole("admin"), upload.single("file"), async (re
       estateId: user.estateId,
       uploadedById: user.id,
       title: parsed.data.title.trim(),
+      category: parsed.data.category ?? null,
       fileUrl: stored.key,
       fileType: stored.contentType,
     })

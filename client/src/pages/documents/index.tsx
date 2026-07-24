@@ -13,6 +13,8 @@ import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { MAX_DOCUMENT_BYTES } from "@shared/constants";
 import type { EstateDocument } from "@shared/types";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { DOCUMENT_CATEGORIES, documentCategoryCfg } from "@shared/options";
 
 function fileIcon(fileType: string | null) {
   if (fileType === "application/pdf") return "📄";
@@ -23,6 +25,7 @@ function fileIcon(fileType: string | null) {
 function UploadDocumentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
 
@@ -30,12 +33,13 @@ function UploadDocumentModal({ open, onClose }: { open: boolean; onClose: () => 
     mutationFn: () => {
       const formData = new FormData();
       formData.append("title", title);
+      if (category) formData.append("category", category);
       formData.append("file", file!);
       return api.upload("/api/documents", formData);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["documents"] });
-      setTitle(""); setFile(null); setError("");
+      setTitle(""); setCategory(""); setFile(null); setError("");
       onClose();
     },
     onError: (e) => {
@@ -78,6 +82,17 @@ function UploadDocumentModal({ open, onClose }: { open: boolean; onClose: () => 
             />
           </div>
           <div className="space-y-1.5">
+            <Label>Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger><SelectValue placeholder="Choose a category…" /></SelectTrigger>
+              <SelectContent>
+                {DOCUMENT_CATEGORIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>{c.emoji} {c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="doc-file">File (PDF, JPG, or PNG) *</Label>
             <input
               id="doc-file"
@@ -110,11 +125,15 @@ export default function DocumentsPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  const [filter, setFilter] = useState("");
 
   const { data: documents, isLoading } = useQuery({
     queryKey: ["documents"],
     queryFn: () => api.get<EstateDocument[]>("/api/documents").then((r) => r.data),
   });
+
+  const presentCategories = Array.from(new Set((documents ?? []).map((d) => d.category ?? "other")));
+  const filtered = (documents ?? []).filter((d) => !filter || (d.category ?? "other") === filter);
 
   const { mutate: deleteDocument, isPending: deleting } = useMutation({
     mutationFn: (id: string) => api.delete(`/api/documents/${id}`).then((r) => r.data),
@@ -146,9 +165,25 @@ export default function DocumentsPage() {
           <p className="text-xs text-[#B71C1C] font-medium">{actionError}</p>
         )}
 
+        {presentCategories.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setFilter("")}
+              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${!filter ? "bg-[#1B5E20] text-white border-[#1B5E20]" : "border-[#D4C9A8] text-[#6B5D45]"}`}
+            >All</button>
+            {DOCUMENT_CATEGORIES.filter((c) => presentCategories.includes(c.value)).map((c) => (
+              <button
+                key={c.value}
+                onClick={() => setFilter(filter === c.value ? "" : c.value)}
+                className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${filter === c.value ? "bg-[#1B5E20] text-white border-[#1B5E20]" : "border-[#D4C9A8] text-[#6B5D45]"}`}
+              >{c.emoji} {c.label}</button>
+            ))}
+          </div>
+        )}
+
         {isLoading ? (
           <SectionLoader />
-        ) : !documents?.length ? (
+        ) : !filtered.length ? (
           <div className="tribal-card p-10 text-center">
             <FileText className="h-12 w-12 text-[#D4C9A8] mx-auto mb-3" />
             <p className="font-semibold text-[#212121] mb-1">No documents yet</p>
@@ -160,12 +195,19 @@ export default function DocumentsPage() {
           </div>
         ) : (
           <div className="card-grid">
-            {documents.map((doc) => (
+            {filtered.map((doc) => (
               <div key={doc.id} className="tribal-card p-4 flex items-center gap-3">
                 <span className="text-2xl shrink-0">{fileIcon(doc.fileType)}</span>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm text-[#212121] truncate">{doc.title}</p>
-                  <p className="text-xs text-[#6B5D45]">{formatDate(doc.createdAt)}</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {documentCategoryCfg(doc.category) && (
+                      <span className="text-[11px] text-[#1B5E20] bg-[#1B5E20]/8 rounded-full px-1.5 py-0.5">
+                        {documentCategoryCfg(doc.category)!.emoji} {documentCategoryCfg(doc.category)!.label}
+                      </span>
+                    )}
+                    <p className="text-xs text-[#6B5D45]">{formatDate(doc.createdAt)}</p>
+                  </div>
                 </div>
                 <a
                   href={`/api/documents/${doc.id}/file`}
