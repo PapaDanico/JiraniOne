@@ -68,3 +68,16 @@ export const BOOKING_PURPOSES = [
   "Religious function",
   "Other",
 ] as const;
+
+export const DOCUMENT_CATEGORIES = [
+  { value: "rules",    label: "Rules & bylaws",   emoji: "📕" },
+  { value: "minutes",  label: "Meeting minutes",  emoji: "📝" },
+  { value: "notices",  label: "Notices",          emoji: "📢" },
+  { value: "financial",label: "Financial",        emoji: "💰" },
+  { value: "forms",    label: "Forms",            emoji: "📋" },
+  { value: "other",    label: "Other",            emoji: "📄" },
+] as const;
+
+export function documentCategoryCfg(value: string | null | undefined) {
+  return DOCUMENT_CATEGORIES.find((c) => c.value === value);
+}

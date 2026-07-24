@@ -559,6 +559,10 @@ export const documents = pgTable(
       .notNull()
       .references(() => users.id),
     title: varchar("title", { length: 200 }).notNull(),
+    // Library category (shared/options.ts DOCUMENT_CATEGORIES) so a
+    // growing document list stays browsable. Nullable — legacy docs
+    // predate it and read as "Other".
+    category: varchar("category", { length: 20 }),
     fileUrl: text("file_url").notNull(),
     fileType: varchar("file_type", { length: 50 }),
     createdAt: timestamp("created_at").notNull().defaultNow(),

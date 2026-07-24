@@ -351,6 +351,7 @@ export const claimSetupSchema = z.object({
 
 export const createDocumentSchema = z.object({
   title: z.string().min(3).max(200),
+  category: z.enum(["rules", "minutes", "notices", "financial", "forms", "other"]).optional(),
 });
 
 export const createLeadSchema = z.object({

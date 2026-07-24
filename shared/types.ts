@@ -266,6 +266,7 @@ export interface EstateDocument {
   estateId: string;
   uploadedById: string;
   title: string;
+  category: string | null;
   fileUrl: string;
   fileType: string | null;
   createdAt: string;
