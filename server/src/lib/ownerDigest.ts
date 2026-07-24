@@ -93,3 +93,42 @@ export async function sendOwnerWeeklyDigest(): Promise<void> {
     log.error({ event: "owner_digest_failed", err }, "owner weekly digest failed");
   }
 }
+
+// Month-open nudge: on the 1st, tell every estate admin their previous
+// month's report is ready to view/print. The report itself renders live
+// from analytics (client/src/pages/admin/report.tsx) — this is the
+// reminder so the AGM-ready summary gets used without anyone remembering
+// to click. Idempotent: only fires when today is the 1st, and the daily
+// billing cron already guards against double-invoicing, so at most one
+// notification per admin per month-open.
+export async function sendMonthlyReportNudge(): Promise<void> {
+  const now = new Date();
+  if (now.getUTCDate() !== 1) return; // only on month-open
+
+  try {
+    const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const monthLabel = lastMonth.toLocaleDateString("en-KE", { month: "long", year: "numeric", timeZone: "UTC" });
+
+    const admins = await db
+      .select({ adminId: estates.adminId })
+      .from(estates)
+      .limit(1000);
+
+    for (const e of admins) {
+      if (!e.adminId) continue;
+      try {
+        await createNotification({
+          userId: e.adminId,
+          title: `${monthLabel} estate report ready`,
+          body: `Your ${monthLabel} summary — collections, tickets, visitors, incidents — is ready to view or print for the committee.`,
+          type: "monthly_report",
+          linkTo: "/admin/report",
+        });
+      } catch (err) {
+        log.error({ event: "monthly_report_nudge_row_failed", adminId: e.adminId, err }, "monthly report nudge failed for one admin");
+      }
+    }
+  } catch (err) {
+    log.error({ event: "monthly_report_nudge_failed", err }, "monthly report nudge job failed");
+  }
+}
