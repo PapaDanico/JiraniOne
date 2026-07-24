@@ -355,6 +355,44 @@ function QuoteDialog({ provider, onClose }: { provider: ServiceProvider; onClose
   );
 }
 
+interface EstateQuote {
+  id: string;
+  category: string;
+  status: string;
+  createdAt: string;
+  providerName: string;
+  residentName: string;
+}
+
+function AdminQuoteActivity() {
+  const { data: quotes = [] } = useQuery<EstateQuote[]>({
+    queryKey: ["quotes", "estate"],
+    queryFn: () => api.get<EstateQuote[]>("/api/services/quotes/estate").then((r) => r.data),
+    staleTime: 2 * 60 * 1000,
+  });
+  if (quotes.length === 0) return null;
+  const newCount = quotes.filter((q) => q.status === "new").length;
+  return (
+    <details className="tribal-card p-4 border-l-4 border-l-[#1B5E20]">
+      <summary className="cursor-pointer font-semibold text-sm text-[#212121] flex items-center gap-2">
+        <MessageSquare className="h-4 w-4 text-[#1B5E20]" />
+        Marketplace activity — {quotes.length} quote request{quotes.length > 1 ? "s" : ""}{newCount > 0 ? ` (${newCount} awaiting vendor)` : ""}
+      </summary>
+      <div className="mt-2 space-y-1.5 max-h-64 overflow-y-auto">
+        {quotes.map((q) => (
+          <div key={q.id} className="flex items-center justify-between text-xs border-b border-[#E8E3D8] pb-1.5">
+            <span className="text-[#212121] min-w-0 truncate">
+              <span className="font-semibold">{q.residentName}</span> → {q.providerName}
+              <span className="text-[#6B5D45]"> · {q.category}</span>
+            </span>
+            <span className="text-[#6B5D45] shrink-0 ml-2 capitalize">{q.status}</span>
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 export default function MarketplacePage() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -412,6 +450,7 @@ export default function MarketplacePage() {
         {verifyError && (
           <p className="text-xs text-[#B71C1C] font-medium">{verifyError}</p>
         )}
+        {user?.role === "admin" && <AdminQuoteActivity />}
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B5D45]" />

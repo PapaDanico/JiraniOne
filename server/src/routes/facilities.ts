@@ -80,6 +80,7 @@ facilitiesRouter.get("/bookings", async (_req, res) => {
         startTime: bookings.startTime,
         endTime: bookings.endTime,
         status: bookings.status,
+        purpose: bookings.purpose,
         notes: bookings.notes,
         createdAt: bookings.createdAt,
         facilityName: facilities.name,
@@ -105,6 +106,7 @@ facilitiesRouter.get("/bookings", async (_req, res) => {
       startTime: bookings.startTime,
       endTime: bookings.endTime,
       status: bookings.status,
+      purpose: bookings.purpose,
       notes: bookings.notes,
       createdAt: bookings.createdAt,
       facilityName: facilities.name,
@@ -127,7 +129,7 @@ facilitiesRouter.post("/bookings", async (req, res) => {
     res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
     return;
   }
-  const { facilityId, startTime, endTime, notes } = parsed.data;
+  const { facilityId, startTime, endTime, purpose, notes } = parsed.data;
 
   const start = new Date(startTime);
   const end = new Date(endTime);
@@ -180,6 +182,7 @@ facilitiesRouter.post("/bookings", async (req, res) => {
         startTime: start,
         endTime: end,
         status: facility.requiresApproval ? "pending" : "approved",
+        purpose: purpose ?? null,
         notes: notes ?? null,
       }).returning();
 

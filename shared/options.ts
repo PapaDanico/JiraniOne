@@ -57,3 +57,14 @@ export const EVENT_TYPES = [
 export function eventTypeCfg(value: string | null | undefined) {
   return EVENT_TYPES.find((t) => t.value === value);
 }
+
+export const BOOKING_PURPOSES = [
+  "Birthday party",
+  "Family gathering",
+  "Meeting",
+  "Chama gathering",
+  "Sports / fitness",
+  "Kids' party",
+  "Religious function",
+  "Other",
+] as const;
