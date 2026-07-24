@@ -731,6 +731,42 @@ export const serviceReviews = pgTable(
   }),
 );
 
+// Resident → provider quote requests. A structured lead ("plumber, leak
+// repair, this week, ~KES 1-2k") instead of a cold phone call — and the
+// seed of a future transaction-fee line. Deliberately lightweight: no
+// chat thread, the phone numbers are already visible; this just gets the
+// job details in front of the right vendor and notifies them.
+export const quoteStatusEnum = pgEnum("quote_status", [
+  "new",
+  "responded",
+  "accepted",
+  "declined",
+  "closed",
+]);
+
+export const quoteRequests = pgTable(
+  "quote_requests",
+  {
+    id: text("id").primaryKey(),
+    estateId: text("estate_id").notNull().references(() => estates.id),
+    providerId: text("provider_id").notNull().references(() => serviceProviders.id, { onDelete: "cascade" }),
+    residentId: text("resident_id").notNull().references(() => users.id),
+    category: varchar("category", { length: 50 }).notNull(),
+    description: text("description").notNull(),
+    // Reuses the marketplace availability vocabulary (shared/marketplace.ts)
+    // — when the resident needs it done.
+    timing: varchar("timing", { length: 20 }),
+    status: quoteStatusEnum("status").notNull().default("new"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    providerIdIdx: index("quote_requests_provider_id_idx").on(t.providerId),
+    residentIdIdx: index("quote_requests_resident_id_idx").on(t.residentId),
+    createdAtIdx: index("quote_requests_created_at_idx").on(t.createdAt),
+  }),
+);
+
 // ─── Facility Bookings ────────────────────────────────────────────────────────
 
 export const facilities = pgTable(

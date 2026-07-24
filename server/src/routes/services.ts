@@ -1,11 +1,14 @@
 import { Router } from "express";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "../db.js";
-import { serviceProviders, serviceReviews, users } from "@shared/schema.js";
-import { createServiceProviderSchema, createReviewSchema } from "@shared/validators.js";
+import { serviceProviders, serviceReviews, quoteRequests, users } from "@shared/schema.js";
+import { createServiceProviderSchema, createReviewSchema, createQuoteRequestSchema, updateQuoteStatusSchema } from "@shared/validators.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { newId } from "../lib/ids.js";
+import { createNotification } from "../lib/notify.js";
+import { availabilityLabel } from "@shared/marketplace.js";
+import { writeAudit } from "../lib/audit.js";
 
 // Recompute a provider's aggregate rating/ratingCount from its reviews —
 // called after every review write so the marketplace list (which only
@@ -167,4 +170,115 @@ servicesRouter.post("/:id/reviews", requireRole("resident"), async (req, res) =>
 
   await recomputeRating(provider.id);
   res.status(201).json({ data: { success: true } });
+});
+
+// ─── Quote requests ──────────────────────────────────────────────────────────
+
+// Resident: request a quote from a provider. Structured job details land
+// as a notification on the owning vendor's account (rides Web Push).
+servicesRouter.post("/:id/quote", requireRole("resident"), async (req, res) => {
+  const user = res.locals.user!;
+  const parsed = createQuoteRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+
+  const [provider] = await db.select().from(serviceProviders)
+    .where(and(eq(serviceProviders.id, req.params['id']!), eq(serviceProviders.estateId, user.estateId!)))
+    .limit(1);
+  if (!provider) { res.status(404).json({ error: "Provider not found" }); return; }
+
+  const [row] = await db.insert(quoteRequests).values({
+    id: newId(),
+    estateId: user.estateId!,
+    providerId: provider.id,
+    residentId: user.id,
+    category: provider.category,
+    description: parsed.data.description,
+    timing: parsed.data.timing ?? null,
+  }).returning();
+
+  // Notify the owning vendor account (a provider added by an admin has no
+  // userId — nobody to notify, the resident still has the phone number).
+  if (provider.userId) {
+    const timingLine = parsed.data.timing ? ` · Needed: ${availabilityLabel(parsed.data.timing)}` : "";
+    await createNotification({
+      userId: provider.userId,
+      title: `New quote request — ${provider.category}`,
+      body: `${user.name}: ${parsed.data.description.slice(0, 140)}${timingLine}`,
+      type: "quote_request",
+      linkTo: "/dashboard/vendor",
+    });
+  }
+
+  void writeAudit(req, {
+    action: "quote.requested",
+    targetType: "service_provider",
+    targetId: provider.id,
+    metadata: { timing: parsed.data.timing },
+  });
+
+  res.status(201).json({ data: { id: row!.id } });
+});
+
+// Vendor: quote requests across all my listings, newest first.
+servicesRouter.get("/quotes/mine", requireRole("vendor"), async (_req, res) => {
+  const user = res.locals.user!;
+  const rows = await db
+    .select({
+      id: quoteRequests.id,
+      category: quoteRequests.category,
+      description: quoteRequests.description,
+      timing: quoteRequests.timing,
+      status: quoteRequests.status,
+      createdAt: quoteRequests.createdAt,
+      providerName: serviceProviders.name,
+      resident: { name: users.name, unitNumber: users.unitNumber, phone: users.phone },
+    })
+    .from(quoteRequests)
+    .innerJoin(serviceProviders, eq(serviceProviders.id, quoteRequests.providerId))
+    .innerJoin(users, eq(users.id, quoteRequests.residentId))
+    .where(eq(serviceProviders.userId, user.id))
+    .orderBy(desc(quoteRequests.createdAt))
+    .limit(50);
+  res.json({ data: rows });
+});
+
+// Vendor: update a quote's status (only quotes on my own listings).
+servicesRouter.patch("/quotes/:id", requireRole("vendor"), async (req, res) => {
+  const user = res.locals.user!;
+  const parsed = updateQuoteStatusSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+
+  // Ownership check via the join — a vendor can only touch quotes on
+  // providers they own.
+  const [quote] = await db
+    .select({ id: quoteRequests.id, residentId: quoteRequests.residentId, category: quoteRequests.category })
+    .from(quoteRequests)
+    .innerJoin(serviceProviders, eq(serviceProviders.id, quoteRequests.providerId))
+    .where(and(eq(quoteRequests.id, req.params['id']!), eq(serviceProviders.userId, user.id)))
+    .limit(1);
+  if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
+
+  await db.update(quoteRequests)
+    .set({ status: parsed.data.status, updatedAt: new Date() })
+    .where(eq(quoteRequests.id, quote.id));
+
+  // Tell the resident when the vendor responds/accepts — the loop closes
+  // in-app instead of "did they see my request?".
+  if (parsed.data.status === "responded" || parsed.data.status === "accepted") {
+    await createNotification({
+      userId: quote.residentId,
+      title: parsed.data.status === "accepted" ? "Quote accepted" : "A vendor responded",
+      body: `${user.name} ${parsed.data.status === "accepted" ? "accepted" : "responded to"} your ${quote.category} request. Give them a call to arrange the job.`,
+      type: "quote_request",
+      linkTo: "/marketplace",
+    });
+  }
+
+  res.json({ data: { success: true } });
 });

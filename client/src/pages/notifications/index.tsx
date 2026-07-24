@@ -19,6 +19,9 @@ const TYPE_CONFIG: Record<string, { label: string; color: string; emoji: string 
   emergency:       { label: "Emergency",   color: "bg-[#B71C1C]/10 text-[#B71C1C]",   emoji: "🚨" },
   announcement:    { label: "Announcement",color: "bg-[#6B5D45]/10 text-[#6B5D45]",   emoji: "📢" },
   billing:         { label: "Billing",     color: "bg-[#D4A017]/10 text-[#9A6E00]",   emoji: "🧾" },
+  quote_request:   { label: "Marketplace", color: "bg-[#1B5E20]/10 text-[#1B5E20]",   emoji: "📋" },
+  monthly_report:  { label: "Report",      color: "bg-[#6B5D45]/10 text-[#6B5D45]",   emoji: "📊" },
+  levy_reminder:   { label: "Payment",     color: "bg-[#D4A017]/10 text-[#9A6E00]",   emoji: "💳" },
 };
 
 // Device-level Web Push opt-in — hidden entirely when the browser can't do

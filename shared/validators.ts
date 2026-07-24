@@ -255,6 +255,15 @@ export const createServiceProviderSchema = z.object({
   specializations: z.array(z.string().min(1).max(40)).max(8).optional(),
 });
 
+export const createQuoteRequestSchema = z.object({
+  description: z.string().min(10, "Describe the job in a little more detail").max(1000),
+  timing: z.enum(["everyday", "weekdays", "weekends", "on_call"]).optional(),
+});
+
+export const updateQuoteStatusSchema = z.object({
+  status: z.enum(["responded", "accepted", "declined", "closed"]),
+});
+
 export const createReviewSchema = z.object({
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(500).optional(),

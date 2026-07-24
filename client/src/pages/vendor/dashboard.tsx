@@ -1,6 +1,6 @@
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Store, Star, Phone, Plus, BadgeCheck, MessageSquare } from "lucide-react";
+import { Store, Star, Phone, Plus, BadgeCheck, MessageSquare, FileText, Check, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { PageFooter } from "@/components/shared/page-footer";
@@ -11,12 +11,51 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SectionLoader } from "@/components/shared/loading";
 import { api } from "@/lib/api";
-import { formatRelative } from "@/lib/utils";
+import { formatRelative, displayPhone } from "@/lib/utils";
 import type { ServiceProvider, ServiceReview } from "@shared/types";
 import { BRAND_NAME } from "@shared/brand";
+import { availabilityLabel } from "@shared/marketplace";
+import { useToast } from "@/components/ui/toast";
+
+interface QuoteRequest {
+  id: string;
+  category: string;
+  description: string;
+  timing: string | null;
+  status: "new" | "responded" | "accepted" | "declined" | "closed";
+  createdAt: string;
+  providerName: string;
+  resident: { name: string; unitNumber: string | null; phone: string };
+}
+
+const QUOTE_STATUS: Record<string, { label: string; cls: string }> = {
+  new:       { label: "New",       cls: "bg-brand-green/10 text-brand-green" },
+  responded: { label: "Responded", cls: "bg-brand-gold/15 text-brand-gold-dark" },
+  accepted:  { label: "Accepted",  cls: "bg-brand-green text-white" },
+  declined:  { label: "Declined",  cls: "bg-tribal-cream-dark text-tribal-earth" },
+  closed:    { label: "Closed",    cls: "bg-tribal-cream-dark text-tribal-earth" },
+};
 
 export default function VendorDashboard() {
   const { user } = useAuth();
+  const qc = useQueryClient();
+  const toast = useToast();
+
+  const { data: quotes = [] } = useQuery<QuoteRequest[]>({
+    queryKey: ["quotes", "mine"],
+    queryFn: () => api.get<QuoteRequest[]>("/api/services/quotes/mine").then((r) => r.data),
+    staleTime: 60 * 1000,
+  });
+  const setQuoteStatus = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      api.patch(`/api/services/quotes/${id}`, { status }),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: ["quotes", "mine"] });
+      toast(v.status === "accepted" ? "Marked accepted — resident notified" : v.status === "responded" ? "Resident notified you responded" : "Updated");
+    },
+    onError: () => toast("Failed to update — try again", "error"),
+  });
+  const newQuoteCount = quotes.filter((q) => q.status === "new").length;
 
   const { data: allProviders, isLoading } = useQuery({
     queryKey: ["services"],
@@ -83,6 +122,74 @@ export default function VendorDashboard() {
             <KpiTile label="Reviews" value={String(totalReviews)} tone="neutral" />
           </div>
         </section>
+
+        {/* Quote requests inbox */}
+        {quotes.length > 0 && (
+          <section>
+            <SectionTitle icon={<FileText className="h-4 w-4" />}>
+              Quote requests{newQuoteCount > 0 ? ` (${newQuoteCount} new)` : ""}
+            </SectionTitle>
+            <div className="card-grid">
+              {quotes.map((q) => {
+                const st = QUOTE_STATUS[q.status]!;
+                const actionable = q.status === "new" || q.status === "responded";
+                return (
+                  <Card key={q.id}>
+                    <CardContent className="py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm text-tribal-charcoal">
+                            {q.resident.name}
+                            {q.resident.unitNumber && <span className="text-tribal-earth font-normal"> · {q.resident.unitNumber}</span>}
+                          </p>
+                          <p className="text-xs text-tribal-earth capitalize">{q.category} · {q.providerName}</p>
+                        </div>
+                        <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold shrink-0 ${st.cls}`}>{st.label}</span>
+                      </div>
+                      <p className="text-sm text-tribal-charcoal mt-1.5">{q.description}</p>
+                      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                        {q.timing && <span className="text-xs text-tribal-earth">🕒 {availabilityLabel(q.timing)}</span>}
+                        <span className="text-xs text-tribal-earth/70">{formatRelative(q.createdAt)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                        <a href={`tel:${q.resident.phone}`} className="flex items-center gap-1 text-xs font-bold text-brand-green bg-brand-green/10 rounded-xl px-3 py-1.5">
+                          <Phone className="h-3.5 w-3.5" /> {displayPhone(q.resident.phone)}
+                        </a>
+                        {actionable && (
+                          <>
+                            {q.status === "new" && (
+                              <button
+                                onClick={() => setQuoteStatus.mutate({ id: q.id, status: "responded" })}
+                                disabled={setQuoteStatus.isPending}
+                                className="text-xs font-semibold text-brand-gold-dark bg-brand-gold/15 rounded-xl px-3 py-1.5 hover:bg-brand-gold/25 transition-colors"
+                              >
+                                Mark responded
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setQuoteStatus.mutate({ id: q.id, status: "accepted" })}
+                              disabled={setQuoteStatus.isPending}
+                              className="flex items-center gap-1 text-xs font-semibold text-white bg-brand-green rounded-xl px-3 py-1.5 hover:opacity-90 transition-opacity"
+                            >
+                              <Check className="h-3.5 w-3.5" /> Accept
+                            </button>
+                            <button
+                              onClick={() => setQuoteStatus.mutate({ id: q.id, status: "declined" })}
+                              disabled={setQuoteStatus.isPending}
+                              className="flex items-center gap-1 text-xs font-semibold text-tribal-earth border border-tribal-border rounded-xl px-3 py-1.5 hover:bg-tribal-cream-dark transition-colors"
+                            >
+                              <X className="h-3.5 w-3.5" /> Decline
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Listings */}
         <section>

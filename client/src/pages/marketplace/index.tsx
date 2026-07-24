@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Store, Phone, Plus, Star, BadgeCheck, Search, MessageSquare } from "lucide-react";
+import { Store, Phone, Plus, Star, BadgeCheck, Search, MessageSquare, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar, BottomNav } from "@/components/shared/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -286,6 +286,75 @@ function ReviewsList({ providerId }: { providerId: string }) {
   );
 }
 
+function QuoteDialog({ provider, onClose }: { provider: ServiceProvider; onClose: () => void }) {
+  const toast = useToast();
+  const [description, setDescription] = useState("");
+  const [timing, setTiming] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () => api.post(`/api/services/${provider.id}/quote`, {
+      description: description.trim(),
+      timing: timing || undefined,
+    }),
+    onSuccess: () => {
+      toast(`Request sent to ${provider.name}`);
+      onClose();
+    },
+    onError: (e) => setError(e instanceof ApiError ? e.message : "Failed to send request."),
+  });
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <div className="flex items-center gap-3 mt-2">
+            <div className="w-10 h-10 rounded-xl bg-[#1B5E20]/10 flex items-center justify-center">
+              <FileText className="h-5 w-5 text-[#1B5E20]" />
+            </div>
+            <div>
+              <DialogTitle>Request a quote</DialogTitle>
+              <p className="text-xs text-[#6B5D45] mt-0.5">from {provider.name} · {provider.category}</p>
+            </div>
+          </div>
+        </DialogHeader>
+        <div className="px-6 pb-2 space-y-3">
+          <div>
+            <Label className="text-[#212121] font-semibold">Describe the job</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              placeholder="e.g. Kitchen sink is leaking under the cabinet, needs fixing this week"
+            />
+          </div>
+          <div>
+            <Label className="text-[#212121] font-semibold">When do you need it? <span className="font-normal text-xs text-[#6B5D45]">(optional)</span></Label>
+            <Select value={timing} onValueChange={setTiming}>
+              <SelectTrigger><SelectValue placeholder="Any time" /></SelectTrigger>
+              <SelectContent>
+                {AVAILABILITY_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-[#6B5D45]">
+            {provider.name} gets your request and unit. They&apos;ll call you back — your number stays within the estate.
+          </p>
+          {error && <p className="text-sm text-[#B71C1C]">{error}</p>}
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mutation.mutate()} loading={mutation.isPending} disabled={description.trim().length < 10}>
+            Send request
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function MarketplacePage() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -294,6 +363,7 @@ export default function MarketplacePage() {
   const [availFilter, setAvailFilter] = useState("");
   const [topRated, setTopRated] = useState(false);
   const [rateTarget, setRateTarget] = useState<ServiceProvider | null>(null);
+  const [quoteTarget, setQuoteTarget] = useState<ServiceProvider | null>(null);
   const [expandedReviews, setExpandedReviews] = useState<string | null>(null);
   const canAdd = user?.role === "admin" || user?.role === "vendor";
 
@@ -460,12 +530,20 @@ export default function MarketplacePage() {
                                 </button>
                               )}
                               {user?.role === "resident" && (
-                                <button
-                                  onClick={() => setRateTarget(p)}
-                                  className="flex items-center gap-1 text-xs text-[#D47A00] font-semibold hover:underline"
-                                >
-                                  <Star className="h-3 w-3" /> Rate
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => setQuoteTarget(p)}
+                                    className="flex items-center gap-1 text-xs text-[#1B5E20] font-semibold hover:underline"
+                                  >
+                                    <FileText className="h-3 w-3" /> Request quote
+                                  </button>
+                                  <button
+                                    onClick={() => setRateTarget(p)}
+                                    className="flex items-center gap-1 text-xs text-[#D47A00] font-semibold hover:underline"
+                                  >
+                                    <Star className="h-3 w-3" /> Rate
+                                  </button>
+                                </>
                               )}
                             </div>
                             {expandedReviews === p.id && (
@@ -509,6 +587,7 @@ export default function MarketplacePage() {
 
       {addOpen && <AddProviderDialog onClose={() => setAddOpen(false)} />}
       {rateTarget && <RateProviderDialog provider={rateTarget} onClose={() => setRateTarget(null)} />}
+      {quoteTarget && <QuoteDialog provider={quoteTarget} onClose={() => setQuoteTarget(null)} />}
       <BottomNav />
     </div>
   );
