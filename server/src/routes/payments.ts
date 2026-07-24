@@ -604,6 +604,50 @@ paymentsRouter.post("/levy-remind", requireRole("admin"), async (req, res) => {
   res.json({ data: { reminded: unpaid.length } });
 });
 
+// One payment by id — for the shareable/printable receipt page. A
+// resident sees only their own; an admin sees any within their estate.
+// Joins the payer's name/unit so the receipt reads like a real receipt
+// even when an admin opens it.
+paymentsRouter.get("/:id/receipt", async (req, res) => {
+  const user = res.locals.user!;
+  const [row] = await db
+    .select({
+      id: payments.id,
+      amount: payments.amount,
+      type: payments.type,
+      status: payments.status,
+      mpesaRef: payments.mpesaRef,
+      phoneUsed: payments.phoneUsed,
+      description: payments.description,
+      createdAt: payments.createdAt,
+      userId: payments.userId,
+      estateId: payments.estateId,
+      payerName: users.name,
+      payerUnit: users.unitNumber,
+    })
+    .from(payments)
+    .innerJoin(users, eq(users.id, payments.userId))
+    .where(eq(payments.id, req.params["id"]!))
+    .limit(1);
+
+  if (!row) { res.status(404).json({ error: "Payment not found" }); return; }
+  const owns = row.userId === user.id;
+  const isEstateAdmin = user.role === "admin" && row.estateId === user.estateId;
+  if (!owns && !isEstateAdmin) {
+    res.status(404).json({ error: "Payment not found" });
+    return;
+  }
+
+  // Only a completed payment is a receipt — a pending/failed one has no
+  // proof-of-payment to show.
+  if (row.status !== "completed") {
+    res.status(409).json({ error: "This payment isn't complete, so there's no receipt yet." });
+    return;
+  }
+
+  res.json({ data: row });
+});
+
 // Resident: my payment history
 paymentsRouter.get("/my", async (_req, res) => {
   const user = res.locals.user!;

@@ -1,0 +1,113 @@
+import { useQuery } from "@tanstack/react-query";
+import { Link, useParams } from "wouter";
+import { Printer, CheckCircle2, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { SectionLoader } from "@/components/shared/loading";
+import { useEstate } from "@/hooks/useEstate";
+import { api, ApiError } from "@/lib/api";
+import { displayPhone } from "@/lib/utils";
+import { BRAND_NAME, COMPANY_NAME } from "@shared/brand";
+
+interface Receipt {
+  id: string;
+  amount: string;
+  type: string;
+  status: string;
+  mpesaRef: string | null;
+  phoneUsed: string | null;
+  description: string | null;
+  createdAt: string;
+  payerName: string;
+  payerUnit: string | null;
+}
+
+const TYPE_LABEL: Record<string, string> = {
+  levy: "Service charge (levy)",
+  harambee_donation: "Harambee donation",
+  chama_contribution: "Chama contribution",
+  subscription: "Platform subscription",
+};
+
+// Proof-of-payment receipt a resident can print/save/show the committee —
+// the thing every Kenyan levy payer actually wants. Renders from the
+// completed payment record; styled for paper via the shared print rules.
+export default function ReceiptPage() {
+  const { id } = useParams<{ id: string }>();
+  const { data: estate } = useEstate();
+  const { data: r, isLoading, error } = useQuery<Receipt>({
+    queryKey: ["receipt", id],
+    queryFn: () => api.get<Receipt>(`/api/payments/${id}/receipt`).then((res) => res.data),
+    retry: false,
+  });
+
+  if (isLoading) {
+    return <div className="page-wrap"><main className="container-list pt-8"><SectionLoader /></main></div>;
+  }
+
+  if (error || !r) {
+    return (
+      <div className="min-h-screen bg-[#F8F7F5] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-md p-8 max-w-sm text-center">
+          <AlertCircle className="h-10 w-10 text-[#B71C1C] mx-auto mb-3" />
+          <p className="font-semibold text-[#212121] mb-1">Receipt unavailable</p>
+          <p className="text-sm text-[#6B5D45] mb-4">
+            {error instanceof ApiError ? error.message : "This receipt could not be loaded."}
+          </p>
+          <Link href="/payments" className="text-sm text-[#1B5E20] font-semibold">← Back to payments</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const Row = ({ label, value }: { label: string; value: string }) => (
+    <div className="flex items-baseline justify-between py-2 border-b border-dashed border-[#E8E3D8]">
+      <span className="text-sm text-[#6B5D45]">{label}</span>
+      <span className="text-sm font-semibold text-[#212121] text-right">{value}</span>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-white">
+      <main className="max-w-md mx-auto px-6 py-8 print-report">
+        <div className="flex items-center justify-between mb-6 print:hidden">
+          <Link href="/payments" className="text-sm text-[#1B5E20] font-semibold">← Back</Link>
+          <Button onClick={() => window.print()} className="gap-1.5">
+            <Printer className="h-4 w-4" /> Print / Save
+          </Button>
+        </div>
+
+        <div className="border-2 border-[#1B5E20] rounded-2xl p-6">
+          <div className="text-center border-b-2 border-dashed border-[#E8E3D8] pb-4 mb-4">
+            <div className="inline-flex items-center gap-2 mb-2">
+              <img src="/brand/logo-mark.webp" alt={BRAND_NAME} className="h-7 w-7 object-contain" />
+              <span className="font-display font-extrabold text-lg text-[#1B5E20]">{BRAND_NAME}</span>
+            </div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#6B5D45]">Payment Receipt</p>
+            <div className="inline-flex items-center gap-1.5 mt-2 text-[#1B5E20]">
+              <CheckCircle2 className="h-4 w-4" />
+              <span className="text-sm font-bold">PAID</span>
+            </div>
+          </div>
+
+          <div className="text-center mb-4">
+            <p className="text-xs text-[#6B5D45]">Amount paid</p>
+            <p className="font-black text-4xl text-[#1B5E20]">KES {Number(r.amount).toLocaleString("en-KE")}</p>
+          </div>
+
+          <Row label="For" value={r.description || TYPE_LABEL[r.type] || r.type} />
+          <Row label="Paid by" value={r.payerName + (r.payerUnit ? ` · ${r.payerUnit}` : "")} />
+          {estate?.name && <Row label="Estate" value={estate.name} />}
+          {r.phoneUsed && <Row label="M-PESA phone" value={displayPhone(r.phoneUsed)} />}
+          {r.mpesaRef && r.mpesaRef !== "DEV_STUB" && <Row label="M-PESA reference" value={r.mpesaRef} />}
+          <Row label="Date" value={new Date(r.createdAt).toLocaleString("en-KE", { dateStyle: "long", timeStyle: "short" })} />
+          <Row label="Receipt no." value={r.id.slice(0, 8).toUpperCase()} />
+
+          <p className="text-[10px] text-[#6B5D45] text-center mt-5 leading-relaxed">
+            This is an official payment record generated by {BRAND_NAME} ({COMPANY_NAME}).
+            Keep it as proof of payment. Verify against your M-PESA statement using the reference above.
+          </p>
+        </div>
+      </main>
+    </div>
+  );
+}

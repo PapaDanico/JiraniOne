@@ -35,6 +35,7 @@ const VendorDashboard    = lazy(() => import("@/pages/vendor/dashboard"));
 const MaintenancePage    = lazy(() => import("@/pages/maintenance/index"));
 const AnnouncementsPage  = lazy(() => import("@/pages/announcements/index"));
 const PaymentsPage       = lazy(() => import("@/pages/payments/index"));
+const ReceiptPage        = lazy(() => import("@/pages/payments/receipt"));
 const EventsPage         = lazy(() => import("@/pages/events/index"));
 const GovernancePage     = lazy(() => import("@/pages/governance/index"));
 const BookingsPage       = lazy(() => import("@/pages/bookings/index"));
@@ -97,6 +98,9 @@ function AppRoutes() {
         </Route>
         <Route path="/payments">
           <RoleGate roles={["resident", "admin"]}><PaymentsPage /></RoleGate>
+        </Route>
+        <Route path="/receipt/:id">
+          <RoleGate roles={["resident", "admin"]}><ReceiptPage /></RoleGate>
         </Route>
         <Route path="/emergency">
           <RoleGate roles={["resident", "admin", "security"]}><EmergencyPage /></RoleGate>

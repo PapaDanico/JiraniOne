@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, CheckCircle, Clock, XCircle, Heart, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -262,8 +263,9 @@ export default function PaymentsPage() {
             </div>
           ) : (
             <div className="card-grid">
-              {myPayments.map((p) => (
-                <Card key={p.id}>
+              {myPayments.map((p) => {
+                const card = (
+                <Card key={p.id} className={p.status === "completed" ? "hover:shadow-card-lg transition-shadow" : ""}>
                   <CardContent className="py-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-9 h-9 rounded-xl bg-[#EDE7D8] flex items-center justify-center shrink-0">
@@ -284,10 +286,17 @@ export default function PaymentsPage() {
                       <Badge variant={STATUS_VARIANT[p.status] ?? "default"} className="text-xs">
                         {STATUS_LABEL[p.status] ?? p.status}
                       </Badge>
+                      {p.status === "completed" && (
+                        <p className="text-[11px] text-[#1B5E20] font-semibold mt-0.5">Receipt →</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                );
+                return p.status === "completed"
+                  ? <Link key={p.id} href={`/receipt/${p.id}`}>{card}</Link>
+                  : card;
+              })}
             </div>
           )}
         </section>
