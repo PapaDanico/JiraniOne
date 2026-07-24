@@ -205,6 +205,7 @@ export interface Booking {
   startTime: string;
   endTime: string;
   status: BookingStatus;
+  purpose: string | null;
   notes: string | null;
   createdAt: string;
   facilityName?: string;

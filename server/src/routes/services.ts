@@ -245,6 +245,29 @@ servicesRouter.get("/quotes/mine", requireRole("vendor"), async (_req, res) => {
   res.json({ data: rows });
 });
 
+// Admin: all quote activity across the estate — visibility that the
+// marketplace is being used, and which providers are getting demand.
+servicesRouter.get("/quotes/estate", requireRole("admin"), async (_req, res) => {
+  const user = res.locals.user!;
+  if (!user.estateId) { res.json({ data: [] }); return; }
+  const rows = await db
+    .select({
+      id: quoteRequests.id,
+      category: quoteRequests.category,
+      status: quoteRequests.status,
+      createdAt: quoteRequests.createdAt,
+      providerName: serviceProviders.name,
+      residentName: users.name,
+    })
+    .from(quoteRequests)
+    .innerJoin(serviceProviders, eq(serviceProviders.id, quoteRequests.providerId))
+    .innerJoin(users, eq(users.id, quoteRequests.residentId))
+    .where(eq(quoteRequests.estateId, user.estateId))
+    .orderBy(desc(quoteRequests.createdAt))
+    .limit(50);
+  res.json({ data: rows });
+});
+
 // Vendor: update a quote's status (only quotes on my own listings).
 servicesRouter.patch("/quotes/:id", requireRole("vendor"), async (req, res) => {
   const user = res.locals.user!;

@@ -19,6 +19,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api, ApiError } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import type { Facility, Booking } from "@shared/types";
+import { BOOKING_PURPOSES } from "@shared/options";
 
 const STATUS_ICON = {
   approved:  <CheckCircle className="h-4 w-4 text-[#1B5E20]" />,
@@ -42,6 +43,7 @@ function BookDialog({ facility, onClose }: { facility: Facility; onClose: () => 
   const qc = useQueryClient();
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [purpose, setPurpose] = useState("");
   const [notes, setNotes] = useState("");
 
   const mutation = useMutation({
@@ -49,6 +51,7 @@ function BookDialog({ facility, onClose }: { facility: Facility; onClose: () => 
       facilityId: facility.id,
       startTime,
       endTime,
+      purpose: purpose || undefined,
       notes: notes || undefined,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["bookings"] }); onClose(); },
@@ -82,6 +85,17 @@ function BookDialog({ facility, onClose }: { facility: Facility; onClose: () => 
               <Label className="text-[#212121] font-semibold">End</Label>
               <Input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
             </div>
+          </div>
+          <div>
+            <Label className="text-[#212121] font-semibold">What's it for?</Label>
+            <Select value={purpose} onValueChange={setPurpose}>
+              <SelectTrigger><SelectValue placeholder="Select purpose…" /></SelectTrigger>
+              <SelectContent>
+                {BOOKING_PURPOSES.map((pp) => (
+                  <SelectItem key={pp} value={pp}>{pp}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label className="text-[#212121] font-semibold">Notes (optional)</Label>
@@ -279,6 +293,9 @@ export default function BookingsPage() {
                             <p className="text-xs text-[#6B5D45]">
                               {formatDateTime(b.startTime)} → {formatDateTime(b.endTime)}
                             </p>
+                            {b.purpose && (
+                              <span className="inline-block text-[11px] text-[#1B5E20] bg-[#1B5E20]/8 rounded-full px-2 py-0.5 mt-1">{b.purpose}</span>
+                            )}
                             {b.notes && <p className="text-xs text-[#6B5D45] mt-0.5">{b.notes}</p>}
                           </div>
                         </div>

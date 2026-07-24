@@ -332,6 +332,7 @@ export const createBookingSchema = z.object({
   facilityId: z.string(),
   startTime: localDatetime,
   endTime: localDatetime,
+  purpose: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
 });
 

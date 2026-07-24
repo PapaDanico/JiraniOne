@@ -803,6 +803,10 @@ export const bookings = pgTable(
     startTime: timestamp("start_time").notNull(),
     endTime: timestamp("end_time").notNull(),
     status: bookingStatusEnum("status").notNull().default("pending"),
+    // What the facility is booked for (shared/options.ts BOOKING_PURPOSES)
+    // — lets an approving admin see the reason at a glance. Nullable:
+    // legacy bookings predate it.
+    purpose: varchar("purpose", { length: 50 }),
     notes: text("notes"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
