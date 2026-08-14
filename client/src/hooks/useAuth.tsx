@@ -11,6 +11,11 @@ import type { AuthUser } from "@shared/types";
 interface AuthContext {
   user: AuthUser | null;
   isLoading: boolean;
+  /** Set when the identity check failed for a reason other than 401. */
+  authError: Error | null;
+  /** Retry the identity check after an authError. */
+  retryAuth: () => void;
+  isRetryingAuth: boolean;
   login: (phone: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (data: {
@@ -24,12 +29,26 @@ const Ctx = createContext<AuthContext | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  // Only a 401 means "not signed in". Anything else — a 429 from the IP
+  // rate limiter (estates share one NAT/CGNAT address on mobile data, so
+  // one busy household can spend the budget for the whole gate), a 5xx, a
+  // dropped 3G request — means "we don't know yet", and must NOT be
+  // reported as a null user: RoleGate reads `user === null` as logged-out
+  // and redirects to /login, so a transient blip silently signs people
+  // out mid-session with a perfectly valid session cookie still set.
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["auth", "me"],
     queryFn: () => api.get<AuthUser>("/api/auth/me").then((r) => r.data),
-    retry: false,
+    retry: (failureCount, err: unknown) =>
+      (err as { status?: number })?.status === 401 ? false : failureCount < 3,
     staleTime: Infinity,
   });
+
+  // A 401 is a definitive answer (signed out), not an unresolved one.
+  const authError =
+    error && (error as { status?: number })?.status !== 401
+      ? (error as Error)
+      : null;
 
   // Guards against two classes of race on a shared/slow device: (1) the
   // initial /api/auth/me check is slow (3G) and resolves AFTER a login,
@@ -88,6 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user: data ?? null,
         isLoading,
+        authError,
+        retryAuth: () => { void refetch(); },
+        isRetryingAuth: isFetching,
         login: (phone, password) =>
           loginMutation.mutateAsync({ phone, password }).then(() => {}),
         logout: () => logoutMutation.mutateAsync().then(() => {}),

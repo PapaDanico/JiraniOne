@@ -26,7 +26,7 @@ interface ErrorLogEntry {
 export default function ErrorLogsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { data: logs, isLoading, isError } = useQuery<ErrorLogEntry[]>({
+  const { data: logs, isLoading, isError, error } = useQuery<ErrorLogEntry[]>({
     queryKey: ["system", "error-logs"],
     queryFn: () => api.get<ErrorLogEntry[]>("/api/system/error-logs").then((r) => r.data),
     staleTime: 30 * 1000,
@@ -45,7 +45,9 @@ export default function ErrorLogsPage() {
         ) : isError ? (
           <div className="tribal-card p-8 text-center">
             <p className="text-sm text-brand-red font-medium">
-              Failed to load error logs — you may not have access, or the request failed.
+              {(error as { status?: number })?.status === 403
+                ? "This view is restricted to the JiraniOne platform owner. Estate admins don't have access — server errors aren't scoped to a single estate."
+                : "Failed to load error logs — the request didn't complete. Try again."}
             </p>
           </div>
         ) : !logs?.length ? (
