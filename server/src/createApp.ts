@@ -159,11 +159,28 @@ export function createApp(): express.Express {
     next(err);
   });
 
-  // Global rate limit
+  // Global rate limit.
+  //
+  // This is crude flood protection, not the security control — brute force,
+  // payment abuse and scraping are each capped far tighter by the per-route
+  // limiters below (5–10 per window). So the global ceiling must be sized
+  // for the worst legitimate case, and 200 per IP was well under it: a
+  // Kenyan estate's residents sit behind one NAT — or on Safaricom mobile
+  // data behind CGNAT, where a whole cell shares an address — and every
+  // client polls (usePolling) on top of normal navigation. One busy
+  // household could spend the budget for every other resident and the gate.
+  //
+  // The failure was also non-obvious rather than merely inconvenient: a 429
+  // on /api/auth/me used to read as "signed out" client-side and bounced
+  // people to the login screen mid-session (fixed in useAuth, but the
+  // ceiling was the trigger).
+  //
+  // Keying by session cookie instead would let an anonymous caller mint a
+  // fresh key per request, so IP stays the key and the ceiling goes up.
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: 200,
+      limit: 2000,
       standardHeaders: true,
       legacyHeaders: false,
       keyGenerator: getClientIp,
