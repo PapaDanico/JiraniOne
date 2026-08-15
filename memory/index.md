@@ -3,7 +3,7 @@ Last consolidated: 2026-08-15
 
 | Project | File | Last Updated | Status Summary |
 |---------|------|--------------|----------------|
-| JiraniOne | jiranione.md | 2026-08-15 | Live and audited healthy; verification committed |
+| JiraniOne | jiranione.md | 2026-08-15 | Live; 2 audits done, 6 PRs shipped, verification enforced in CI |
 
 <!--
 Scope note: this folder currently lives inside the JiraniOne product repo
