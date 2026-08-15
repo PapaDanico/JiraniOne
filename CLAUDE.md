@@ -210,7 +210,13 @@ sessions           — id, user_id, expires_at (connect-pg-simple managed)
 
 ### UX Principles
 - Works on 3G connectivity — no heavy bundles, lazy load everything
-- Offline-first for: emergency alerts, maintenance form drafts, visitor pre-reg
+- Offline drafts: maintenance form drafts only (IndexedDB via
+  `client/src/lib/offlineDb.ts`, synced by `useOfflineSync`). Visitor pre-reg
+  is not queued offline yet. Emergency alerts deliberately are NOT queued —
+  a panic alert delivered later is worse than none, so the SOS dialog fails
+  loudly and shows the security desk number to call instead. Aspirational
+  "offline-first for emergency alerts" was in this brief for a while and did
+  not match the code; the code is right.
 - Touch targets minimum 44px (Kenyan mobile users, often on budget Android devices)
 - SMS fallback for all critical notifications (not everyone has data)
 

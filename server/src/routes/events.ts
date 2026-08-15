@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, and, gte, count } from "drizzle-orm";
+import { eq, desc, and, gte, count, inArray } from "drizzle-orm";
 import { db } from "../db.js";
 import { events, eventRsvps } from "@shared/schema.js";
 import { createEventSchema, eventRsvpSchema } from "@shared/validators.js";
@@ -21,16 +21,34 @@ eventsRouter.get("/", async (_req, res) => {
     .orderBy(events.startTime)
     .limit(50);
 
-  // Attach RSVP count + my status per event
-  const enriched = await Promise.all(rows.map(async (e) => {
-    const cntRows = await db
-      .select({ cnt: count() })
-      .from(eventRsvps)
-      .where(and(eq(eventRsvps.eventId, e.id), eq(eventRsvps.attending, true)));
-    const rsvpCount = cntRows[0]?.cnt ?? 0;
-    const myRsvpRows = await db.select().from(eventRsvps)
-      .where(and(eq(eventRsvps.eventId, e.id), eq(eventRsvps.userId, user.id))).limit(1);
-    return { ...e, rsvpCount, myRsvp: myRsvpRows[0]?.attending ?? null };
+  // Attach RSVP count + my status per event.
+  //
+  // Two grouped queries rather than two per event. This previously ran a
+  // count and a lookup inside a .map() over a 50-row limit — up to 101 round
+  // trips for one request, on an endpoint usePolling refetches every 15s.
+  // Same batching shape chama.ts already uses.
+  const eventIds = rows.map((e) => e.id);
+  const [rsvpCounts, myRsvps] = eventIds.length
+    ? await Promise.all([
+        db
+          .select({ eventId: eventRsvps.eventId, cnt: count() })
+          .from(eventRsvps)
+          .where(and(inArray(eventRsvps.eventId, eventIds), eq(eventRsvps.attending, true)))
+          .groupBy(eventRsvps.eventId),
+        db
+          .select({ eventId: eventRsvps.eventId, attending: eventRsvps.attending })
+          .from(eventRsvps)
+          .where(and(inArray(eventRsvps.eventId, eventIds), eq(eventRsvps.userId, user.id))),
+      ])
+    : [[], []];
+
+  const countByEventId = new Map(rsvpCounts.map((r) => [r.eventId, Number(r.cnt)]));
+  const myRsvpByEventId = new Map(myRsvps.map((r) => [r.eventId, r.attending]));
+
+  const enriched = rows.map((e) => ({
+    ...e,
+    rsvpCount: countByEventId.get(e.id) ?? 0,
+    myRsvp: myRsvpByEventId.get(e.id) ?? null,
   }));
 
   res.json({ data: enriched });
