@@ -174,11 +174,14 @@ export default function AdminDashboard() {
 
       <main className="container-app pt-5 pb-6 space-y-6 page-content">
 
-        {/* Role banner */}
-        <RoleBanner role="admin" />
+        <div className="dash-header">
+          {/* Role banner */}
+          <div className="dash-header-aside">
+            <RoleBanner role="admin" />
+          </div>
 
-        {/* Header — gradient archetype card (KASH/Diagnostic fusion) */}
-        <div className="archetype-card relative">
+          {/* Header — gradient archetype card (KASH/Diagnostic fusion) */}
+          <div className="archetype-card relative dash-header-main">
           <div className="relative z-10 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-gold mb-1">
@@ -196,6 +199,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="mt-4 flag-bar w-28 relative z-10" />
+          </div>
         </div>
 
         {/* Tabs */}
@@ -239,7 +243,6 @@ export default function AdminDashboard() {
               analytics && (
                 <>
                   <BillingBanner />
-                  <OnboardingChecklist />
 
                   {/* Desktop 2/3 + 1/3 split via two wrapper columns.
                       Explicit lg:row-start placement was tried first and
@@ -248,6 +251,11 @@ export default function AdminDashboard() {
                       render — auto-flowing wrappers can't have holes. */}
                   <div className="lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start space-y-6 lg:space-y-0">
                   <div className="space-y-6 lg:col-span-2">
+
+                  {/* Onboarding checklist lives inside the main column so it
+                      sizes to its content instead of stretching the full
+                      desktop width for two lines of text. */}
+                  <OnboardingChecklist />
 
                   {(openTickets.length > 0 || unverifiedProviders.length > 0 || unpaidResidents.length > 0 || newLeads.length > 0) && (
                     <section>
@@ -487,7 +495,10 @@ export default function AdminDashboard() {
                     <SectionTitle icon={<Users className="h-4 w-4" />}>
                       Visitors & Emergency
                     </SectionTitle>
-                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+                    {/* Stays 2-across in the desktop rail too — a KPI tile
+                        holds one number, so a full-rail-width tile is mostly
+                        empty box. */}
+                    <div className="grid grid-cols-2 gap-3">
                       <KpiTile
                         label="Visitors / month"
                         value={analytics.visitors.thisMonth}
@@ -521,7 +532,7 @@ export default function AdminDashboard() {
             >
               <p>The four operational surfaces you'll touch most as an admin. Everything else is one tap away on the All Modules tab.</p>
             </InfoBox>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
               {[
                 { href: "/maintenance",   label: "Open tickets",     desc: "Triage, assign, close",   Icon: Wrench,    tone: "amber" as const },
                 { href: "/payments",      label: "Levy collection",  desc: "STK push & history",      Icon: CreditCard, tone: "gold" as const },
@@ -564,7 +575,10 @@ export default function AdminDashboard() {
         {tab === "modules" && (
           <section>
             <SectionTitle>All modules</SectionTitle>
-            <div className="grid grid-cols-3 md:grid-cols-5 gap-2.5">
+            {/* Tighter tracks on wide screens — these tiles hold an icon and
+                one word, so 5 across a 1100px column leaves each one mostly
+                empty. */}
+            <div className="grid grid-cols-3 md:grid-cols-5 xl:grid-cols-8 gap-2.5">
               {MODULES.map((m) => (
                 <Link
                   key={m.href}

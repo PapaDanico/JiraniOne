@@ -90,10 +90,13 @@ export default function VendorDashboard() {
       <TopBar title="Vendor" />
 
       <main className="container-app pt-5 pb-6 space-y-5 page-content">
-        <RoleBanner role="vendor" />
+        <div className="dash-header">
+          <div className="dash-header-aside">
+            <RoleBanner role="vendor" />
+          </div>
 
-        {/* Hero */}
-        <div className="archetype-card">
+          {/* Hero */}
+          <div className="archetype-card dash-header-main">
           <div className="relative z-10 flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-brand-gold/20 border border-brand-gold/40 flex items-center justify-center shrink-0">
               <span className="font-display font-black text-xl text-brand-gold">
@@ -111,17 +114,11 @@ export default function VendorDashboard() {
             </div>
           </div>
           <div className="mt-4 flag-bar w-24 relative z-10" />
+          </div>
         </div>
 
-        {/* KPIs */}
-        <section>
-          <SectionTitle>Your numbers</SectionTitle>
-          <div className="grid grid-cols-3 gap-3">
-            <KpiTile label="Listings" value={String(myListings.length)} tone="green" />
-            <KpiTile label="Avg. rating" value={avgRating} tone="gold" />
-            <KpiTile label="Reviews" value={String(totalReviews)} tone="neutral" />
-          </div>
-        </section>
+        <div className="dash-grid">
+          <div className="dash-col-main">
 
         {/* Quote requests inbox */}
         {quotes.length > 0 && (
@@ -265,6 +262,20 @@ export default function VendorDashboard() {
           )}
         </section>
 
+          </div>
+
+          <div className="dash-col-side">
+        {/* KPIs — stack vertically in the side rail on desktop, stay a
+            3-across strip on mobile. */}
+        <section>
+          <SectionTitle>Your numbers</SectionTitle>
+          <div className="grid grid-cols-3 gap-3">
+            <KpiTile label="Listings" value={String(myListings.length)} tone="green" />
+            <KpiTile label="Avg. rating" value={avgRating} tone="gold" />
+            <KpiTile label="Reviews" value={String(totalReviews)} tone="neutral" />
+          </div>
+        </section>
+
         {/* Recent reviews */}
         {myListings.length > 0 && (
           <section>
@@ -277,7 +288,9 @@ export default function VendorDashboard() {
                 <p className="text-tribal-earth text-sm font-medium">No reviews yet.</p>
               </div>
             ) : (
-              <div className="card-grid">
+              /* Two-across on mobile, single column in the narrow desktop
+                 rail — review text needs the width more than the count does. */
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
                 {recentReviews.map((r) => (
                   <Card key={r.id}>
                     <CardContent className="py-3">
@@ -299,6 +312,8 @@ export default function VendorDashboard() {
             )}
           </section>
         )}
+          </div>
+        </div>
       </main>
 
       <PageFooter />

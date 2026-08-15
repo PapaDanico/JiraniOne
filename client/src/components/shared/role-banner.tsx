@@ -17,7 +17,7 @@ export function RoleBanner({ role }: Props) {
     <div
       data-testid={`role-banner-${role}`}
       className={cn(
-        "flex items-center gap-3 rounded-2xl border px-4 py-3",
+        "flex items-center gap-3 rounded-2xl border px-4 py-3 h-full",
         r.banner.container,
       )}
     >

@@ -177,6 +177,28 @@
     @apply grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3;
   }
 
+  /* Dashboard header band. On mobile the role banner sits above the hero
+   * in a plain stack (unchanged). From lg up the two sit side by side —
+   * the hero is wide but content-light, so pairing it with the banner
+   * reclaims a full-width strip that was otherwise ~85% empty.
+   * Explicit col/row placement (rather than source order) keeps the
+   * mobile DOM order intact for screen readers. */
+  .dash-header {
+    @apply space-y-5 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-5 lg:items-stretch;
+  }
+  .dash-header > .dash-header-main { @apply lg:col-span-2 lg:col-start-1 lg:row-start-1; }
+  .dash-header > .dash-header-aside { @apply lg:col-start-3 lg:row-start-1 lg:h-full; }
+
+  /* Standard dashboard body: one column on mobile, 2/3 + 1/3 on desktop.
+   * Two auto-flowing wrapper columns rather than explicit row placement —
+   * dashboard sections render conditionally, and explicit placement
+   * leaves blank holes wherever a section is absent. */
+  .dash-grid {
+    @apply space-y-5 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start;
+  }
+  .dash-col-main { @apply space-y-5 lg:col-span-2; }
+  .dash-col-side { @apply space-y-5; }
+
   /* Section title — bottom-border on green (KASH .stitle). */
   .section-title {
     @apply text-base font-semibold text-brand-green pb-2 mb-3
@@ -316,13 +338,16 @@
 
   /* Tab row — KASH .tabs + .tab. Pill-shaped, active state has a lifted
    * white card and a green text. */
+  /* Tabs fill the width on mobile (thumb targets), but shrink-wrap from
+   * md up — three tabs stretched across a 1100px desktop column read as
+   * a banner rather than a control. */
   .tab-row {
-    @apply flex flex-wrap gap-1 bg-tribal-cream-dark rounded-xl p-1;
+    @apply flex flex-wrap gap-1 bg-tribal-cream-dark rounded-xl p-1 md:w-fit;
   }
   .tab-btn {
     @apply flex-1 min-w-[80px] px-3 py-2 rounded-lg text-xs font-semibold
            text-tribal-earth transition-colors hover:bg-white/60
-           min-h-[36px];
+           min-h-[36px] md:flex-none md:px-5;
   }
   .tab-btn[data-active="true"] {
     @apply bg-white text-brand-green shadow-card;
