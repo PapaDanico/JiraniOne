@@ -55,6 +55,29 @@ done
 `/api/health` returns `{"status":"ok",...}` only when the DB is
 reachable — `"degraded"` + ECONNREFUSED means Postgres isn't running.
 
+## 2b. Verify a change (before writing a bespoke script)
+
+Two committed scripts already cover the common ground — reach for these
+first rather than re-deriving them in the scratchpad:
+
+```bash
+npm run verify:api   # 87 checks: every module end to end + 12 role boundaries
+npm run verify:ui    # 4 roles x 3 breakpoints: blank pages, bad redirects,
+                     # horizontal overflow, post-login console/page errors
+npm run verify       # both
+```
+
+Exit `0` pass, `1` a real regression, `2` couldn't run (app down,
+rate-limited, no Playwright). See `scripts/verify/README.md`.
+
+**They sign in 4 times each, and login allows 10 attempts per 15 min per
+IP** — a third run inside the window trips the limiter. Both report the
+429 explicitly; `fuser -k 5000/tcp` and relaunch resets the in-memory
+counter.
+
+Write a one-off Playwright script (below) only for what these don't cover
+— a specific new flow, or a screenshot you need to look at.
+
 ## 3. Drive it with Playwright
 
 Playwright is pre-installed globally — do NOT `npm install playwright`
