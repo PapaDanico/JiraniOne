@@ -303,7 +303,7 @@ export function TopBar({ title }: { title?: string }) {
       <div className="bg-brand-green text-white">
         <div className="flex items-center justify-between px-4 h-14 max-w-6xl mx-auto gap-3">
           {/* Brand */}
-          <Link href={`/dashboard/${user.role}`} className="flex items-center gap-2.5 shrink-0 min-w-0">
+          <Link href={`/dashboard/${user.role}`} className="flex items-center gap-2.5 shrink-0">
             <img
               src="/brand/logo-mark.webp"
               alt={BRAND_NAME}
