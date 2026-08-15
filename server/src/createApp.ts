@@ -177,10 +177,19 @@ export function createApp(): express.Express {
   //
   // Keying by session cookie instead would let an anonymous caller mint a
   // fresh key per request, so IP stays the key and the ceiling goes up.
+  //
+  // 2026-08-15: measured, rather than estimated. One idle user sitting on a
+  // dashboard makes 28 requests per 62s — 7 mounted queries refetched every
+  // 15s by usePolling — which is ~406 per 15-minute window. Against the
+  // previous 2000 that allowed just ~5 concurrent users per IP before the
+  // whole estate started getting 429s, which is precisely the shared-NAT
+  // case this limit was raised for in the first place. 20,000 carries ~49
+  // concurrent users on one IP. Note that conditional requests do NOT help
+  // here: a 304 is still a request and still counts.
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
-      limit: 2000,
+      limit: 20_000,
       standardHeaders: true,
       legacyHeaders: false,
       keyGenerator: getClientIp,
@@ -347,6 +356,30 @@ export function createApp(): express.Express {
 
   // ─── Uploads (dynamic — Netlify Blobs in prod, local disk in dev) ───────────
   app.use("/uploads", uploadsRouter);
+
+  // ─── Conditional-request caching on API reads ──────────────────────────────
+  // Express already generates an ETag per JSON response, and Chrome was
+  // already revalidating against it via heuristic freshness — measured on the
+  // polling dashboard, the server answered 28 of 40 requests with 304 before
+  // this header existed. So this is NOT a bandwidth fix; revalidation was
+  // already happening. It does two narrower things:
+  //
+  //   1. Makes revalidation explicit rather than heuristic. Heuristic
+  //      freshness is browser-discretionary — relying on it means Safari,
+  //      Firefox and Android WebView may each behave differently. `no-cache`
+  //      ("store, but revalidate before reuse" — NOT "don't store") pins the
+  //      behaviour we already depend on.
+  //   2. `private` keeps per-user JSON out of shared caches. Netlify's CDN
+  //      sits in front of this function, so an intermediary storing one
+  //      resident's payload and serving it to another is the failure worth
+  //      foreclosing explicitly.
+  //
+  // GET only — a cache header on a POST is meaningless. Routes that set their
+  // own header (uploads.ts, serving immutable blobs) run after this and win.
+  app.use("/api", (req, res, next) => {
+    if (req.method === "GET") res.set("Cache-Control", "private, no-cache");
+    next();
+  });
 
   // ─── M-PESA callback (public, IP-allowlisted) ───────────────────────────────
   // Mounted BEFORE the authenticated paymentsRouter so Safaricom can reach it.

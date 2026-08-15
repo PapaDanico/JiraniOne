@@ -18,7 +18,12 @@ None. Nothing is waiting on a third party.
       but this is a commercial product repo that may later be shared with a
       team or a buyer. Move it to a synced workspace folder if that changes.
       — added 2026-08-15
-- [ ] Optional, low priority: add RLS policies to `push_subscriptions`,
+- [ ] Consider exempting authenticated GETs from the global limiter, or
+      key it per session behind a trusted proxy. Raising the ceiling to
+      20,000 buys ~49 concurrent users per IP, which is enough for now but
+      is still a shared-fate design. — added 2026-08-15
+- [x] RLS advisories — Capt. Dan confirmed handled on the Supabase side
+      2026-08-15. Original note: add RLS policies to `push_subscriptions`,
       `quote_requests`, `subscription_invoices`. Three Supabase INFO
       advisories — RLS enabled with no policy, which is fail-closed and NOT a
       live exposure (the browser never talks to Postgres directly; Express
@@ -30,7 +35,8 @@ None. Nothing is waiting on a third party.
 - Database: Supabase project `reijnsabsiwbrafqvtmy`
 - Lighthouse on production (2026-08-15): Performance 97, Accessibility 100,
   Best Practices 92, SEO 100, PWA 100
-- Rate limits: global 2000 req / 15 min / IP; login 10 / 15 min / IP;
+- Rate limits: global 20,000 req / 15 min / IP (sized from a measured 406
+  per idle user per window); login 10 / 15 min / IP;
   STK push, register, forgot-password, leads all 5 per window
 - Seeded local test accounts: `0700000001` admin, `0700000002` resident,
   `0700000003` security, `0700000004` vendor — password from `DEMO_PASSWORD`
@@ -64,6 +70,33 @@ None. Nothing is waiting on a third party.
   resolves it from the project, then a global install. (PR #64)
 - 2026-08-15: Verification scripts committed rather than left in a scratchpad,
   so coverage survives the session. (PR #64)
+- 2026-08-15: Global rate limit 2000 -> 20,000/IP/15min, sized from a
+  measured 406 requests per idle user per window rather than a guess. At
+  2000 an estate behind one NAT got ~5 concurrent users before everyone,
+  gate included, started seeing 429s. (PR #66)
+- 2026-08-15: /api/events de-N+1'd — was up to 101 queries per request (2
+  per event over a 50-row limit) on a 15s-polled endpoint; now 3 total,
+  using the batching shape chama.ts already had. (PR #66)
+- 2026-08-15: CI now runs verify:api against a throwaway Postgres, so the
+  87 behavioural checks are enforced rather than optional. verify:ui stays
+  manual (needs a browser). (PR #66)
+- 2026-08-15: CLAUDE.md's "offline-first for emergency alerts" corrected —
+  the code deliberately does NOT queue panic alerts (a late alert is worse
+  than none; the SOS dialog fails loudly and shows the security number).
+  The code was right and the brief was wrong. (PR #66)
+
+## Measurement traps (cost real time — read before benchmarking this app)
+- **Playwright `response.body()` returns the CACHED body on a 304**, and CDP
+  `Network.responseReceived` reports the synthesized 200 the page sees, not
+  the wire status. Both made it look like every poll re-downloaded full
+  payloads. They don't — Chrome was already revalidating via heuristic
+  freshness and the server was already answering 28-of-40 with 304.
+  **Ground truth is the server's own log**:
+  `grep -o '"statusCode":[0-9]*' /tmp/api.log | sort | uniq -c`. Check that
+  first, before any client-side byte measurement.
+- Idle polling load is real though: **28 requests / 62s per user on a
+  dashboard (~406 per 15-min window)** — 7 mounted queries refetched every
+  15s. That is what sizes the rate limit, and 304s do NOT reduce it.
 
 ## Gotchas learned this session
 - Running either verify script more than twice in 15 minutes trips the login

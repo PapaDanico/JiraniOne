@@ -11,6 +11,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
+    # The unit suite covers pure logic only (csv, billing, validators, the
+    # M-PESA IP allowlist). Everything about wiring — routes actually mounted,
+    # middleware ordering, role guards, response shapes — was verified by hand
+    # or not at all. A throwaway Postgres makes scripts/verify/api-flows.mjs
+    # runnable here, which turns 87 behavioural checks (including 12
+    # authorization boundaries) from "if someone remembers" into a gate.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: localtest
+          POSTGRES_DB: jiranihub_ci
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - uses: actions/checkout@v4
 
@@ -30,3 +50,28 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # End-to-end API verification against a real database. verify:ui is
+      # deliberately left out — it needs a browser, and the layout regressions
+      # it catches are better checked against a deploy preview than in CI.
+      - name: Set up database
+        run: |
+          npm run db:push -- --force
+          npm run db:seed
+        env:
+          DATABASE_URL: postgresql://postgres:localtest@localhost:5432/jiranihub_ci
+          DEMO_PASSWORD: JiraniCI2026!
+
+      - name: Verify API flows
+        run: |
+          npx tsx server/src/index.ts &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5000/api/health | grep -q '"ok"' && break
+            sleep 1
+          done
+          npm run verify:api
+        env:
+          DATABASE_URL: postgresql://postgres:localtest@localhost:5432/jiranihub_ci
+          SESSION_SECRET: ci_session_secret_that_is_long_enough_1234567890
+          PORT: 5000
+          DEMO_PASSWORD: JiraniCI2026!
