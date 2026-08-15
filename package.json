@@ -18,7 +18,10 @@
     "db:seed": "tsx server/src/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:api": "node scripts/verify/api-flows.mjs",
+    "verify:ui": "node scripts/verify/ui-layout.mjs",
+    "verify": "npm run verify:api && npm run verify:ui"
   },
   "dependencies": {
     "@fontsource/cormorant-garamond": "^5.3.0",
