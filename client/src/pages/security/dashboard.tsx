@@ -75,21 +75,25 @@ export default function SecurityDashboard() {
       <TopBar title="Gate" />
 
       <main className="container-app pt-5 pb-6 space-y-5 page-content">
-        <RoleBanner role="security" />
+        <div className="dash-header">
+          <div className="dash-header-aside">
+            <RoleBanner role="security" />
+          </div>
 
-        {/* Hero */}
-        <div className="archetype-card">
-          <div className="relative z-10">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-gold mb-1">
-              Security Panel
-            </p>
-            <h1 className="font-display font-extrabold text-2xl tracking-tight">
-              Estate Gate
-            </h1>
-            <p className="font-medium text-base text-white/70 mt-0.5">
-              {user?.name} · Gate Officer
-            </p>
-            <div className="mt-4 flag-bar w-24" />
+          {/* Hero */}
+          <div className="archetype-card dash-header-main">
+            <div className="relative z-10">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-gold mb-1">
+                Security Panel
+              </p>
+              <h1 className="font-display font-extrabold text-2xl tracking-tight">
+                Estate Gate
+              </h1>
+              <p className="font-medium text-base text-white/70 mt-0.5">
+                {user?.name} · Gate Officer
+              </p>
+              <div className="mt-4 flag-bar w-24" />
+            </div>
           </div>
         </div>
 
@@ -110,22 +114,30 @@ export default function SecurityDashboard() {
           </Link>
         )}
 
-        {/* Primary scan action — large, thumb-friendly */}
+        <div className="dash-grid">
+          <div className="dash-col-main">
+
+        {/* Primary scan action — large, thumb-friendly. Stacks and centres
+            on mobile; from md up it lays out as a horizontal banner so the
+            icon and copy sit together instead of floating in a wide box. */}
         <Link
           href="/visitors"
-          className="block rounded-2xl bg-brand-green text-white p-6 text-center min-h-[140px] hover:bg-brand-green-dark transition-colors active:scale-[0.99]"
+          className="block rounded-2xl bg-brand-green text-white p-6 text-center min-h-[140px] hover:bg-brand-green-dark transition-colors active:scale-[0.99]
+                     md:flex md:items-center md:gap-5 md:text-left md:min-h-0 md:py-5"
         >
-          <QrCode className="h-12 w-12 mx-auto mb-3 text-brand-gold" />
-          <p className="font-display font-extrabold text-xl">Scan visitor QR</p>
-          <p className="text-sm text-white/70 mt-1">
-            Open the gate scanner — search visitors by phone number
-          </p>
+          <QrCode className="h-12 w-12 mx-auto mb-3 text-brand-gold md:mx-0 md:mb-0 md:shrink-0" />
+          <div>
+            <p className="font-display font-extrabold text-xl">Scan visitor QR</p>
+            <p className="text-sm text-white/70 mt-1">
+              Open the gate scanner — search visitors by phone number
+            </p>
+          </div>
         </Link>
 
         {/* Quick actions */}
         <section>
           <SectionTitle>Quick actions</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
             {ACTIONS.map((a) => (
               <Link
                 key={a.label}
@@ -184,19 +196,24 @@ export default function SecurityDashboard() {
           )}
         </section>
 
-        {/* Traffic for gate handover */}
-        <section>
-          <SectionTitle>Local traffic</SectionTitle>
-          <TrafficWidget />
-        </section>
+          </div>
 
-        <InfoBox variant="red" title="Emergency response">
-          <p>
-            Tap <strong>Emergency</strong> to broadcast an alert to all on-duty
-            security and the estate admin. Use only for active incidents — fire,
-            medical, intrusion, or a panic-button trigger from a resident.
-          </p>
-        </InfoBox>
+          <div className="dash-col-side">
+            {/* Traffic for gate handover */}
+            <section>
+              <SectionTitle>Local traffic</SectionTitle>
+              <TrafficWidget />
+            </section>
+
+            <InfoBox variant="red" title="Emergency response">
+              <p>
+                Tap <strong>Emergency</strong> to broadcast an alert to all on-duty
+                security and the estate admin. Use only for active incidents — fire,
+                medical, intrusion, or a panic-button trigger from a resident.
+              </p>
+            </InfoBox>
+          </div>
+        </div>
       </main>
 
       <PageFooter />

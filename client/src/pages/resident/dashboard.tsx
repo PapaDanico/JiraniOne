@@ -175,11 +175,14 @@ export default function ResidentDashboard() {
 
       <main className="container-app pt-5 pb-6 space-y-5 page-content">
 
-        {/* ── Role banner ────────────────────────────────────── */}
-        <RoleBanner role="resident" />
+        <div className="dash-header">
+          {/* ── Role banner ────────────────────────────────────── */}
+          <div className="dash-header-aside">
+            <RoleBanner role="resident" />
+          </div>
 
-        {/* ── Hero ─────────────────────────────────────────────── */}
-        <div className="kitenge-hero rounded-2xl p-5 relative overflow-hidden">
+          {/* ── Hero ─────────────────────────────────────────────── */}
+          <div className="kitenge-hero rounded-2xl p-5 relative overflow-hidden dash-header-main lg:row-span-2">
           <div className="relative z-10 flex items-start justify-between gap-3">
             <div>
               <p className="text-brand-gold text-sm font-medium">{greeting()},</p>
@@ -201,13 +204,19 @@ export default function ResidentDashboard() {
             )}
           </div>
           <div className="mt-4 flag-bar w-24 relative z-10" />
+          </div>
+
+          {/* ── Levy status ────────────────────────────────────────
+              Sits under the role banner in the desktop side column
+              rather than as its own full-width strip — it's a one-line
+              status with a meter, and the hero grows to match. */}
+          <div className="lg:col-start-3 lg:row-start-2">
+            <LevyStatusWidget />
+          </div>
         </div>
 
         {/* ── No-estate onboarding: join (nav prompt) or create ── */}
         {user && !user.estateId && <CreateEstateCard />}
-
-        {/* ── Levy status ──────────────────────────────────────── */}
-        <LevyStatusWidget />
 
         {/* ── Below the fold: on desktop this becomes a 2/3 + 1/3 grid
             (primary actions/activity on the left, ambient at-a-glance

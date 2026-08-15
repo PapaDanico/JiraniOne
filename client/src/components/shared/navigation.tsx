@@ -353,10 +353,15 @@ export function TopBar({ title }: { title?: string }) {
 
           {/* Right cluster */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Estate name is the first thing to go when the bar is tight —
+                it's context, not navigation, and it's repeated in the drawer.
+                Held back to lg (and truncated) because at md the brand, the
+                inline nav and this pill together overflowed the viewport,
+                scrolling the whole page sideways on tablets. */}
             {estate && (
-              <span className="hidden md:inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90">
-                <MapPin className="h-3 w-3" />
-                {estate.name}
+              <span className="hidden lg:inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90 max-w-[22ch]">
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span className="truncate">{estate.name}</span>
               </span>
             )}
             <RoleBadge
