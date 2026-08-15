@@ -181,8 +181,12 @@ export default function ResidentDashboard() {
             <RoleBanner role="resident" />
           </div>
 
-          {/* ── Hero ─────────────────────────────────────────────── */}
-          <div className="kitenge-hero rounded-2xl p-5 relative overflow-hidden dash-header-main lg:row-span-2">
+          {/* ── Hero ───────────────────────────────────────────────
+              Spans both rows of the header band on desktop, alongside the
+              role banner and levy status. That makes it taller than its
+              content needs, so centre the content vertically — pinned to
+              the top it read as a half-empty card rather than a banner. */}
+          <div className="kitenge-hero rounded-2xl p-5 relative overflow-hidden dash-header-main lg:row-span-2 lg:flex lg:flex-col lg:justify-center">
           <div className="relative z-10 flex items-start justify-between gap-3">
             <div>
               <p className="text-brand-gold text-sm font-medium">{greeting()},</p>
